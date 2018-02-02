@@ -1,11 +1,13 @@
 #ifndef GPIOLOWLEVEL_H
 #define GPIOLOWLEVEL_H
 
-/* wiringPi replacement stuff  - just use the low level bits that we want, when we want them
-last modified 2017/10/11 by Jamie Boyd  - reorganizing by peripheral, and working on I2C
-last modified 2017/05/02 by Jamie Boyd - added I2C
-last modified 2017/02/17 by Jamie Boyd - initial version for GPIO, plus PWM
-*/
+/* ********************** Low Level access to Raspberry Pi GPIO Peripherals ************************ 
+last modified:
+2018/02/01 by Jamie Boyd - renaming some files for gitHub
+2017/10/11 by Jamie Boyd - reorganizing by peripheral, and working on I2C
+2017/05/02 by Jamie Boyd - added I2C
+2017/02/17 by Jamie Boyd - initial version for GPIO, plus PWM */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -31,8 +33,7 @@ physical address. Different peripherals are defined by an offset to the base phy
 #define BCM_PERI_BASE	0x3F000000
 #endif
 
-
-// Structure for access to low level memory
+/* ********************** Structure for access to low level memory for BCM Peripherals*************************/
 typedef struct bcm_peripheral {
     unsigned long addr_p;
     int mem_fd;
@@ -41,22 +42,25 @@ typedef struct bcm_peripheral {
 } bcm_peripheral, *bcm_peripheralPtr;
 
 
-/* we need to define the page and block size in the memory, so every time mmap() is called with 4KB.*/
-#define PAGE_SIZE 		4096
+/* ****************** define the page and block size in the memory *********************************/
+#define PAGE_SIZE 	4096
 #define BLOCK_SIZE 	4096
 
-/*This function takes a pointer to bcm_peripheral struct, p, whose addr_p field should be set
-to the base addresss of the peripheral you wish to control. It maps the low level memory
-of the peripheral and fills out the rest of the fields in the bcm_peripheral struct.
+
+/* ******************************* Define memory interface Method *************************************
 Low level memory for GPIO can be accessed through the new /dev/gpiomem interface
 which does not require root access. Unfortunately, the PWM and clock hardware are
 NOT accessible through /dev/gpiomem, and must be accessed through /dev/mem,
-which requires running your programs with sudo or gksu to get root access.
-Trying to access PWM registers through /dev/gpiomem WILL CRASH YOUR PI  
-The memInterface paramater determines which method to use. 
-*/
+which requires running your programs with sudo or gksudo to get root access.
+Trying to access PWM registers through /dev/gpiomem WILL CRASH YOUR PI */
 #define IFACE_DEV_GPIOMEM	1	// use this only for GPIO
 #define IFACE_DEV_MEM		0	// use this for GPIO or PWM and/or clock access
+
+/* ************************ Map BCM Peripherals **********************************************
+This function takes a pointer to a bcm_peripheral struct, p, whose addr_p field should be set
+to the base addresss of the peripheral you wish to control. It maps the low level memory
+of the peripheral and fills out the rest of the fields in the bcm_peripheral struct.
+The memInterface paramater determines which method to use. */
 inline int map_peripheral(bcm_peripheralPtr p, int memInterface){
 	if (memInterface == IFACE_DEV_GPIOMEM){
 		// Open newfangled dev/gpiomem instead of /dev/mem for access without sudo
@@ -94,12 +98,12 @@ inline int map_peripheral(bcm_peripheralPtr p, int memInterface){
 	return 0;
 }
 
+/* ******************** Un-Map a Peripheral *******************************************/
 inline void unmap_peripheral(bcm_peripheralPtr p) {
 	munmap(p->map, BLOCK_SIZE);
 }
 
-/**************************************************GPIO Peripheral*************************************************/
-
+/**************************************************GPIO Peripheral************************************************
 /*GPIO_BASE is the base address of GPIO peripherals, and its offset from the physical address is 0x200000.*/
 #define GPIO_BASE       	(BCM_PERI_BASE + 0x200000)	// GPIO controller
 
@@ -112,19 +116,17 @@ inline void unmap_peripheral(bcm_peripheralPtr p) {
 #define GPIO_READ(gpio, g)  *(gpio + 13) &= g //returns 0 if g is not set, else returns g
 
 
-/**************************************************Clock Peripheral**********************************************************/
-/*Define Clockperi in one .cpp file */
-//extern bcm_peripheralPtr Clockperi;
-/* values for setting some registers need to be ORed with this magic number, the clock manager password */
-#define	BCM_PASSWORD	0x5A000000
+/**************************************************Clock Peripheral*********************************************************
+Values for setting some registers need to be ORed with this magic number, the clock manager password */
+#define	BCM_PASSWORD 0x5A000000
 /*PWM_BASE and CLOCK_BASE are defined by 0x20C000 and 0x101000 offsets  from the base peripheral addresss */
-#define CLOCK_BASE		(BCM_PERI_BASE + 0x101000)
+#define CLOCK_BASE (BCM_PERI_BASE + 0x101000)
 /*Frequency of oscillators that we use as source for things like PWM clock*/
 #define PI_CLOCK_RATE 19.2e6	//19.2 Mhz
 #define PLLD_CLOCK_RATE 500e6	// 500 MHz phase locked loop D 
 
-/***************************************************PWM Periperal***********************************************************/
-/*PWM_BASE and CLOCK_BASE are defined by 0x20C000 and 0x101000 offsets  from the base peripheral addresss */
+/***************************************************PWM Periperal**********************************************************
+PWM_BASE and CLOCK_BASE are defined by 0x20C000 and 0x101000 offsets  from the base peripheral addresss */
 #define PWM_BASE			(BCM_PERI_BASE + 0x20C000)
 /* PWM control registers addresses are defined by an offset to PWM_BASE. */
 #define PWM_CTL		0             // PWM Control
@@ -144,10 +146,8 @@ inline void unmap_peripheral(bcm_peripheralPtr p) {
 #define	PWM0_SERIAL     0x0002  // Run in serial mode
 #define	PWM0_ENABLE     0x0001  // Channel Enable
 
-/************************************************* BSC peripheral, for I2C*******************************************************************/
-/* I2C  Control, done with one of the Broadcom Serial Controllers, BSC0 for Pi 1, BSC1 for Pi 2*/
-/*Define I2Cperi in one .cpp file */
-//extern bcm_peripheralPtr I2Cperi;
+/************************************************* BSC peripheral, for I2C******************************************************************
+I2C  Control, done with one of the Broadcom Serial Controllers, BSC0 for Pi 1, BSC1 for Pi 2 */
 #ifdef RPI
 #define BSC_BASE	(BCM_PERI_BASE + 0x205000)
 #endif
@@ -155,14 +155,14 @@ inline void unmap_peripheral(bcm_peripheralPtr p) {
 #define BSC_BASE	(BCM_PERI_BASE + 0x804000)
 #endif
 
-
+/* *******************************BSC Register Addresses **************************************/
 #define BSC_C		0x00		// Control Register
 #define BSC_S		0x01		// Status Register
 #define BSC_DLEN 	0x02		// Data Length Register
 #define BSC_A  	0x03		// Slave Address Register (the Pi must be the master)
 #define BSC_FIFO	0x04		// Data FIFO Register (First In, First Out buffer)
 
-// defined bits for Control Register
+/* ***************************** Defined bits for Control Register ****************************/
 #define BSC_C_I2CEN    	(1 << 15)			// Enable - set this bit to enable controller
 #define BSC_C_INTR    	(1 << 10)			// Interrupt in- set to enable interrupts when Read FIFO is full
 #define BSC_C_INTT    	(1 << 9)				// Interrupt out - set to enable interrupts when write FIFO is empty
@@ -171,10 +171,7 @@ inline void unmap_peripheral(bcm_peripheralPtr p) {
 #define BSC_C_CLEAR    	(3 << 4)				// set to clear FIFO (this requires two bits, 5 and 4)
 #define BSC_C_READ    	1					// when 1, we are reading, when 0 we are writing
 
-#define START_READ    	BSC_C_I2CEN|BSC_C_ST|BSC_C_CLEAR|BSC_C_READ
-#define START_WRITE   	BSC_C_I2CEN|BSC_C_ST
-
-// defined bits for status register
+/* ************************ defined bits for status register *************************************/
 #define BSC_S_CLKT		(1 << 9)				// clock stretch timeout  - will be set when slave holds the SCL signal high for too long
 #define BSC_S_ERR    	(1 << 8)				// will be set when slave fails to acknowledge either its adress or a data byte written to it
 #define BSC_S_RXF    	(1 << 7)				// will be set when receiving data if FIFO is full.  No more input will be read
@@ -184,9 +181,12 @@ inline void unmap_peripheral(bcm_peripheralPtr p) {
 #define BSC_S_RXR    	(1 << 3)				// will be set during a read transfer if FIFO is more than 1/2 full and needs reading
 #define BSC_S_TXW    	(1 << 2)				// will be set during a write transfer when the FIFO is less than 1/2 full and needs writing
 #define BSC_S_DONE   	(1 << 1)				// will be set when transfer is complete. reset by writing a 1
-#define BSC_S_TA    	1					// will be set when transfer is active
+#define BSC_S_TA    	1						// will be set when transfer is active
 
+/* **********************Useful bit combinations *********************************************/
 #define CLEAR_STATUS    BSC_S_CLKT|BSC_S_ERR|BSC_S_DONE
+#define START_READ    	BSC_C_I2CEN|BSC_C_ST|BSC_C_CLEAR|BSC_C_READ
+#define START_WRITE   	BSC_C_I2CEN|BSC_C_ST
 
 
 inline unsigned int dump_bsc_status(bcm_peripheralPtr I2Cperi){

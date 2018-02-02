@@ -1,8 +1,8 @@
 #include <pyPulsedThread.h>
-#include "pulsedThread_SimpleGPIO.h"
+#include "SimpleGPIO_thread.h"
 
 /* **********************************************************************************************************************
--------------SimpleGPIO Pulses and Trains for Raspberry Pi, now  WITHOUT using wiringPi library ------------------------------
+-------------SimpleGPIO Pulses and Trains for Raspberry Pi ------------------------------
 ************************************************************************************************************************/
 
 
