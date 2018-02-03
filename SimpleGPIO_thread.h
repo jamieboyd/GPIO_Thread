@@ -4,7 +4,7 @@
 #include <pulsedThread.h>
 #include "GPIOlowlevel.h"
 
-/* ****************** Initialization Data ********************************
+/* ****************** Initialization Data Struct ********************************
  memory mapped addresses to write to on HI and Lo, and GPIO pin bit */
 typedef struct SimpleGPIOInitStruct{
 	unsigned int * GPIOperiHi;	// memory mapped addresss of GPIO register to write to on HI
@@ -29,6 +29,9 @@ typedef struct SimpleGPIOArrayStruct{
 	unsigned int arrayPos;	// current position in array, as it is iterated through
 }SimpleGPIOArrayStruct, *SimpleGPIOArrayStructPtr;
 
+
+void SimpleGPIO_DutyCycleFromArrayEndFunc (taskParams * theTask);
+
 /* *********************SimpleGPIO_thread class extends pulsedThread ****************
 Does pulses and trains of pulses on Raspberry Pi GPIO pins */
 class SimpleGPIO_thread : public pulsedThread{
@@ -45,14 +48,21 @@ class SimpleGPIO_thread : public pulsedThread{
 	static int GPIOperi_users;
 	// destructor
 	~SimpleGPIO_thread ();
+	// End function
+	int setUpEndFuncArray (float * newData, unsigned int nData, int isLocking);
+	void setUpEndFuncCosArray (unsigned int arraySize, unsigned int period, float offset, float scaling);
+	// utility functions
+	int setPin (int newPin, int isLocking);
+	int getPin (void);
+	int getPolarity (void);
+	int setLevel (int level, int isLocking);
+	// data members
+	float * endFuncArrayData;
 	private:
 	int pinNumber;
 	int polarity;
-	// utility functions
 	/*
-	void setPin (int pin);
-	int getPin (void );
-	void setLevel (int level);
+	
 	protected:
 	 */
 };

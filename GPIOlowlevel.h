@@ -104,7 +104,7 @@ inline void unmap_peripheral(bcm_peripheralPtr p) {
 }
 
 /**************************************************GPIO Peripheral************************************************
-/*GPIO_BASE is the base address of GPIO peripherals, and its offset from the physical address is 0x200000.*/
+GPIO_BASE is the base address of GPIO peripherals, and its offset from the physical address is 0x200000. */
 #define GPIO_BASE       	(BCM_PERI_BASE + 0x200000)	// GPIO controller
 
 /*macros that can be used for setting and unsetting bits in registers relative to gpio memory mapping */
@@ -119,14 +119,14 @@ inline void unmap_peripheral(bcm_peripheralPtr p) {
 /**************************************************Clock Peripheral*********************************************************
 Values for setting some registers need to be ORed with this magic number, the clock manager password */
 #define	BCM_PASSWORD 0x5A000000
-/*PWM_BASE and CLOCK_BASE are defined by 0x20C000 and 0x101000 offsets  from the base peripheral addresss */
+/* CLOCK_BASE is defined by 0x101000 offset from the base peripheral addresss */
 #define CLOCK_BASE (BCM_PERI_BASE + 0x101000)
 /*Frequency of oscillators that we use as source for things like PWM clock*/
 #define PI_CLOCK_RATE 19.2e6	//19.2 Mhz
 #define PLLD_CLOCK_RATE 500e6	// 500 MHz phase locked loop D 
 
 /***************************************************PWM Periperal**********************************************************
-PWM_BASE and CLOCK_BASE are defined by 0x20C000 and 0x101000 offsets  from the base peripheral addresss */
+PWM_BASE is defined by 0x20C000 offset from the base peripheral addresss */
 #define PWM_BASE			(BCM_PERI_BASE + 0x20C000)
 /* PWM control registers addresses are defined by an offset to PWM_BASE. */
 #define PWM_CTL		0             // PWM Control
