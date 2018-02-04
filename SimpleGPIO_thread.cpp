@@ -1,5 +1,6 @@
 #include "SimpleGPIO_thread.h"
-#include <math.h>
+//#include <math.h>
+
 /* ***************************have to initialize static data outside of the class *************************************/
 bcm_peripheralPtr SimpleGPIO_thread::GPIOperi = nullptr;
 int SimpleGPIO_thread::GPIOperi_users=0;
@@ -86,7 +87,6 @@ last modified:
  }
 
  
-
  /* *************************************CallBacks for EndFunc Options *************
 Functions for using an array of values for frequency or duty cycle with an endFunc to cycle through the array using SimpleGPIOArrayStruct
 
