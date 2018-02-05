@@ -4,33 +4,14 @@
 #include <pulsedThread.h>
 #include "GPIOlowlevel.h"
 
-/* ****************** Initialization Data Struct ********************************
- memory mapped addresses to write to on HI and Lo, and GPIO pin bit */
-typedef struct SimpleGPIOInitStruct{
-	unsigned int * GPIOperiHi;	// memory mapped addresss of GPIO register to write to on HI
-	unsigned int * GPIOperiLo;	// memory mapped address of GPIO register to write to on LO
-	unsigned int pinBit;		// pin number translated to bit position in register
-}SimpleGPIOInitStruct, *SimpleGPIOInitStructPtr;
-
 /* ******************** Custom Data Struct for Simple GPIO***************************
-includes a pointer for end Function data */
+ memory mapped addresses to write to on HI and Lo, and GPIO pin bit */
 typedef struct SimpleGPIOStruct{
 	unsigned int * GPIOperiHi; // address of register to write pin bit to on Hi
 	unsigned int * GPIOperiLo; // address of register to write pin bit to on Lo
 	unsigned int pinBit;	// pin number translated to bit position in register
-	void * endFuncData;		// pointer to data for end function
 }SimpleGPIOStruct, *SimpleGPIOStructPtr;
 
-/* ******************* A Custom struct for endFunc Data **************************
-for the two provided endFuncs that change frequency and dutyCycle for trains */
-typedef struct SimpleGPIOArrayStruct{
-	float * arrayData;		// pointer to an array of floats
-	unsigned int nData;		// size of array, or at least size of initialized data in array
-	unsigned int arrayPos;	// current position in array, as it is iterated through
-}SimpleGPIOArrayStruct, *SimpleGPIOArrayStructPtr;
-
-
-void SimpleGPIO_DutyCycleFromArrayEndFunc (taskParams * theTask);
 
 /* *********************SimpleGPIO_thread class extends pulsedThread ****************
 Does pulses and trains of pulses on Raspberry Pi GPIO pins */
@@ -48,9 +29,6 @@ class SimpleGPIO_thread : public pulsedThread{
 	static int GPIOperi_users;
 	// destructor
 	~SimpleGPIO_thread ();
-	// End function
-	int setUpEndFuncArray (float * newData, unsigned int nData, int isLocking);
-	void setUpEndFuncCosArray (unsigned int arraySize, unsigned int period, float offset, float scaling);
 	// utility functions
 	int setPin (int newPin, int isLocking);
 	int getPin (void);
