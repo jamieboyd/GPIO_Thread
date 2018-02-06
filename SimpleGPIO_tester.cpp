@@ -20,17 +20,17 @@ int main(int argc, char **argv){
 	delete (myGPIO2);
 	printf ("GPIO peri users = %d.\n", SimpleGPIO_thread::GPIOperi_users);
 	*/
-	SimpleGPIO_thread *  myGPIO3= SimpleGPIO_thread::SimpleGPIO_threadMaker (23, 0, (float)100, (float)0.01, (float)0.01, 2) ;
+	SimpleGPIO_thread *  myGPIO3= SimpleGPIO_thread::SimpleGPIO_threadMaker (23, 0, (float)50, (float)0.05, (float)0.01, 2) ;
 	printf ("GPIO peri users = %d.\n", SimpleGPIO_thread::GPIOperi_users);
 	if (myGPIO3 == nullptr){
 		printf ("SimpleGPIO_thread object was not created the second time. Now exiting...\n");
 		return 1;
 	}
 	//myGPIO3 ->setLevel (1, 0);
-	myGPIO3->endFuncArrayData = myGPIO3->cosineDutyCycleArray (1024, 256, 0.5, 0.3);
-	myGPIO3->setUpEndFuncArray (myGPIO3->endFuncArrayData, 1024, 1);
+	myGPIO3->endFuncArrayData = myGPIO3->cosineDutyCycleArray (128, 128, 0.5, 0.3);
+	myGPIO3->setUpEndFuncArray (myGPIO3->endFuncArrayData, 128, 1);
 	myGPIO3->setEndFunc (&pulsedThreadDutyCycleFromArrayEndFunc);
-	myGPIO3->DoTasks(2048);
+	myGPIO3->DoTasks(100);
 	myGPIO3->waitOnBusy (600);
 	delete (myGPIO3);
 	printf ("GPIO peri users = %d.\n", SimpleGPIO_thread::GPIOperi_users);

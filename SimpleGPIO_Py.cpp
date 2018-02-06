@@ -1,35 +1,33 @@
 #include <pyPulsedThread.h>
 #include "SimpleGPIO_thread.h"
 
-/* **********************************************************************************************************************
--------------SimpleGPIO Pulses and Trains for Raspberry Pi ------------------------------
-************************************************************************************************************************/
+/* ************Simple GPIO Pulses and Trains from Python using SimpleGPIO_thread ******************************
+Last Modifed:
+2018/02/05 by Jamie Boyd - updates for pulsedThread class/SimpleGPIO_thread subclass
 
+************************* Constructors for Pulses and Trains *************************************************
 
+************************ Makes a Pulse ****************************************************************
+Last Modified:
+2018/02/05 by Jamie Boyd - updates for pulsedThread class/SimpleGPIO_thread subclass */
 static PyObject* ptSimpleGPIO_pulse (PyObject *self, PyObject *args) {
 	float delay;
 	float dur;
-	int initState;
+	int polarity;
 	int pin;
 	int accLevel;
 	if (!PyArg_ParseTuple(args,"ffiii",  &delay, &dur, &initState, &pin, &accLevel)) {
 		return NULL;
 	}
-	SimpleGPIOInitStruct initStruct;
-	initStruct.pin =pin;
-	initStruct.initState = initState;
-	pulsedThread * threadObj;
-	int errCode;
-	threadObj =new pulsedThread ((unsigned int) round (1e06 *delay), (unsigned int) round (1e06 *dur), (unsigned int) 1, (void * volatile) &initStruct, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accLevel, errCode);
-	threadObj->setCustomDataDelFunc (&SimpleGPIO_customDel);
-	if (errCode){
+	SimpleGPIO_thread *  threadObj= SimpleGPIO_thread::SimpleGPIO_threadMaker (pin, polarity, (unsigned int) round (1e06 *delay), (unsigned int) round (1e06 *dur), (unsigned int) 1, accLevel);
+	if (threadObj = nullptr){
 		return NULL;
 	}else{
 		return PyCapsule_New (static_cast <void *>(threadObj), "pulsedThread", pulsedThread_del);
 	}
   }
   
-  /* Creates and configures a  pulsedThread object to output a train of pulses on a GPIO pin
+  /* Creates and configures a SimpleGPIO_thread object to output a train of pulses on a GPIO pin
  Two functions, one taking paramaters of pulse timing and number, (delay in seconds, duration in seconds, and number of puses)
  the other taking paramaters of train frequency,  train duration , and train duty cycle. 0 for either nPulses or trainDuration
  requests an infinite train.
@@ -37,8 +35,7 @@ static PyObject* ptSimpleGPIO_pulse (PyObject *self, PyObject *args) {
  accLevel: accuracy level for timing, 0 relies solely on sleeping for timing, which may not be accurate beyond the ms scale
  1 sleeps for first part of a ticks, but wakes early and does stricter timing with clocks at the end of the tick,
  checking each time against expected time. more processor intensive, more accurate.
-  Note all trains are normally low; i.e.,  at start and end of train, line is set low. Could easily add an option for normally high
-  */
+  Note all trains are normally low; i.e.,  at start and end of train, line is set low. Could easily add an option for normally high */
 
   static PyObject* ptSimpleGPIO_trainDelayDur (PyObject *self, PyObject *args) {
 	float delay;
@@ -49,19 +46,13 @@ static PyObject* ptSimpleGPIO_pulse (PyObject *self, PyObject *args) {
 	if (!PyArg_ParseTuple(args,"ffiii", &delay, &duration, &nPulses, &pin, &accLevel)) {
 		return NULL;
 	}
-	int errCode;
-	SimpleGPIOInitStruct initStruct;
-	initStruct.pin =pin;
-	initStruct.initState = 0;
-	pulsedThread * threadObj = new pulsedThread( (unsigned int) round (1e06 * delay), (unsigned int) round (1e06 * duration), nPulses, &initStruct, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accLevel, errCode);
-	threadObj->setCustomDataDelFunc (&SimpleGPIO_customDel);
-	if (errCode){
+	SimpleGPIO_thread *  threadObj= SimpleGPIO_thread::SimpleGPIO_threadMaker (pin, 1, (unsigned int) round (1e06 *delay), (unsigned int) round (1e06 *dur), (unsigned int) nPulses, accLevel);
+	if (threadObj = nullptr){
 		return NULL;
 	}else{
 		return PyCapsule_New (static_cast <void *>(threadObj), "pulsedThread", pulsedThread_del);
 	}
   }
-  
   
   static PyObject* ptSimpleGPIO_trainFreqDuty (PyObject *self, PyObject *args) {
 	float trainFrequency;
@@ -72,13 +63,8 @@ static PyObject* ptSimpleGPIO_pulse (PyObject *self, PyObject *args) {
 	if (!PyArg_ParseTuple(args,"fffii", &trainFrequency, &trainDutyCycle, &trainDuration, &pin, &accLevel)) {
 		return NULL;
 	}
-	int errCode;
-	SimpleGPIOInitStruct initStruct;
-	initStruct.pin =pin;
-	initStruct.initState = 0;
-	pulsedThread * threadObj = new pulsedThread( trainFrequency, trainDutyCycle, trainDuration, &initStruct, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accLevel, errCode);
-	threadObj->setCustomDataDelFunc (&SimpleGPIO_customDel);
-	if (errCode){
+	SimpleGPIO_thread *  threadObj= SimpleGPIO_thread::SimpleGPIO_threadMaker (pin, 1, (float) trainFrequency, (float) trainDutyCycle, (float) trainDuration, accLevel); 
+	if (threadObj = nullptr){
 		return NULL;
 	}else{
 		return PyCapsule_New (static_cast <void *>(threadObj), "pulsedThread", pulsedThread_del);
@@ -92,17 +78,42 @@ static PyObject* ptSimpleGPIO_pulse (PyObject *self, PyObject *args) {
 	  if (!PyArg_ParseTuple(args,"Oii", &PyPtr, &newPin, &isLocking)) {
 		return NULL;
 	}
-	pulsedThread * threadPtr = static_cast<pulsedThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
-	int * newPinPtr = new int;
-	* newPinPtr = newPin;
-	int returnVal =threadPtr -> modCustom (&SimpleGPIO_setPinCallback, (void *) newPinPtr, isLocking);
+	SimpleGPIO_thread * threadPtr = static_cast<SimpleGPIO_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	int returnVal =threadPtr->setPin (newPin, isLocking);
 	return  Py_BuildValue("i", returnVal);
 }
 
-
+ static PyObject* ptSimpleGPIO_setLevel (PyObject *self, PyObject *args){
+	  PyObject *PyPtr;
+	  int theLevel;
+	  int isLocking;
+	  if (!PyArg_ParseTuple(args,"Oii", &PyPtr, &theLevel, &isLocking)) {
+		return NULL;
+	}
+	SimpleGPIO_thread * threadPtr = static_cast<SimpleGPIO_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	int returnVal =threadPtr->setLevel (theLevel, isLocking);
+	return  Py_BuildValue("i", returnVal);
+}
 
 /*Sets a Python Object as the endFunction data for a SimpleGPIO thread, and sets the endFunction to 
 call that Python object's endFunc method, which it better have..... */
+static PyObject* ptSimpleGPIO_setEndFuncObj (PyObject *self, PyObject *args){
+	PyObject *PyPtr;
+	PyObject *PyObjPtr;
+	if (!PyArg_ParseTuple(args,"OO", &PyPtr, &PyObjPtr)) {
+		PyRun_SimpleString ("print ('SetEndFuncObj error')");
+		return NULL;
+	}
+
+	if (!PyEval_ThreadsInitialized()){
+		PyEval_InitThreads();
+	}
+	SimpleGPIO_thread * threadPtr = static_cast<SimpleGPIO_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	threadPtr->modCustom (&ptSimpleGPIO_setEndFuncObjCallBack, (void *) PyObjPtr, 1);
+	threadPtr->setEndFunc (&ptSimpleGPIO_RunPythonEndFunc);
+	Py_RETURN_NONE;
+}
+
 static int ptSimpleGPIO_setEndFuncObjCallBack (void * modData, taskParams * theTask){
 	SimpleGPIOStructPtr taskData = (SimpleGPIOStructPtr)theTask->taskCustomData;
 	taskData->endFuncData = modData;
@@ -120,32 +131,14 @@ static void ptSimpleGPIO_RunPythonEndFunc (taskParams * theTask){
 }
 
 
-static PyObject* ptSimpleGPIO_setEndFuncObj (PyObject *self, PyObject *args){
-	PyObject *PyPtr;
-	PyObject *PyObjPtr;
-	if (!PyArg_ParseTuple(args,"OO", &PyPtr, &PyObjPtr)) {
-		PyRun_SimpleString ("print ('SetEndFuncObj error')");
-		return NULL;
-	}
-
-	if (!PyEval_ThreadsInitialized()){
-		PyEval_InitThreads();
-	}
-	pulsedThread * threadPtr = static_cast<pulsedThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
-	threadPtr->modCustom (&ptSimpleGPIO_setEndFuncObjCallBack, (void *) PyObjPtr, 1);
-	threadPtr->setEndFunc (&ptSimpleGPIO_RunPythonEndFunc);
-	Py_RETURN_NONE;
-}
-
-
 static PyObject* ptSimpleGPIO_unSetEndFunc (PyObject *self, PyObject *PyPtr) {
-	pulsedThread * threadPtr = static_cast<pulsedThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
-	threadPtr->unSetEndFunc();
+	SimpleGPIOStructPtr * threadPtr = static_cast<SimpleGPIOStructPtr * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	SimpleGPIOStructPtr->unSetEndFunc();
 	Py_RETURN_NONE;
 }
 
 static PyObject* ptSimpleGPIO_hasEndFunc (PyObject *self, PyObject *PyPtr) {
-	pulsedThread * threadPtr = static_cast<pulsedThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	SimpleGPIOStructPtr * threadPtr = static_cast<pulsedThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
 	return  Py_BuildValue("i", threadPtr->hasEndFunc());
 }
 
@@ -278,6 +271,7 @@ static PyMethodDef ptSimpleGPIOMethods[] = {
 	{"getTrainDuration", pulsedThread_getTrainDuration, METH_O, "returns duration of a train, in seconds"},
 	{"getTrainFrequency", pulsedThread_getTrainFrequency, METH_O, "returns frequency of a train, in Hz"},
 	{"getTrainDutyCycle", pulsedThread_getTrainDutyCycle, METH_O, "returns duty of a train, between 0 and 1"},
+	
 	{"pulse", ptSimpleGPIO_pulse, METH_VARARGS, "Creates and configures new  pulsedThread object to do a pulse"},
 	{"trainDelayDur", ptSimpleGPIO_trainDelayDur, METH_VARARGS, "Creates and configures new pulsedThread object to do a train of pulses with requested pulse timing"},
 	{"trainFreqDuty", ptSimpleGPIO_trainFreqDuty, METH_VARARGS, "Creates and configures new  pulsedThread object to do a train of pulses with requested train characteristics"},
