@@ -7,7 +7,7 @@ from math import pi, cos
 from abc import ABCMeta, abstractmethod
 from time import sleep
 """
-    PTSimpleGPIO does control of GPIO access using the C++ module ptSimpleGPIO,
+    SimpleGPIO does control of GPIO access using the C++ module ptSimpleGPIO,
     which provides pulsed thread timing for setting GPIO lines high or low.
     Sublasses of SimpleGPIO are PTSimpleGPIO (Pulse, Train, Infinite_train, each
     controlled by a C++ thread)
