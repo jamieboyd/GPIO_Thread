@@ -95,8 +95,26 @@ static PyObject* ptSimpleGPIO_pulse (PyObject *self, PyObject *args) {
 	return  Py_BuildValue("i", returnVal);
 }
 
-/*Sets a Python Object as the endFunction data for a SimpleGPIO thread, and sets the endFunction to 
+/*Sets a Python Object as the endFunction data for a SimpleGPIO thread, and sets the endFunction that
 call that Python object's endFunc method, which it better have..... */
+
+
+static int ptSimpleGPIO_setEndFuncObjCallBack (void * modData, taskParams * theTask){
+	SimpleGPIOStructPtr taskData = (SimpleGPIOStructPtr)theTask->taskCustomData;
+	taskData->endFuncData = modData;
+	return 0;
+}
+
+static void ptSimpleGPIO_RunPythonEndFunc (taskParams * theTask){
+	PyObject *PyObjPtr = (PyObject *) theTask->endFuncData;
+	PyGILState_STATE state=PyGILState_Ensure();
+	PyObject *result = PyObject_CallMethod (PyObjPtr, "endFunc", "(fffiii)",theTask->trainFrequency, theTask->trainDutyCycle, theTask->trainDuration, theTask->pulseDelayUsecs, theTask->pulseDurUsecs, theTask->nPulses);
+	Py_DECREF (result);
+	//PyRun_SimpleString ("print ('The end function ran with no error')");
+	PyGILState_Release(state);
+}
+
+
 static PyObject* ptSimpleGPIO_setEndFuncObj (PyObject *self, PyObject *args){
 	PyObject *PyPtr;
 	PyObject *PyObjPtr;
@@ -112,22 +130,6 @@ static PyObject* ptSimpleGPIO_setEndFuncObj (PyObject *self, PyObject *args){
 	threadPtr->modCustom (&ptSimpleGPIO_setEndFuncObjCallBack, (void *) PyObjPtr, 1);
 	threadPtr->setEndFunc (&ptSimpleGPIO_RunPythonEndFunc);
 	Py_RETURN_NONE;
-}
-
-static int ptSimpleGPIO_setEndFuncObjCallBack (void * modData, taskParams * theTask){
-	SimpleGPIOStructPtr taskData = (SimpleGPIOStructPtr)theTask->taskCustomData;
-	taskData->endFuncData = modData;
-	return 0;
-}
-
-static void ptSimpleGPIO_RunPythonEndFunc (taskParams * theTask){
-	SimpleGPIOStructPtr taskData = (SimpleGPIOStructPtr)theTask->taskCustomData;
-	PyObject *PyObjPtr = (PyObject *) taskData->endFuncData;
-	PyGILState_STATE state=PyGILState_Ensure();
-	PyObject *result = PyObject_CallMethod (PyObjPtr, "endFunc", "(fffiii)",theTask->trainFrequency, theTask->trainDutyCycle, theTask->trainDuration, theTask->pulseDelayUsecs, theTask->pulseDurUsecs, theTask->nPulses);
-	Py_DECREF (result);
-	//PyRun_SimpleString ("print ('The end function ran with no error')");
-	PyGILState_Release(state);
 }
 
 
