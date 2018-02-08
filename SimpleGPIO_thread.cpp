@@ -1,5 +1,4 @@
 #include "SimpleGPIO_thread.h"
-//#include <math.h>
 
 /* ***************************have to initialize static data outside of the class *************************************/
 bcm_peripheralPtr SimpleGPIO_thread::GPIOperi = nullptr;
@@ -29,7 +28,7 @@ int SimpleGPIO_Init (void * initDataP, void *  &taskDataP){
  Task to do on Low tick, sets GPIO line low or high depending on polarity
 last modified:
 2016/12/07 by Jamie Boyd - initial version */
-void SimpleGPIO_Lo (void *  taskData, unsigned int SignalBits){
+void SimpleGPIO_Lo (void *  taskData){
 	SimpleGPIOStructPtr gpioTaskPtr = (SimpleGPIOStructPtr) taskData;
 	*(gpioTaskPtr->GPIOperiLo) = gpioTaskPtr->pinBit;
 }
@@ -38,7 +37,7 @@ void SimpleGPIO_Lo (void *  taskData, unsigned int SignalBits){
 Task to do on High tick, sets GPIO line high or ow depending on polarity
 last modified:
 2016/12/07 by Jamie Boyd - initial version */
-void SimpleGPIO_Hi (void *  taskData, unsigned int SignalBits){
+void SimpleGPIO_Hi (void *  taskData){
 	SimpleGPIOStructPtr gpioTaskPtr = (SimpleGPIOStructPtr) taskData;
 	*(gpioTaskPtr->GPIOperiHi) =gpioTaskPtr->pinBit;
 }

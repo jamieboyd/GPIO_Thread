@@ -9,10 +9,10 @@ from abc import ABCMeta, abstractmethod
 from time import sleep
 from array import array as array
 
-t1Pin=4
+t1Pin=23
 t1=Train (PTSimpleGPIO.INIT_FREQ, 110, 0.5, 0.5, t1Pin, PTSimpleGPIO.ACC_MODE_SLEEPS_AND_OR_SPINS)
-scaler = MajorScale ()
-t1.add_endFunc (scaler)
+#scaler = MajorScale ()
+#t1.add_endFunc (scaler)
 t1.do_trains (21)
 
 """
