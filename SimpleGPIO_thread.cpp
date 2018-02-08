@@ -29,7 +29,7 @@ int SimpleGPIO_Init (void * initDataP, void *  &taskDataP){
  Task to do on Low tick, sets GPIO line low or high depending on polarity
 last modified:
 2016/12/07 by Jamie Boyd - initial version */
-void SimpleGPIO_Lo (void *  taskData){
+void SimpleGPIO_Lo (void *  taskData, unsigned int SignalBits){
 	SimpleGPIOStructPtr gpioTaskPtr = (SimpleGPIOStructPtr) taskData;
 	*(gpioTaskPtr->GPIOperiLo) = gpioTaskPtr->pinBit;
 }
@@ -38,7 +38,7 @@ void SimpleGPIO_Lo (void *  taskData){
 Task to do on High tick, sets GPIO line high or ow depending on polarity
 last modified:
 2016/12/07 by Jamie Boyd - initial version */
-void SimpleGPIO_Hi (void *  taskData){
+void SimpleGPIO_Hi (void *  taskData, unsigned int SignalBits){
 	SimpleGPIOStructPtr gpioTaskPtr = (SimpleGPIOStructPtr) taskData;
 	*(gpioTaskPtr->GPIOperiHi) =gpioTaskPtr->pinBit;
 }
