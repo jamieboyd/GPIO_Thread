@@ -92,7 +92,8 @@ void SimpleGPIO_delTask (void * taskData){
  
  ******************** ThreadMaker with Integer pulse duration, delay, and number of pulses timing description inputs ********************
  Last Modified:
- 2018/02/01 by Jamie Boyd - Initial Version */
+2018/02/09 by jamie Boyd - moved some functionality into initfunction and constructor
+2018/02/01 by Jamie Boyd - Initial Version */
 SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int polarity, unsigned int delayUsecs, unsigned int  durUsecs, unsigned int nPulses, int accuracyLevel) {
 	// map GPIO peripheral
 	int errCode;
@@ -105,25 +106,22 @@ SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int pola
 	initStruct.thePin = pin;
 	initStruct.thePolarity = polarity;
 	initStruct.GPIOperiAddr = GPIOperi->addr;
-	// call SimpleGPIO_thread constructor, which just calls pulsedThread contructor
-	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (delayUsecs, durUsecs, nPulses, (void *) &initStruct, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accuracyLevel, errCode);
+	// call SimpleGPIO_thread constructor, which calls pulsedThread contructor
+	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (pin, polarity, delayUsecs, durUsecs, nPulses, (void *) &initStruct, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accuracyLevel, errCode);
 	if (errCode){
 #if beVerbose
 		printf ("Failed to make pulsed thread.\n");
 #endif
 		return nullptr;
 	}
-	// fill in extra data fields
-	newGPIO_thread->pinNumber = pin;
-	newGPIO_thread->polarity = polarity;
-	 // increment static GPIOperi_users . When destructing, if no other users, delete the mapping
-	GPIOperi_users +=1;
+	// set custom task delete function
 	newGPIO_thread->setTaskDataDelFunc (&SimpleGPIO_delTask);
 	return newGPIO_thread;
 }
 
 /* ******************* ThreadMaker with floating point frequency, duration, and duty cycle timing description inputs ********************
 Last Modified:
+2018/02/09 by jamie Boyd - moved some functionality into initfunction and constructor
 2018/02/01 by Jamie Boyd - Initial Version */
 SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int polarity, float frequency, float dutyCycle, float trainDuration, int accuracyLevel){
 	// map GPIO peripheral
@@ -137,20 +135,15 @@ SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int pola
 	initStruct.thePin = pin;
 	initStruct.thePolarity = polarity;
 	initStruct.GPIOperiAddr = GPIOperi->addr;
-	// call SimpleGPIO_thread constructor, which just calls pulsedThread contructor
-	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (frequency, dutyCycle, trainDuration, (void *) &initStruct, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accuracyLevel, errCode);
+	// call SimpleGPIO_thread constructor, which calls pulsedThread contructor
+	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (pin, polarity, frequency, dutyCycle, trainDuration, (void *) &initStruct, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accuracyLevel, errCode);
 	if (errCode){
 #if beVerbose
 		printf ("Failed to make pulsed thread.\n");
 #endif
 		return nullptr;
 	}
-	// fill in extra data fields
-	newGPIO_thread->pinNumber = pin;
-	newGPIO_thread->polarity = polarity;
-	newGPIO_thread->endFuncArrayData = nullptr;
-	 // increment static GPIOperi_users . When destructing, if no other users, delete the mapping
-	GPIOperi_users +=1;
+	// set custom delete function for task data
 	newGPIO_thread->setTaskDataDelFunc (&SimpleGPIO_delTask);
 	return newGPIO_thread;
 }
