@@ -99,6 +99,9 @@ SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int pola
 	int errCode;
 	errCode = mapGPIOperi ();
 	if (errCode){
+#if beVerbose
+        printf ("SimpleGPIO_threadMaker failed to map GPIO peripheral.\n");
+#endif
 		return nullptr;
 	}
 	// make and fill an init struct
@@ -110,7 +113,7 @@ SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int pola
 	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (pin, polarity, delayUsecs, durUsecs, nPulses, (void *) &initStruct, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accuracyLevel, errCode);
 	if (errCode){
 #if beVerbose
-		printf ("Failed to make pulsed thread.\n");
+		printf ("SimpleGPIO_threadMaker failed to make SimpleGPIO_thread.\n");
 #endif
 		return nullptr;
 	}

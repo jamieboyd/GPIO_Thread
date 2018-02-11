@@ -45,7 +45,7 @@ class SimpleGPIO_thread : public pulsedThread{
 	static int GPIOperi_users;
 	static int mapGPIOperi(void);
 	// destructor
-	~SimpleGPIO_thread ();
+	virtual ~SimpleGPIO_thread ();
 	// utility functions
 	int setPin (int newPin, int isLocking);
 	int getPin (void);

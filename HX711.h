@@ -34,59 +34,63 @@ typedef struct HX711InitStruct{
 	int theClockPin; // pin to use for the GPIO output for clock
 	int theDataPin; //pin to use for the GPIO input for data
 	volatile unsigned int * GPIOperiAddr; // base address needed when writing to registers for setting and unsetting
+    float scaling;
+    float * weightData;         // pointer to the array to be filled with data, an array of floats
+    unsigned int nWeights;
 }HX711InitStruct, *HX711InitStructPtr;
 
 
-// this C-style struct contains all the relevant thread variables and task variables, and is shared with the pulsedThread
+// this C-style struct contains all the relevant thread variables and task variables, and is shared with the pulsedThread pthread
 typedef struct HX711struct {
 	unsigned int * GPIOperiHi; // address of register to WRITE pin bit to on Hi for clock
 	unsigned int * GPIOperiLo; // address of register to WRITE pin bit to on Lo for clock
 	unsigned int pinBit;	// clock pin number translated to bit position in register 
-	unsigned int * GPIOperiData; // address of register to READ for the data
+	unsigned int * GPIOperiData; // address of register to READ from for the data
 	unsigned int dataPinBit;	// data pin number translated to bit position in register 
-        int * dataArray;			// an array of 24 integers used to hold the set bits for a single weighing
+    int * dataArray;			// an array of 24 integers used to hold the set bits for a single weighing
 	unsigned int dataBitPos;	// tracks where we are in the 24 data bit positions
-        int * pow2;				// precomputed array of powers of 2 used to translate set bits into data
-	float * weightData; 		// pointer to the array to be filled with data, an array of floats
-	unsigned int nWeights;
+    int * pow2;				// precomputed array of powers of 2 used to translate set bits into data
+    int thisWeight;         // computed value for a single weight
+    float scaling;
+    float * weightData;         // pointer to the array to be filled with data, an array of floats
+    unsigned int nWeights;
+    unsigned int iWeight;
+    float tareVal;
 }HX711struct, * HX711structPtr;
 
+typedef struct HX711EndFuncStruct{
+    
+}
 
 class HX711: SimpleGPIO_thread{
 	public:
-	HX711 (int dataPinP, int clockPinP, float scalingP, unsigned int nWeights, float* weightDataP, unsigned int delayUsecs, unsigned int durUsecs, unsigned int nPulses, void * initData, int (*initFunc)(void *, void *  &), void (* loFunc)(void *), void (*hiFunc)(void *), int accLevel , int &errCode) : pulsedThread (delayUsecs, durUsecs, nPulses, initData, initFunc, loFunc, hiFunc, accLevel,errCode) {
-	
+	HX711 (int dataPinP, int clockPinP, unsigned int delayUsecs, unsigned int durUsecs, unsigned int nPulses, void * initData, int (*initFunc)(void *, void *  &), void (* loFunc)(void *), void (*hiFunc)(void *), int accLevel , int &errCode) : pulsedThread (delayUsecs, durUsecs, nPulses, initData, initFunc, loFunc, hiFunc, accLevel,errCode) {
+        dataPin = dataPinP;
+        clockPin = clockPinP;
+        isPoweredUp = true;
 	};
 
 	static HX711* HX711_threadMaker  (int dataPin, int clockPin, float scaling, float* weightData, unsigned int nWeights);
 	void tare (int nAvg, bool printVals);
-        float weigh (int nAvg, bool printVals);
+    float weigh (int nAvg, bool printVals);
 	void weighThreadStart (float * weights, int nWeights);
 	int weighThreadStop (void);
 	int weighThreadCheck (void);
-	 int readValue (void);
-        int getDataPin (void);
-        int getClockPin(void);
-        float getScaling (void);
-        float getTareValue (void);
-        void setScaling (float newScaling);
-        void turnON(void);
-        void turnOFF (void);
+    int readValue (void);
+    int getDataPin (void);
+    int getClockPin(void);
+    float getScaling (void);
+    float getTareValue (void);
+    void setScaling (float newScaling);
+    void turnON(void);
+    void turnOFF (void);
 
 	private:
 	int dataPin;
 	int clockPin;
-	float scaling;
-	float dataArray;
-        float tareValue;
-        bool isPoweredUp;
-      
-        struct timeval durTime;
-        struct timeval delayTime;
-        struct timeval actualTime;
-        struct timeval expectedTime;
-	// for threaded version
-	struct taskParams theTask;
+    float tareValue;
+    bool isPoweredUp;
+
 };
 
 #endif // HX711_H
