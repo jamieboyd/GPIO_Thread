@@ -1,6 +1,8 @@
 #include "SimpleGPIO_thread.h"
 #include <stdio.h>
 
+
+
 int main(int argc, char **argv){
 	
 	/*SimpleGPIO_thread * myGPIO= SimpleGPIO_thread::SimpleGPIO_threadMaker (23, 0, (unsigned int)2e04, (unsigned int)2e04, (unsigned int)20, 2) ;
@@ -21,24 +23,24 @@ int main(int argc, char **argv){
 	printf ("GPIO peri users = %d.\n", SimpleGPIO_thread::GPIOperi_users);
 	*/
 	SimpleGPIO_thread *  myGPIO3= SimpleGPIO_thread::SimpleGPIO_threadMaker (23, 0, (unsigned int)480,(unsigned int)20, (unsigned int)50, 1) ;
-	printf ("GPIO peri users = %d.\n", SimpleGPIO_thread::GPIOperi_users);
+	printf ("GPIO peri users = %d.\n", GPIOperi_users);
 	if (myGPIO3 == nullptr){
 		printf ("SimpleGPIO_thread object was not created the second time. Now exiting...\n");
 		return 1;
 	}
-	myGPIO3->endFuncArrayData = myGPIO3->cosineDutyCycleArray (128, 64, 0.5, 0.3);
+	myGPIO3->endFuncArrayData = myGPIO3->cosineDutyCycleArray (128, 64, 0.9, 0.099);
 	myGPIO3->setUpEndFuncArray (myGPIO3->endFuncArrayData, 128, 1);
 	myGPIO3->setEndFunc (&pulsedThreadDutyCycleFromArrayEndFunc);
 	myGPIO3->DoTasks(1280);
 	myGPIO3->waitOnBusy (600);
 	//myGPIO3 ->setLevel (1, 0);
 	delete (myGPIO3);
-	printf ("GPIO peri users = %d.\n", SimpleGPIO_thread::GPIOperi_users);
+	printf ("GPIO peri users = %d.\n", GPIOperi_users);
 	
 	return 0;
 }
 
 
 /*
-g++ -O3 -std=gnu++11 -Wall -lpulsedThread SimpleGPIO_thread.cpp SimpleGPIO_tester.cpp -o Tester
+g++ -O3 -std=gnu++11 -Wall -lpulsedThread SimpleGPIO_thread.cpp GPIOlowlevel.cpp SimpleGPIO_tester.cpp -o Tester
 */

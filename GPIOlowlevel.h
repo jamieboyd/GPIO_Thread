@@ -115,6 +115,10 @@ GPIO_BASE is the base address of GPIO peripherals, and its offset from the physi
 #define GPIO_CLR(gpio, g)  *(gpio + 10) = g // clears bits which are 1 ignores bits which are 0
 #define GPIO_READ(gpio, g)  *(gpio + 13) &= g //returns 0 if g is not set, else returns g
 
+extern bcm_peripheralPtr GPIOperi ;
+extern int GPIOperi_users;
+volatile unsigned int * useGpioPeri (void);
+void unUseGPIOperi (void);
 
 /**************************************************Clock Peripheral*********************************************************
 Values for setting some registers need to be ORed with this magic number, the clock manager password */
