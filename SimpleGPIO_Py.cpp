@@ -268,6 +268,7 @@ static PyMethodDef ptSimpleGPIOMethods[] = {
 	{"waitOnBusy", pulsedThread_waitOnBusy, METH_VARARGS, "Returns when a thread is no longer busy, or after timeOut secs"},
 	{"doTask", pulsedThread_doTask, METH_O, "Tells the pulsedThread object to do whatever task it was configured for"},
 	{"doTasks", pulsedThread_doTasks, METH_VARARGS, "Tells the pulsedThread object to do whatever task it was configured for multiple times"},
+	{"unDoTasks", pulsedThread_unDoTasks, METH_O, "Tells the pulsedThread object to stop doing however many task it was asked to do"},
 	{"startTrain", pulsedThread_startTrain, METH_O, "Tells a pulsedThread object configured as an infinite train to start"},
 	{"stopTrain", pulsedThread_stopTrain, METH_O, "Tells a pulsedThread object configured as an infinite train to stop"},
 	{"modDelay", pulsedThread_modDelay, METH_VARARGS, "changes the delay period of a pulse or LOW period of a train"},
@@ -282,6 +283,8 @@ static PyMethodDef ptSimpleGPIOMethods[] = {
 	{"getTrainDuration", pulsedThread_getTrainDuration, METH_O, "returns duration of a train, in seconds"},
 	{"getTrainFrequency", pulsedThread_getTrainFrequency, METH_O, "returns frequency of a train, in Hz"},
 	{"getTrainDutyCycle", pulsedThread_getTrainDutyCycle, METH_O, "returns duty of a train, between 0 and 1"},
+	{"setEndFuncObj",pulsedThread_SetPythonEndFuncObj,METH_VARARGS,"sets a Python object to provide the EndFunction for a pulsedThread"},
+	{"setTaskObject", pulsedThread_SetPythonTaskObj, METH_VARARGS, "sets a Python Object to provide HI and LO functtions for a pulsedThread"},
 	
 	{"pulse", ptSimpleGPIO_pulse, METH_VARARGS, "Creates and configures new  pulsedThread object to do a pulse"},
 	{"trainDelayDur", ptSimpleGPIO_trainDelayDur, METH_VARARGS, "Creates and configures new pulsedThread object to do a train of pulses with requested pulse timing"},
