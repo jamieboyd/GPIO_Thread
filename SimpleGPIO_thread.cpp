@@ -1,9 +1,5 @@
 #include "SimpleGPIO_thread.h"
 
-/* ***************************have to initialize static data outside of the class *************************************/
-bcm_peripheralPtr SimpleGPIO_thread::GPIOperi = nullptr;
-int SimpleGPIO_thread::GPIOperi_users=0;
-
 /* *************************** Functions that are called from thread can not be class methods *********************
 
 ***************************************Initialization callback function ****************************************
@@ -34,6 +30,7 @@ int SimpleGPIO_Init (void * initDataP, void *  &taskDataP){
 	*(taskData->GPIOperiLo ) = taskData->pinBit ;
 	return 0; // 
 }
+
 
 /* ***************** Lo Callback ******************************
  Task to do on Low tick, sets GPIO line low or high depending on polarity
@@ -95,20 +92,18 @@ void SimpleGPIO_delTask (void * taskData){
 2018/02/09 by jamie Boyd - moved some functionality into initfunction and constructor
 2018/02/01 by Jamie Boyd - Initial Version */
 SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int polarity, unsigned int delayUsecs, unsigned int  durUsecs, unsigned int nPulses, int accuracyLevel) {
-	// map GPIO peripheral
-	int errCode;
-	errCode = mapGPIOperi ();
-	if (errCode){
+	// make and fill an init struct
+	SimpleGPIOInitStruct  initStruct;
+	initStruct.thePin = pin;
+	initStruct.thePolarity = polarity;
+	initStruct.GPIOperiAddr = useGpioPeri ();
+	if (initStruct.GPIOperiAddr == nullptr){
 #if beVerbose
         printf ("SimpleGPIO_threadMaker failed to map GPIO peripheral.\n");
 #endif
 		return nullptr;
 	}
-	// make and fill an init struct
-	SimpleGPIOInitStruct  initStruct;
-	initStruct.thePin = pin;
-	initStruct.thePolarity = polarity;
-	initStruct.GPIOperiAddr = GPIOperi->addr;
+	int errCode =0;
 	// call SimpleGPIO_thread constructor, which calls pulsedThread contructor
 	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (pin, polarity, delayUsecs, durUsecs, nPulses, (void *) &initStruct, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accuracyLevel, errCode);
 	if (errCode){
@@ -127,17 +122,18 @@ Last Modified:
 2018/02/09 by jamie Boyd - moved some functionality into initfunction and constructor
 2018/02/01 by Jamie Boyd - Initial Version */
 SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int polarity, float frequency, float dutyCycle, float trainDuration, int accuracyLevel){
-	// map GPIO peripheral
-	int errCode;
-	errCode = mapGPIOperi ();
-	if (errCode){
-		return nullptr;
-	}
 	// make and fill an init struct
 	SimpleGPIOInitStruct initStruct ;
 	initStruct.thePin = pin;
 	initStruct.thePolarity = polarity;
-	initStruct.GPIOperiAddr = GPIOperi->addr;
+	initStruct.GPIOperiAddr =  useGpioPeri ();
+	if (initStruct.GPIOperiAddr == nullptr){
+#if beVerbose
+        printf ("SimpleGPIO_threadMaker failed to map GPIO peripheral.\n");
+#endif
+		return nullptr;
+	}	
+	int errCode =0;
 	// call SimpleGPIO_thread constructor, which calls pulsedThread contructor
 	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (pin, polarity, frequency, dutyCycle, trainDuration, (void *) &initStruct, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accuracyLevel, errCode);
 	if (errCode){
@@ -151,33 +147,13 @@ SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int pola
 	return newGPIO_thread;
 }
 
-/* ********************Maps GPIO Peripheral************************
-Static function  - saves GPIO mapping in a class field
-Last Modified:
-2018/02/09 by Jamie Boyd - initial version, busted out into its own function from ThreadMaker */
-int SimpleGPIO_thread::mapGPIOperi(void){
-// map GPIO peripheral, if needed
-	int errCode =0;
-	if (GPIOperi_users ==0) {
-		GPIOperi = new bcm_peripheral {GPIO_BASE};
-		errCode = map_peripheral(GPIOperi, IFACE_DEV_GPIOMEM);
-		if (errCode){
-			GPIOperi  = nullptr;
-		}
-	}
-	return errCode;
-}
 
 /* ****************************** Destructor handles GPIO peripheral mapping*************************
 Thread data is destroyed by the pulsedThread destructor
 Last Modified:
 2018/02/01 by Jamie Boyd - Initial Version */
 SimpleGPIO_thread::~SimpleGPIO_thread (){
-	GPIOperi_users -=1;
-	 if (GPIOperi_users ==0){
-		 unmap_peripheral (GPIOperi);
-		 delete (GPIOperi);
-	 }
+	unUseGPIOperi();
 }
 
 

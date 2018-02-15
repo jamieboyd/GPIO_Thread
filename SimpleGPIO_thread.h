@@ -29,21 +29,17 @@ class SimpleGPIO_thread : public pulsedThread{
 	SimpleGPIO_thread  (int pinP, int polarityP, unsigned int delayUsecs, unsigned int durUsecs, unsigned int nPulses, void * initData, int (*initFunc)(void *, void *  &), void (* loFunc)(void *), void (*hiFunc)(void *), int accLevel , int &errCode) : pulsedThread (delayUsecs, durUsecs, nPulses, initData, initFunc, loFunc, hiFunc, accLevel,errCode) {
 	pinNumber = pinP;
 	polarity = polarityP;
-	GPIOperi_users +=1;};
+	};
 	
 	/* the other constructor expects floats based on frequency, duty cycle, and train duration */
 	SimpleGPIO_thread  (int pinP, int polarityP, float frequency, float dutyCycle, float trainDuration, void * initData, int (*initFunc)(void *, void *  &), void (* loFunc)(void *), void (*hiFunc)(void *), int accLevel , int &errCode) : pulsedThread (frequency, dutyCycle, trainDuration, initData, initFunc, loFunc, hiFunc, accLevel,errCode) {
 	pinNumber = pinP;
 	polarity = polarityP;
-	GPIOperi_users +=1;};
+	};
 	
 	/* Static ThreadMakers call constructors after making initStruct and return a pointer to a SimpleGPIO_thread */
 	static SimpleGPIO_thread * SimpleGPIO_threadMaker (int pin, int polarity, unsigned int delayUsecs, unsigned int  durUsecs, unsigned int nPulses, int accuracyLevel);
 	static SimpleGPIO_thread * SimpleGPIO_threadMaker (int pin, int polarity, float frequency, float dutyCycle, float trainDuration, int accuracyLevel);
-	/* static variables to map GPIO peripheral and track usage */
-	static bcm_peripheralPtr GPIOperi ;
-	static int GPIOperi_users;
-	static int mapGPIOperi(void);
 	// destructor
 	virtual ~SimpleGPIO_thread ();
 	// utility functions
