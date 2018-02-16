@@ -28,7 +28,8 @@ int main(int argc, char **argv){
 		printf ("SimpleGPIO_thread object was not created the second time. Now exiting...\n");
 		return 1;
 	}
-	myGPIO3->endFuncArrayData = myGPIO3->cosineDutyCycleArray (128, 64, 0.9, 0.099);
+	myGPIO3->endFuncArrayData = new float [128];
+	myGPIO3->cosineDutyCycleArray (myGPIO3->endFuncArrayData, 128, 64, 0.6, 0.4);
 	myGPIO3->setUpEndFuncArray (myGPIO3->endFuncArrayData, 128, 1);
 	myGPIO3->setEndFunc (&pulsedThreadDutyCycleFromArrayEndFunc);
 	myGPIO3->DoTasks(1280);
@@ -42,5 +43,5 @@ int main(int argc, char **argv){
 
 
 /*
-g++ -O3 -std=gnu++11 -Wall -lpulsedThread SimpleGPIO_thread.cpp GPIOlowlevel.cpp SimpleGPIO_tester.cpp -o Tester
+ g++ -O3 -std=gnu++11 -Wall -lpulsedThread GPIOlowlevel.cpp SimpleGPIO_thread.cpp SimpleGPIO_tester.cpp -o Tester
 */
