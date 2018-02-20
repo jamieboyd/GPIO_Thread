@@ -7,7 +7,7 @@ from math import pi, cos
 from abc import ABCMeta, abstractmethod
 from time import sleep
 """
-    SimpleGPIO does control of GPIO access using the C++ module ptSimpleGPIO,
+    PTSimpleGPIO does control of GPIO access using the C++ module ptSimpleGPIO,
     which provides pulsed thread timing for setting GPIO lines high or low.
     Sublasses of SimpleGPIO are PTSimpleGPIO (Pulse, Train, Infinite_train, each
     controlled by a C++ thread)
@@ -64,6 +64,7 @@ class PTSimpleGPIO (object, metaclass = ABCMeta):
 
     def get_duration (self):
         return ptSimpleGPIO.getPulseDuration(self.task_ptr)
+
     """
     Setters and Getters for frequency (Hz) and duty cycle (0 to 1), same information as
     pulse delay and pulse duration, different format. Note behaviour of setters: Changing
@@ -94,7 +95,7 @@ class PTSimpleGPIO (object, metaclass = ABCMeta):
     wait_on_busy does not return until the thread is no longer busy
     or the time out expires. It returns 0 if the task ended, 1 if the
     time out expired. Don't call wait_on_busy on an Infinite_train
-    Don't wait on a thread with an endFunc installed, or you will get GILled 
+    Don't wait on a thread with an endFunc from a Python object installed, or you will get GILled 
     """
     def wait_on_busy(self, waitSecs):
         if (ptSimpleGPIO.hasEndFunc (self.task_ptr)):
@@ -137,11 +138,11 @@ class PTSimpleGPIO (object, metaclass = ABCMeta):
     args [2] = total train Duration (seconds), args[3] = pulse Delay in microseconds,
     args [4] = pulse Duration in microseconds, args [5] = number of pulses
     """
-    def add_endFunc (self, addObj = None):
+    def add_endFunc (self, dataMode, addObj = None):
         if addObj is None and hasattr(self, "endFunc"):
             ptSimpleGPIO.setEndFunc (self.task_ptr, self)
         elif (hasattr(addObj, "endFunc")):
-            ptSimpleGPIO.setEndFunc (self.task_ptr, addObj)
+            ptSimpleGPIO.setEndFuncObj (self.task_ptr, addObj, dataMode)
             addObj.task_ptr = self.task_ptr
     """
     Unsets the endFunc for the thread so it is no longer run at the end of each task.

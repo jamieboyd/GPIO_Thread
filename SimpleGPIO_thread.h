@@ -48,7 +48,6 @@ class SimpleGPIO_thread : public pulsedThread{
 	int getPolarity (void);
 	int setLevel (int level, int isLocking);
 	// data members
-	float * endFuncArrayData; // a pointer for endFunc array data, because we use it a lot
 	private:
 	int pinNumber;
 	int polarity;
