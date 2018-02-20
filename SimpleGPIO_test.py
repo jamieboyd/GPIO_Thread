@@ -9,6 +9,90 @@ from abc import ABCMeta, abstractmethod
 from time import sleep
 from array import array as array
 
+class PulseStretch (Pulse):
+    def __init__ (self, delay, duration, polarity, gpio_pin, accuracy_level):
+        super.__init__ (self, delay, duration, polarity, gpio_pin, accuracy_level)
+        set_endFunc_obj (self, 1, 0)
+    
+    def endFunc (self, *args):
+        #pulseDelay = args[0] in microseconds
+        #pulseDur=args[1] in microseconds
+        #nPulses = args[2]
+        ptSimpleGPIO.modDelay(self.task_ptr, (args[0] * 1.05)*1e-06)
+
+"""
+MajorScale is a class with an endFunc designed to be used with a Train
+task, with GPIO pin connected to a speaker or piezo buzzer.
+It increases the frequency of the starting tone to play an
+ascending major scale for as many trains as you configure. Start at
+220 Hz and run 22 trains to play 3 octaves in A major. Make the train duty cycle
+0.5 and the train duration 0.5 seconds or so.
+"""
+class MajorScale (object):
+
+    def __init__(self):
+        self.iTone =0
+        
+    def endFunc (self, *args):
+        #trainFrequency=args[0]
+        #trainDutyCycle=args[1]
+        #trainDuration=args[2]
+        #pulseDelay = args[3]
+        #pulseDur=args[4]
+        #nPulses = args[5]
+        # major scale:
+        #       do          re          me          fa          so          la          ti          do
+        #  	    tone        tone        semitone    tone        tone        tone        semitone
+	#	    0           1           2           3	    4	        5	    6
+	#	    7           8	    9	        10	    11	        12          13
+	#	    14          15	    16          17	    18          19          20
+        if self.iTone % 7 == 2 or self.iTone % 7 == 6:
+            newFrequency = args[0] * 1.05946  # semitone
+            if self.iTone % 7 == 6:
+                newFrequency= round (newFrequency) # so floating point roundoff does not accumulate
+                print ('octave', ((self.iTone + 1)/7), newFrequency)
+        else:
+            newFrequency = args[0] * 1.12246  # tone
+            #print ('Tone')
+ 
+        self.iTone +=1
+        ptSimpleGPIO.modTrainFreq (self.task_ptr, newFrequency)
+
+"""
+Pulser is class with an endFunc designed to be used with a Train
+task with GPIO pin hooked up to an LED. Pulser modifies the duty cycle
+of the train sinusoidally between 0.2 and 0.8 to give a gentle
+pulsating effect. Try Pulser with a period of 100 added to
+a Train task of 1000 Hz trains of 0.01 seconds, starting duty
+cycle of 0.2, and do 1000 trains 
+"""
+class Pulser (object):
+
+    """ for fast endFunc, we precompute the values. A floating point array of
+    size period is filled with an inverted cosine wave scaled in domain
+    (0 to period -> 0 to 2 * pi) and range (-1 to +1 -> 0.2 to 0.8)
+    """
+    def __init__(self, period):
+        self.period = period
+        self.periodArray = array ('f', (0.5 - 0.3 * cos (2 * pi * i/self.period) for i in range (0, self.period, 1)))
+        self.iArray = 0
+
+    """
+    The endFunc iterates through the precomputed array of duty cycles, setting the
+    duty cycle of the train to adjust the brightness
+    The mod operator is used instead of resetting to 0 when iArray gets to period
+    """
+    def endFunc (self, *args):
+        #trainFrequency=args[0]
+        #trainDutyCycle=args[1]
+        #trainDuration=args[2]
+        #pulseDelay = args[3]
+        #pulseDur=args[4]
+        #nPulses = args[5]
+        ptSimpleGPIO.modTrainDuty (self.task_ptr, self.periodArray [(self.iArray % self.period)])
+        self.iArray += 1
+
+
 t1Pin=23
 t1=Train (PTSimpleGPIO.INIT_FREQ, 110, 0.5, 0.5, t1Pin, PTSimpleGPIO.ACC_MODE_SLEEPS_AND_OR_SPINS)
 #scaler = MajorScale ()
