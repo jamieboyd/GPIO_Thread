@@ -3,15 +3,10 @@
 
 /* ************Simple GPIO Pulses and Trains from Python using SimpleGPIO_thread ******************************
 Last Modifed:
+2018/02/21 by Jamie Boyd
 2018/02/19 by jamie Boyd
 2018/02/05 by Jamie Boyd - updates for pulsedThread class/SimpleGPIO_thread subclass
 
-************************* Constructors for Pulses and Trains *************************************************
-
-************************ Makes a Pulse ****************************************************************
-Last Modified:
-2018/02/19 by Jamie Boyd - decided to not have separate constructors for pulses and trains, just for delay/duration and frequency/duty cycle
-2018/02/05 by Jamie Boyd - updates for pulsedThread class/SimpleGPIO_thread subclass 
 
 ******************** Function called automatically when PyCapsule object is deleted in Python *****************************************
 Last Modified:
@@ -19,7 +14,6 @@ Last Modified:
 static void  ptSimpleGPIO_del(PyObject * PyPtr){
     delete static_cast<SimpleGPIO_thread *> (PyCapsule_GetPointer (PyPtr, "pulsedThread"));
 }
-
 
 /* ****************************************  Constructors ******************************************************
 Creates and configures a SimpleGPIO_thread object to output a pulse or train of pulses on a GPIO pin
@@ -29,11 +23,12 @@ requests an infinite train.
 pin: number of the gpio pin used for the task. 
 polarity: 0 for normally low; i.e., at start and end of train, line is set low,  1 for normally high
 Last Modified;
-2018/02/20 by Jamie Boyd - replaced calls to pulsedThread_del with  ptSimpleGPIO_del */
-
+2018/02/20 by Jamie Boyd - replaced calls to pulsedThread_del with  ptSimpleGPIO_del
+2018/02/19 by Jamie Boyd - decided to not have separate constructors for pulses and trains, just for delay/duration and frequency/duty cycle
+2018/02/05 by Jamie Boyd - updates for pulsedThread class/SimpleGPIO_thread subclass */
 static PyObject* ptSimpleGPIO_DelayDur (PyObject *self, PyObject *args) {
-	float delay; // in seconds, but translated to microseconds when calling constructor
-	float dur;   // in seconds, but translated to microseconds when calling constructor
+	float delay; // in seconds from Python, but translated to microseconds when calling constructor
+	float dur;   // in seconds from Python, but translated to microseconds when calling constructor
 	int nPulses;
 	int polarity;
 	int pin;
@@ -115,10 +110,9 @@ Last Modified:
 }
 
 
-
-/* *****************************************code for a simple output without a thread**************************************
+/* ***************************************** code for a simple output without a thread**************************************
 so we can set pin levels high and low directly from Python, without making a thread, and without loading wiringPi or other library 
-
+************************************************************************************************************************************
 
 **************************** Custom delete for simpleGPIO_output ****************************************************
 Last Modified:
@@ -170,10 +164,10 @@ Last Modfied:
 		return NULL;
 	}
 	SimpleGPIOStructPtr structPtr = static_cast<SimpleGPIOStructPtr > (PyCapsule_GetPointer(PyPtr, "simpleGPIO_output"));
-	if (level >= 1){ // set high
-		*(structPtr->GPIOperiHi) =structPtr->pinBit;
+	if (level == 0){ // set high
+		*(structPtr->GPIOperiLo) = structPtr->pinBit;
 	}else{
-		*(structPtr->GPIOperiLo)=structPtr->pinBit;
+		*(structPtr->GPIOperiHi) = structPtr->pinBit;
 	}
 	Py_RETURN_NONE;
 }
