@@ -7,8 +7,8 @@ from time import sleep
 """
     PTSimpleGPIO does control of GPIO access using the C++ module ptSimpleGPIO,
     which provides pulsed thread timing for setting GPIO lines high or low.
-    Sublasses of PTSimpleGPIO are Pulse, Train, and Infinite_train, each
-    controlled by a C++ thread
+    Sublasses of PTSimpleGPIO are Pulse, Train, and Infinite_train
+    Each instance of Pulse, Train, or Infinite_train is controlled by its own C++ thread
 """
 class PTSimpleGPIO (object, metaclass = ABCMeta):
     """
@@ -27,14 +27,19 @@ class PTSimpleGPIO (object, metaclass = ABCMeta):
 
     """
     PTSimpleGPIO defines constants for working with frequency based (frequency, duty cycle, total duration) or
-    pulse based (low time, high time, number of pulses) paramaters when creating a train, or passing information to
+    time based (low time, high time, number of pulses) paramaters when creating a train, or passing information to
     an endFunction. Same information, presented in a different way, use what is convenient for your application.
     """
     MODE_FREQ=0
-    MODE_PULSES =1
-
+    MODE_PULSES=1
+    
+    """
+    cosine_duty_cycle_array fills a passed-in array with a cosine wave with a period of period points, with
+    values ranging from offset - scaling (which must be greater than 0) to offset + scaling (which must be
+    less than 1). The range is limited from 0 to 1 because its intended use is to set duty cycle.
+    """
     @staticmethod
-    def cosDutyCycleArray (array, period, offset, scaling):
+    def cosine_duty_cycle_array (array, period, offset, scaling):
         return ptSimpleGPIO.cosDutyCycleArray (array, period, offset, scaling)
 
     """
@@ -76,7 +81,7 @@ class PTSimpleGPIO (object, metaclass = ABCMeta):
     def get_frequency (self):
         return ptSimpleGPIO.getTrainFrequency (self.task_ptr)
 
-    def get_dutycycle (self):
+    def get_duty_cycle (self):
         return ptSimpleGPIO.getTrainDutyCycle (self.task_ptr)
     """
     is_busy returns 0 if a thread is not currently performing its
@@ -89,14 +94,14 @@ class PTSimpleGPIO (object, metaclass = ABCMeta):
     """
     wait_on_busy does not return until the thread is no longer busy
     or the time out expires. It returns 0 if the task ended, 1 if the
-    time out expired. Don't call wait_on_busy on an Infinite_train
-    Don't wait on a thread with an endFunc from a Python object installed, or you will get GILled 
+    time out expired.
+    Don't call wait_on_busy on an Infinite_train
+    Don't call ptSimpleGPIO.waitOnBusy on a thread with an endFunc from a Python object installed,
+    or you will get GILled 
     """
     def wait_on_busy(self, waitSecs):
-        if (ptSimpleGPIO.hasEndFunc (self.task_ptr)):
+        if (self.respectTheGIL == True):
             nWaits = waitSecs * 10
-            with nogil:
-                pass
             for iWait in range (0,nWaits, 1):
                 sleep (0.1)
                 nTasks = ptSimpleGPIO.isBusy(self.task_ptr)
@@ -105,7 +110,7 @@ class PTSimpleGPIO (object, metaclass = ABCMeta):
             return (nTasks > 0)
         else:
             return ptSimpleGPIO.waitOnBusy(self.task_ptr, waitSecs)
-
+        
     """
     set_pin sets the GPIO pin that is used by the thread, if you want to
     change it after initializing it. Broadcom numbering is always used.
@@ -115,6 +120,11 @@ class PTSimpleGPIO (object, metaclass = ABCMeta):
     def set_pin (self, pin_number, is_locking):
         return ptSimpleGPIO.setPin(self.task_ptr, pin_number, is_locking)
 
+
+    def get_pin (self):
+        return ptSimpleGPIO.getPin(self.task_ptr)
+
+
     """
     set_level allows you to set the pin used by the thread to HIGH or
     LOW state directly, not through the thread. If used while a thread
@@ -123,6 +133,10 @@ class PTSimpleGPIO (object, metaclass = ABCMeta):
     """
     def set_level (self, level, is_locking):
         return ptSimpleGPIO.setLevel(self.task_ptr, level, is_locking)
+
+
+    def get_polarity (self):
+        return ptSimpleGPIO.getPolarity (self.task_ptr)
     
     """
     set_endFunc_obj passes a Python object with a method named endFunc to the C++ thread
@@ -141,11 +155,14 @@ class PTSimpleGPIO (object, metaclass = ABCMeta):
         elif (hasattr(addObj, "endFunc")):
             ptSimpleGPIO.setEndFuncObj (self.task_ptr, addObj, dataMode, is_locking)
             addObj.task_ptr = self.task_ptr
+        self.respectTheGIL = True
+        
     """
     Unsets the endFunc for the thread so it is no longer run at the end of each task.
     """
     def clear_endFunc (self):
          ptSimpleGPIO.unSetEndFunc (self.task_ptr)
+         self.respectTheGIL = False
 
     """
     reports if the GPIO thread object has an endFunc installed
@@ -160,9 +177,9 @@ class PTSimpleGPIO (object, metaclass = ABCMeta):
     def set_array_endFunc (self, flt_array, freq_or_duty, is_locking):
         self.flt_array = flt_array
         ptSimpleGPIO.setArrayEndFunc (self.task_ptr, self.flt_array, freq_or_duty, is_locking)
+        self.respectTheGIL = False
 
 
-        
 """ Pulse class is a task used to do a single low-to-high (direction =0) or high-to-low
     (direction = 1) pulse on a GPIO pin. Delay and Duration are in seconds, Broadcom numbering
     is always used for GPIO pin. Setters and getters for delay and duration are defined in PTSimpleGPIO
@@ -186,12 +203,12 @@ class Pulse (PTSimpleGPIO):
     """
     def do_pulses (self, n_pulses):
         ptSimpleGPIO.doTasks(self.task_ptr, n_pulses)
+    
+    def cancel_pulses (self):
+        ptSimpleGPIO.unDoTasks (self.task_ptr)
 
-"""
-    PulseStretch is a subclass of Pulse with an endFunc defined. The endFunc stretches out the delay
-    between pulses by a factor of 1.05 after each pulse.
-
-"""
+    def get_pulse_len (self):
+        return ptSimpleGPIO.getTrainDuration (self.task_ptr)
 
 """
     Train class is a task to output a defined length train of pulses on a GPIO pin
@@ -210,13 +227,16 @@ class Train (PTSimpleGPIO):
     def do_trains (self, n_trains):
         return ptSimpleGPIO.doTasks(self.task_ptr, n_trains)
 
-    def set_pulse_number (self, new_pulse_number):
+    def cancel_trains (self):
+        ptSimpleGPIO.unDoTasks (self.task_ptr)
+
+    def set_train_pulses (self, new_pulse_number):
         return ptSimpleGPIO.modTrainLength (self.task_ptr, new_pulse_number)
 
     def set_train_duration (self, new_train_duration):
         return ptSimpleGPIO.modTrainDur(self.task_ptr, new_train_duration)
 
-    def get_pulse_number (self):
+    def get_train_pulses (self):
         return ptSimpleGPIO.getPulseNumber (self.task_ptr)
 
     def get_train_duration (self):

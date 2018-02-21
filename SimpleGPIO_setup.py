@@ -4,7 +4,7 @@ from distutils.core import setup, Extension
 setup(name='ptSimpleGPIO',
       author = 'Jamie Boyd',
       author_email = 'jadobo@gmail.com',
-      py_modules=['SimpleGPIO'],
+      py_modules=['PTSimpleGPIO'],
       ext_modules=[
         Extension('ptSimpleGPIO',
                   ['SimpleGPIO_thread.cpp', 'GPIOlowlevel.cpp', 'SimpleGPIO_Py.cpp'],
