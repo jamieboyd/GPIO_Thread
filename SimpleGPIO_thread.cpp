@@ -28,6 +28,7 @@ int SimpleGPIO_Init (void * initDataP, void *  &taskDataP){
 	*(initDataPtr->GPIOperiAddr + ((initDataPtr->thePin)/10)) |=  (1<<(((initDataPtr->thePin)%10)*3));
 	// put pin in selected start state
 	*(taskData->GPIOperiLo ) = taskData->pinBit ;
+	delete (initDataPtr);
 	return 0; // 
 }
 
@@ -93,11 +94,11 @@ void SimpleGPIO_delTask (void * taskData){
 2018/02/01 by Jamie Boyd - Initial Version */
 SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int polarity, unsigned int delayUsecs, unsigned int  durUsecs, unsigned int nPulses, int accuracyLevel) {
 	// make and fill an init struct
-	SimpleGPIOInitStruct  initStruct;
-	initStruct.thePin = pin;
-	initStruct.thePolarity = polarity;
-	initStruct.GPIOperiAddr = useGpioPeri ();
-	if (initStruct.GPIOperiAddr == nullptr){
+	SimpleGPIOInitStructPtr  initStruct = new SimpleGPIOInitStruct;
+	initStruct->thePin = pin;
+	initStruct->thePolarity = polarity;
+	initStruct->GPIOperiAddr = useGpioPeri ();
+	if (initStruct->GPIOperiAddr == nullptr){
 #if beVerbose
         printf ("SimpleGPIO_threadMaker failed to map GPIO peripheral.\n");
 #endif
@@ -105,7 +106,7 @@ SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int pola
 	}
 	int errCode =0;
 	// call SimpleGPIO_thread constructor, which calls pulsedThread contructor
-	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (pin, polarity, delayUsecs, durUsecs, nPulses, (void *) &initStruct, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accuracyLevel, errCode);
+	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (pin, polarity, delayUsecs, durUsecs, nPulses, (void *) initStruct, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accuracyLevel, errCode);
 	if (errCode){
 #if beVerbose
 		printf ("SimpleGPIO_threadMaker failed to make SimpleGPIO_thread.\n");
@@ -123,11 +124,11 @@ Last Modified:
 2018/02/01 by Jamie Boyd - Initial Version */
 SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int polarity, float frequency, float dutyCycle, float trainDuration, int accuracyLevel){
 	// make and fill an init struct
-	SimpleGPIOInitStruct initStruct ;
-	initStruct.thePin = pin;
-	initStruct.thePolarity = polarity;
-	initStruct.GPIOperiAddr =  useGpioPeri ();
-	if (initStruct.GPIOperiAddr == nullptr){
+	SimpleGPIOInitStructPtr  initStruct = new SimpleGPIOInitStruct;
+	initStruct->thePin = pin;
+	initStruct->thePolarity = polarity;
+	initStruct->GPIOperiAddr =  useGpioPeri ();
+	if (initStruct->GPIOperiAddr == nullptr){
 #if beVerbose
         printf ("SimpleGPIO_threadMaker failed to map GPIO peripheral.\n");
 #endif

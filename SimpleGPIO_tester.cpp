@@ -28,9 +28,9 @@ int main(int argc, char **argv){
 		printf ("SimpleGPIO_thread object was not created the second time. Now exiting...\n");
 		return 1;
 	}
-	myGPIO3->endFuncArrayData = new float [128];
-	myGPIO3->cosineDutyCycleArray (myGPIO3->endFuncArrayData, 128, 64, 0.6, 0.4);
-	myGPIO3->setUpEndFuncArray (myGPIO3->endFuncArrayData, 128, 1);
+	float * endFuncArrayData = new float [128];
+	myGPIO3->cosineDutyCycleArray (endFuncArrayData, 128, 64, 0.6, 0.4);
+	myGPIO3->setUpEndFuncArray (endFuncArrayData, 128, 1);
 	myGPIO3->setEndFunc (&pulsedThreadDutyCycleFromArrayEndFunc);
 	myGPIO3->DoTasks(1280);
 	myGPIO3->waitOnBusy (600);

@@ -16,7 +16,7 @@ int HX711_Init (void * initDataP, void *  &taskDataP){
 	taskData->GPIOperiHi = (unsigned int *) (initDataPtr->GPIOperiAddr + 7);
 	taskData->GPIOperiLo = (unsigned int *) (initDataPtr->GPIOperiAddr + 10);
 	// calculate pin Bit for clock
-	taskData->pinBit =  1 << initDataPtr->theClockPin;
+	taskData-> pinBit =  1 << initDataPtr->theClockPin;
 	// initialize pin for output
 	*(initDataPtr->GPIOperiAddr + ((initDataPtr->theClockPin) /10)) &= ~(7<<(((initDataPtr->theClockPin) %10)*3));
 	*(initDataPtr->GPIOperiAddr + ((initDataPtr->theClockPin)/10)) |=  (1<<(((initDataPtr->theClockPin)%10)*3));
@@ -89,15 +89,23 @@ void HX711_delTask (void * taskData){
 HX711* HX711_threadMaker  (int dataPin, int clockPin, float scaling, float * weightData, unsigned int nWeights){
 
 	// make and fill an init struct
-	initStruct.theDataPin = dataPin;
-	HX711InitStruct initStruct;
-	initStruct.theClockPin=clockPin;
-	initStruct.GPIOperiAddr = useGpioPeri;
-	initStruct.weightData = weightData;
-	initStruct.nWeights = nWeights;
+	HX711InitStructPtr initStruct= new HX711InitStructPtr;
+	// get GPIO peripheral addresss
+	initStruct->GPIOperiAddr = useGpioPeri ();
+	if (initStruct->GPIOperiAddr == nullptr){
+#if beVerbose
+        printf ("HX711_threadMaker failed to map GPIO peripheral.\n");
+#endif
+		return nullptr;
+	}
+	// fill out rest of struct
+	initStruct->theDataPin = dataPin;
+	initStruct->theClockPin=clockPin;
+	initStruct->weightData = weightData;
+	initStruct->nWeights = nWeights;
 	// call constructor with initStruct
-	int errCode
-	HX711 * newHX711 = new HX711(dataPin, clockPin, 1, 1, 25, (void *) &initStruct, &HX711_Init, &HX711_Lo, &HX711_Hi, 2 , errCode);
+	int errCode;
+	HX711 * newHX711 = new HX711(dataPin, clockPin, 1, 1, 25, (void *) initStruct, &HX711_Init, &HX711_Lo, &HX711_Hi, 2 , errCode);
 	if (errCode){
 		return nullptr;
 	}
