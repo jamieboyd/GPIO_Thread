@@ -90,7 +90,8 @@ void SimpleGPIO_delTask (void * taskData){
  
  ******************** ThreadMaker with Integer pulse duration, delay, and number of pulses timing description inputs ********************
  Last Modified:
-2018/02/09 by jamie Boyd - moved some functionality into initfunction and constructor
+2018/02/28 by Jamie Boyd  - removed init, high, and low functions in call to constructor, as we call superclass construcor with same 3 functions every time
+2018/02/09 by jamie Boyd - moved some functionality into init function and constructor
 2018/02/01 by Jamie Boyd - Initial Version */
 SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int polarity, unsigned int delayUsecs, unsigned int  durUsecs, unsigned int nPulses, int accuracyLevel) {
 	// make and fill an init struct
@@ -106,7 +107,7 @@ SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int pola
 	}
 	int errCode =0;
 	// call SimpleGPIO_thread constructor, which calls pulsedThread contructor
-	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (pin, polarity, delayUsecs, durUsecs, nPulses, (void *) initStruct, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accuracyLevel, errCode);
+	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (pin, polarity, delayUsecs, durUsecs, nPulses, (void *) initStruct, accuracyLevel, errCode);
 	if (errCode){
 #if beVerbose
 		printf ("SimpleGPIO_threadMaker failed to make SimpleGPIO_thread.\n");
@@ -120,6 +121,7 @@ SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int pola
 
 /* ******************* ThreadMaker with floating point frequency, duration, and duty cycle timing description inputs ********************
 Last Modified:
+2018/02/28 by Jamie Boyd  - removed init, high, and low functions in call to constructor, as we call superclass construcor with same 3 functions every time
 2018/02/09 by jamie Boyd - moved some functionality into initfunction and constructor
 2018/02/01 by Jamie Boyd - Initial Version */
 SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int polarity, float frequency, float dutyCycle, float trainDuration, int accuracyLevel){
@@ -136,7 +138,7 @@ SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int pola
 	}	
 	int errCode =0;
 	// call SimpleGPIO_thread constructor, which calls pulsedThread contructor
-	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (pin, polarity, frequency, dutyCycle, trainDuration, (void *) &initStruct, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accuracyLevel, errCode);
+	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (pin, polarity, frequency, dutyCycle, trainDuration, (void *) &initStruct, accuracyLevel, errCode);
 	if (errCode){
 #if beVerbose
 		printf ("Failed to make pulsed thread.\n");
@@ -150,7 +152,7 @@ SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int pola
 
 
 /* ****************************** Destructor handles GPIO peripheral mapping*************************
-Thread data is destroyed by the pulsedThread destructor
+Thread data is destroyed by the pulsedThread destructor. All we need to do here is take care of GPIO peripheral mapping
 Last Modified:
 2018/02/01 by Jamie Boyd - Initial Version */
 SimpleGPIO_thread::~SimpleGPIO_thread (){

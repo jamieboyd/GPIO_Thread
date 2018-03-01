@@ -29,7 +29,13 @@
 	
 	This maps onto a pulsedThread train with 25 pulses with 1 us delay and duration time
 	
-*/
+	
+************ Forward declaration of functions used by thread so we can refer to them in constructor *********************************/
+
+int HX711_Init (void * initDataP, void *  &taskDataP);
+void HX711_Hi (void *  taskData);
+void HX711_Lo (void *  taskData)
+
 
 /* ******************** Initialization struct for HX711 *******************************
  pin numbers, address base for memory mapped addresses, scaling constant (grams per A/D unit), pointer to array for weigh data, size of array */
@@ -59,7 +65,7 @@ typedef struct HX711struct {
 	unsigned int nWeights;		// number of weights to get, must be less than the size of the array
 	unsigned int iWeight;		// used as we iterate through the array
 	float tareVal;				// tare scale value, in raw A/D units
-}HX711struct, * HX711structPtr;
+}HX711struct, * HX711structPtr; 
 
 typedef struct HX711EndFuncStruct{
 	
@@ -67,13 +73,13 @@ typedef struct HX711EndFuncStruct{
 
 class HX711: SimpleGPIO_thread{
 	public:
-	HX711 (int dataPinP, int clockPinP, unsigned int delayUsecs, unsigned int durUsecs, unsigned int nPulses, void * initData, int (*initFunc)(void *, void *  &), void (* loFunc)(void *), void (*hiFunc)(void *), int accLevel , int &errCode) : pulsedThread (delayUsecs, durUsecs, nPulses, initData, initFunc, loFunc, hiFunc, accLevel,errCode) {
+	HX711 (int dataPinP, int clockPinP,  void * initData, int accLevel , int &errCode) : pulsedThread ((int)1, (int)1, (int) 25, initData, &HX711_Init, &HX711_Hi, &HX711_Lo, accLevel, errCode) {
 		dataPin = dataPinP;
 		clockPin = clockPinP;
 		isPoweredUp = true;
 	};
 
-	static HX711* HX711_threadMaker  (int dataPin, int clockPin, float scaling, float* weightData, unsigned int nWeights);
+	static HX711* HX711_threadMaker (int dataPin, int clockPin, float scaling, float* weightData, unsigned int nWeights);
 	void tare (int nAvg, bool printVals);
 	float weigh (int nAvg, bool printVals);
 	void weighThreadStart (float * weights, int nWeights);
