@@ -1,6 +1,10 @@
 #ifndef HX711_H
 #define HX711_H
-#include "SimpleGPIO_thread.h"
+
+
+#include "GPIOlowlevel.h"
+#include <pulsedThread,h>
+
 #include <stdio.h>
 #include <sys/time.h>
 #include <math.h>
@@ -37,17 +41,20 @@ void HX711_Hi (void *  taskData);
 void HX711_Lo (void *  taskData)
 
 
+/* *************************** Constants for control codes passed to thread in controlCode *********************************************/
+static const int kCTRL_WEIGH =0;
+static const int kCTRL_TARE=1;
+
 /* ******************** Initialization struct for HX711 *******************************
  pin numbers, address base for memory mapped addresses, scaling constant (grams per A/D unit), pointer to array for weigh data, size of array */
 typedef struct HX711InitStruct{
 	int theClockPin; // pin to use for the GPIO output for clock
 	int theDataPin; //pin to use for the GPIO input for data
 	volatile unsigned int * GPIOperiAddr; // base address needed when writing to registers for setting and unsetting
-	float scaling;
+	float scaling;			// scaling in grams per A/D unit
 	float * weightData;         // pointer to the array to be filled with data, an array of floats
 	unsigned int nWeights;
 }HX711InitStruct, *HX711InitStructPtr;
-
 
 // this C-style struct contains all the relevant thread variables and task variables, and is shared with the pulsedThread pthread
 typedef struct HX711struct {
@@ -56,15 +63,16 @@ typedef struct HX711struct {
 	unsigned int clockPinBit;	// clock pin number translated to bit position in register
 	unsigned int * GPIOperiData; // address of register to READ from to get the data	
 	unsigned int dataPinBit;	// data pin number translated to bit position in register 
-	int * dataArray;			// an array of 24 integers used to hold the set bits for a single weighing
-	unsigned int dataBitPos;	// tracks where we are in the 24 data bit positions
-	int * pow2;				// precomputed array of powers of 2 used to translate bits that are set into data
-	int thisWeight;         		// computed value for a single weight
-	float scaling;				// grams per A/D unit
+	int [24] pow2;				// precomputed array of powers of 2 used to translate bits that are set into data
+	int dataBitPos;			// tracks where we are in the 24 data bit positions
 	float * weightData;         	// pointer to the array to be filled with data, an array of floats
+	unsigned int nWeightData;	// number of points in array of weight data
 	unsigned int nWeights;		// number of weights to get, must be less than the size of the array
 	unsigned int iWeight;		// used as we iterate through the array
-	float tareVal;				// tare scale value, in raw A/D units
+	int controlCode;			// set to indicate weighing or taring. 
+	float tareVal;				// tare scale value, in raw A/D units, but we need a float becaue it is an average of multiple readings
+	float scaling;				// grams per A/D unit
+
 }HX711struct, * HX711structPtr; 
 
 typedef struct HX711EndFuncStruct{

@@ -16,12 +16,12 @@ int HX711_Init (void * initDataP, void *  &taskDataP){
 	taskData->GPIOperiHi = (unsigned int *) (initDataPtr->GPIOperiAddr + 7);
 	taskData->GPIOperiLo = (unsigned int *) (initDataPtr->GPIOperiAddr + 10);
 	// calculate pin Bit for clock
-	taskData-> pinBit =  1 << initDataPtr->theClockPin;
+	taskData-> clockPinBit =  1 << initDataPtr->theClockPin;
 	// initialize pin for output
 	*(initDataPtr->GPIOperiAddr + ((initDataPtr->theClockPin) /10)) &= ~(7<<(((initDataPtr->theClockPin) %10)*3));
 	*(initDataPtr->GPIOperiAddr + ((initDataPtr->theClockPin)/10)) |=  (1<<(((initDataPtr->theClockPin)%10)*3));
-	// put pin in low state at start - this will tell HX711 to turn on
-	*(taskData->GPIOperiLo ) = taskData->pinBit ;
+	// put clock pin in low state at start - this will tell HX711 to turn on
+	*(taskData->GPIOperiLo ) = taskData->clockPinBit ;
 	// calculate address to data reading register
 	taskData->GPIOperiData = (unsigned int *) (initDataPtr->GPIOperiAddr + 13);
 	// initialize data pin for input
@@ -34,9 +34,9 @@ int HX711_Init (void * initDataP, void *  &taskDataP){
 		taskData->pow2[i]= pow (2, (23 - i));
 	taskData->pow2[0] *= -1;    // most significant bit is negative in two's complement
 	taskData->dataBitPos = 0;
-	// weight data saved in passed in array
+	// weight data saved in passed-in array - so data can be easily read from outside the thread
 	taskData->weightData =initDataPtr->weightData;
-	taskData->nWeights = initDataPtr->nWeights;
+	taskData->nWeightData = initDataPtr->nWeights;
 	taskData->scaling = initDataPtr->scaling;
 	taskData->iWeight = 0;
 	taskData->tareVal =0;
@@ -44,49 +44,68 @@ int HX711_Init (void * initDataP, void *  &taskDataP){
 }
 
 /* ***************** Hi Callback ******************************
- Task to do on High tick, sets clock line high
+ Task to do on High tick, sets clock line high. If this tick is first bit of a weight, zero the weight
  last modified:
- 2016/12/07 by Jamie Boyd - initial version */
+2018/03/01 by jamie Boyd - do calculations directly in data array
+2017/12/07 by Jamie Boyd - initial version */
 void HX711_Hi (void *  taskData){
 	HX711structPtr taskPtr = (HX711structPtr) taskData;
 	if (taskData->dataBitPos==0){
-		// zero this weight
-		taskData->thisWeight = 0;
+		// zero this weight position
+		taskPtr->weightData [taskPtr->iWeight] = 0;
 		// wait for data pin to go low before first bit
-		while (*(taskPtr->GPIOperData) & taskData->dataPinBit){} ;
+		while (*taskPtr->GPIOperData & taskData->dataPinBit){} ;
 	}
 	// set clock pin high
 	*(taskPtr->GPIOperiHi) = gpioTaskPtr->pinBit;
 }
 
 /* ***************** Lo Callback ******************************
- Task to do on Low tick, read data bit and set GPIO Clock line low
+ Task to do on Low tick, read data bit and set GPIO Clock line low. If last bit, calculate scaled value
 last modified:
-2016/12/07 by Jamie Boyd - initial version */
+2018/03/01 by jamie Boyd - do calculations directly in data array
+2017/12/07 by Jamie Boyd - initial version */
 void HX711_Lo (void *  taskData){
 	HX711structPtr taskPtr = (HX711structPtr) taskData;
 	if (taskPtr->dataBitPos < 24){
 		if (*(taskPtr->GPIOperData) & taskPtr->dataPinBit){
-			taskPtr->thisWeight += taskPtr->pow2[task->dataBitPos];
+			taskPtr->weightData [taskPtr->iWeight]  += taskPtr->pow2[task->dataBitPos];
 		}
 		taskPtr->dataBitPos +=1;
 	}else{
-		taskPtr->dataBitPos = 0;
-		taskPtr->weightData [taskPtr->iWeight] = (float) (taskPtr->thisWeight - taskPtr->tareVal) * taskPtr->scaling;
+		// if we are weighing, not calculating a tare value, subtract tare value and multiple by scaling 
+		if (taskPtr->controlCode == kCTRL_WEIGH){
+			taskPtr->weightData [taskPtr->iWeight] = (taskPtr->weightData [taskPtr->iWeight] - taskPtr->tareVal) * taskPtr->scaling;
+		}
+		// set dataBit pos to 0 and advance to next position in array to be ready for next weight
+		taskPtr->dataBitPos = 0; 
 		taskPtr->iWeight +=1;
 	}
 	// set clock pin low
 	*(taskPtr->GPIOperiLo) = taskPtr->pinBit;
 }
 
-/* ************* Custom data delete function *********************/
+/* ************* Custom task data delete function *********************/
 void HX711_delTask (void * taskData){
 	HX711Ptr taskPtr = (HX711Ptr) taskData;
 	delete (taskPtr);
 }
 
 
-HX711* HX711_threadMaker  (int dataPin, int clockPin, float scaling, float * weightData, unsigned int nWeights){
+/* ****************************** Destructor handles GPIO peripheral mapping*************************
+Thread data is destroyed by the pulsedThread destructor.  All we need to do here is take care of GPIO peripheral mapping
+HX711 object does not own the array of weight data, so should not delete it 
+Last Modified:
+2018/03/01 by Jamie Boyd - Initial Version */
+HX711::~HX711 (){
+	unUseGPIOperi();
+}
+
+/* ******************** Makes an HX711 thread returns a pointer to it **************************************
+makes and fills an init structure and calls constructor
+last modified:
+2018/03/01 by Jamie Boyd - updated for modified constructor with fewer parameters */
+HX711* HX711::HX711_threadMaker  (int dataPin, int clockPin, float scaling, float * weightData, unsigned int nWeights){
 
 	// make and fill an init struct
 	HX711InitStructPtr initStruct= new HX711InitStructPtr;
@@ -105,14 +124,46 @@ HX711* HX711_threadMaker  (int dataPin, int clockPin, float scaling, float * wei
 	initStruct->nWeights = nWeights;
 	// call constructor with initStruct
 	int errCode;
-	HX711 * newHX711 = new HX711(dataPin, clockPin, 1, 1, 25, (void *) initStruct, &HX711_Init, &HX711_Lo, &HX711_Hi, 2 , errCode);
+	HX711 * newHX711 = new HX711(dataPin, clockPin,  (void *) initStruct, 1 , errCode);
 	if (errCode){
+#if beVerbose
+        printf ("HX711_threadMaker failed to make HX711_thread object.\n");
+#endif
 		return nullptr;
 	}
 	// set custom task delete function
 	newHX711->setTaskDataDelFunc (&HX711_delTask);
 	return newHX711;
 }
+
+
+/* ******************************* Setting the clock pin high for 50ms puts the HX711 into a low power state *******************************/
+void HX711::turnOFF (void){
+	isPoweredUp = false;
+	*(taskData->GPIOperiHi) = taskData->clockPinBit ;
+}
+
+/* set the clock pin low to wake the HX711 after putting it into a low power state
+wait 2 microseconds (which shuld be lots of time) to give the device time to wake */
+void HX711::turnON(void){
+	isPoweredUp = true;
+	*(taskData->GPIOperiLo) = taskData->clockPinBit ;
+	// wait a few microseconds before returning to give device time to wake up
+	struct timeval spinEndTime; 
+	configureTimer  ((unsigned int) 5, &spinEndTime);
+	
+	
+	struct timeval pulseDelayUsecs;
+	gettimeofday (&expectedTime, NULL);
+	timeradd (&expectedTime, &durTime, &expectedTime);
+	timeradd (&expectedTime, &durTime, &expectedTime);
+	for ( gettimeofday (&actualTime, NULL);(timercmp (&actualTime, &expectedTime, <)); gettimeofday (&actualTime, NULL));
+	//delay (2000);
+}
+
+
+
+
 
 /* takes a series of readings and stores the average value as a tare value to be
 	subtracted from subsequent readings. Tare value is not scaled, but in raw A/D units*/
@@ -125,7 +176,7 @@ void HX711::tare (int nAvg, bool printVals){
 	for (int iread = 0; iread < nAvg; iread++){
 		doTask();
 		waitOnBusy(0.25);
-		taskPtr->tareValue += (float)taskPtr->thisWeight;
+		taskPtr->tareValue += (float)taskPtr->unScaledWeight;
 	}
 	taskPtr->tareValue /= nAvg;
 }
@@ -191,26 +242,6 @@ void HX711::setScaling (float newScaling){
 	theTask.scaling = scaling;
 }
 
-/* Set the clock pin high for 50ms to put the HX711 into a low power state */
-void HX711::turnOFF (void){
-	isPoweredUp = false;
-	GPIO_SET(GPIOperi->addr, clockPinBit) ;
-	//digitalWrite (clockPin, HIGH) ;
-}
-
-/* set the clock pin low to wake the HX711 after putting it into a low power state
-wait 2 microseconds (which shuld be lots of time) to give the device time to wake */
-void HX711::turnON(void){
-	isPoweredUp = true;
-	GPIO_CLR(GPIOperi->addr, clockPinBit) ;
-	//digitalWrite (clockPin, LOW) ;
-	// wait a few microseconds before returning to give device time to wake up
-	gettimeofday (&expectedTime, NULL);
-	timeradd (&expectedTime, &durTime, &expectedTime);
-	timeradd (&expectedTime, &durTime, &expectedTime);
-	for ( gettimeofday (&actualTime, NULL);(timercmp (&actualTime, &expectedTime, <)); gettimeofday (&actualTime, NULL));
-	//delay (2000);
-}
 
 /* reads a single value from the HX711 and returns the signed integer value 
 	without taring or scaling */

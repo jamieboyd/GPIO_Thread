@@ -46,7 +46,7 @@ class SimpleGPIO_thread : public pulsedThread{
 	static SimpleGPIO_thread * SimpleGPIO_threadMaker (int pin, int polarity, unsigned int delayUsecs, unsigned int  durUsecs, unsigned int nPulses, int accuracyLevel);
 	static SimpleGPIO_thread * SimpleGPIO_threadMaker (int pin, int polarity, float frequency, float dutyCycle, float trainDuration, int accuracyLevel);
 	// destructor
-	virtual ~SimpleGPIO_thread ();
+	~SimpleGPIO_thread ();
 	// utility functions
 	int setPin (int newPin, int isLocking);
 	int getPin (void);

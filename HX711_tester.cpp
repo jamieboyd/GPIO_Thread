@@ -47,6 +47,7 @@ int main(int argc, char **argv){
 		}else{
 			printf ("Bad value for dataPin= %d or clockPin = %d, now exiting\n", dataPin, clockPin);
 			return 1;
+		}
 	}else{
 		dataPin = kDATAPIN;
 		clockPin = kCLOCKPIN;
@@ -55,7 +56,7 @@ int main(int argc, char **argv){
 	// make a floating point array to hold weights
 	float weightData [kNUM_WEIGHTS];
 	// make a HX711 thread object
-	HX711 * scale = HX711_threadMaker (kDATAPIN, kCLOCKPIN, kSCALING, &weightData, kNUM_WEIGHTS);
+	HX711 * scale = HX711_threadMaker (dataPin, clockPin, kSCALING, &weightData, kNUM_WEIGHTS);
 	if (scale == nullptr){
 		printf("Could not create HX711_thread object.\n");
 		return 1;
