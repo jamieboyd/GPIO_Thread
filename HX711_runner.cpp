@@ -1,6 +1,12 @@
 #include "HX711.h"
 
 
+
+
+/*
+ g++ -O3 -std=gnu++11 -Wall -lpulsedThread GPIOlowlevel.cpp HX711.cpp HX711_runner.cpp -o HX711_Scale
+*/
+
 const int kDATAPIN=22;
 const int kCLOCKPIN = 27;
 const float kSCALING = 7.15e-05;

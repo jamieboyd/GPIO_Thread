@@ -51,14 +51,14 @@ int HX711_Init (void * initDataP, void *  &taskDataP){
 2017/12/07 by Jamie Boyd - initial version */
 void HX711_Hi (void *  taskData){
 	HX711structPtr taskPtr = (HX711structPtr) taskData;
-	if (taskData->dataBitPos==0){
+	if (taskPtr->dataBitPos==0){
 		// zero this weight position
 		taskPtr->weightData [taskPtr->iWeight] = 0;
 		// wait for data pin to go low before first bit
-		while (*taskPtr->GPIOperData & taskData->dataPinBit){} ;
+		while (*taskPtr->GPIOperiData & taskPtr->dataPinBit){} ;
 	}
 	// set clock pin high
-	*(taskPtr->GPIOperiHi) = gpioTaskPtr->pinBit;
+	*(taskPtr->GPIOperiHi) = taskPtr->clockPinBit;
 }
 
 /* ***************** Lo Callback ******************************
@@ -69,8 +69,8 @@ last modified:
 void HX711_Lo (void *  taskData){
 	HX711structPtr taskPtr = (HX711structPtr) taskData;
 	if (taskPtr->dataBitPos < 24){
-		if (*(taskPtr->GPIOperData) & taskPtr->dataPinBit){
-			taskPtr->weightData [taskPtr->iWeight]  += taskPtr->pow2[task->dataBitPos];
+		if (*(taskPtr->GPIOperiData) & taskPtr->dataPinBit){
+			taskPtr->weightData [taskPtr->iWeight]  += taskPtr->pow2[taskPtr->dataBitPos];
 		}
 		taskPtr->dataBitPos +=1;
 	}else{
@@ -83,19 +83,14 @@ void HX711_Lo (void *  taskData){
 		taskPtr->iWeight +=1;
 	}
 	// set clock pin low
-	*(taskPtr->GPIOperiLo) = taskPtr->pinBit;
+	*(taskPtr->GPIOperiLo) = taskPtr->clockPinBit;
 }
 
 /* ************* Custom task data delete function *********************/
 void HX711_delTask (void * taskData){
-	HX711Ptr taskPtr = (HX711Ptr) taskData;
+	HX711structPtr taskPtr = (HX711structPtr) taskData;
 	delete (taskPtr);
 }
-
-
-/* **************************************************** Custom data mod callbacks **************************************************************************
-
-
 
 
 /* ****************************** Destructor handles GPIO peripheral mapping*************************
@@ -114,7 +109,7 @@ last modified:
 HX711* HX711::HX711_threadMaker  (int dataPin, int clockPin, float scaling, float * weightData, unsigned int nWeightData){
 
 	// make and fill an init struct
-	HX711InitStructPtr initStruct= new HX711InitStructPtr;
+	HX711InitStructPtr initStruct= new HX711InitStruct;
 	// get GPIO peripheral addresss
 	initStruct->GPIOperiAddr = useGpioPeri ();
 	if (initStruct->GPIOperiAddr == nullptr){
@@ -414,5 +409,5 @@ extern "C" void* HX711ThreadFunc (void * tData){
 		theTask->getWeights = 0;
 	}
 	return NULL;
-}
+} */
 

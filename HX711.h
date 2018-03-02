@@ -3,7 +3,7 @@
 
 
 #include "GPIOlowlevel.h"
-#include <pulsedThread,h>
+#include <pulsedThread.h>
 
 #include <stdio.h>
 #include <sys/time.h>
@@ -62,7 +62,7 @@ typedef struct HX711struct {
 	unsigned int clockPinBit;	// clock pin number translated to bit position in register
 	unsigned int * GPIOperiData; // address of register to READ from to get the data	
 	unsigned int dataPinBit;	// data pin number translated to bit position in register 
-	int [24] pow2;				// precomputed array of powers of 2 used to translate bits that are set into data
+	int pow2 [24] ;			// precomputed array of powers of 2 used to translate bits that are set into data
 	int dataBitPos;			// tracks where we are in the 24 data bit positions
 	float * weightData;         	// pointer to the array to be filled with data, an array of floats
 	unsigned int nWeightData;	// number of points in array of weight data
@@ -73,18 +73,16 @@ typedef struct HX711struct {
 
 }HX711struct, * HX711structPtr; 
 
-typedef struct HX711EndFuncStruct{
-	
-}
 
-class HX711: SimpleGPIO_thread{
+class HX711: public pulsedThread{
 	public:
-	HX711 (int dataPinP, int clockPinP,  void * initData, int &errCode) : pulsedThread ((int)1, (int)1, (int) 25, initData, &HX711_Init, &HX711_Hi, &HX711_Lo, 1, errCode) {
+	HX711 (int dataPinP, int clockPinP,  void * initData, int &errCode) : pulsedThread ((unsigned int)1, (unsigned int)1, (unsigned int) 25, initData, &HX711_Init, &HX711_Hi, &HX711_Lo, 1, errCode) {
 		dataPin = dataPinP;
 		clockPin = clockPinP;
 		isPoweredUp = true;
 	};
-
+	// destructor
+	~HX711(void);
 	static HX711* HX711_threadMaker (int dataPin, int clockPin, float scaling, float* weightData, unsigned int nWeights);
 	float tare (int nAvg, bool printVals);
 	float getTareValue (void);
