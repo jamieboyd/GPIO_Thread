@@ -38,8 +38,7 @@
 
 int HX711_Init (void * initDataP, void *  &taskDataP);
 void HX711_Hi (void *  taskData);
-void HX711_Lo (void *  taskData)
-
+void HX711_Lo (void *  taskData);
 
 /* *************************** Constants for control codes passed to thread in controlCode *********************************************/
 static const int kCTRL_WEIGH =0;
@@ -53,7 +52,7 @@ typedef struct HX711InitStruct{
 	volatile unsigned int * GPIOperiAddr; // base address needed when writing to registers for setting and unsetting
 	float scaling;			// scaling in grams per A/D unit
 	float * weightData;         // pointer to the array to be filled with data, an array of floats
-	unsigned int nWeights;
+	unsigned int nWeightData;
 }HX711InitStruct, *HX711InitStructPtr;
 
 // this C-style struct contains all the relevant thread variables and task variables, and is shared with the pulsedThread pthread
@@ -67,7 +66,6 @@ typedef struct HX711struct {
 	int dataBitPos;			// tracks where we are in the 24 data bit positions
 	float * weightData;         	// pointer to the array to be filled with data, an array of floats
 	unsigned int nWeightData;	// number of points in array of weight data
-	unsigned int nWeights;		// number of weights to get, must be less than the size of the array
 	unsigned int iWeight;		// used as we iterate through the array
 	int controlCode;			// set to indicate weighing or taring. 
 	float tareVal;				// tare scale value, in raw A/D units, but we need a float becaue it is an average of multiple readings
@@ -81,31 +79,32 @@ typedef struct HX711EndFuncStruct{
 
 class HX711: SimpleGPIO_thread{
 	public:
-	HX711 (int dataPinP, int clockPinP,  void * initData, int accLevel , int &errCode) : pulsedThread ((int)1, (int)1, (int) 25, initData, &HX711_Init, &HX711_Hi, &HX711_Lo, accLevel, errCode) {
+	HX711 (int dataPinP, int clockPinP,  void * initData, int &errCode) : pulsedThread ((int)1, (int)1, (int) 25, initData, &HX711_Init, &HX711_Hi, &HX711_Lo, 1, errCode) {
 		dataPin = dataPinP;
 		clockPin = clockPinP;
 		isPoweredUp = true;
 	};
 
 	static HX711* HX711_threadMaker (int dataPin, int clockPin, float scaling, float* weightData, unsigned int nWeights);
-	void tare (int nAvg, bool printVals);
+	float tare (int nAvg, bool printVals);
+	float getTareValue (void);
 	float weigh (int nAvg, bool printVals);
+	void turnON (void);
+	void turnOFF (void);
 	void weighThreadStart (float * weights, int nWeights);
 	int weighThreadStop (void);
 	int weighThreadCheck (void);
-	int readValue (void);
+	
 	int getDataPin (void);
 	int getClockPin(void);
 	float getScaling (void);
-	float getTareValue (void);
 	void setScaling (float newScaling);
-	void turnON(void);
-	void turnOFF (void);
+	
 
-	private:
+	protected:
+	float readSynchronous (int nAvg, bool printVals, int weighMode);
 	int dataPin;
 	int clockPin;
-	float tareValue;
 	bool isPoweredUp;
 
 };

@@ -59,7 +59,9 @@ last modified:
 2018/02/02 by Jamie Boyd - initial version */
 int SimpleGPIO_setPinCallback (void * modData, taskParams * theTask){
 	SimpleGPIOStructPtr gpioTaskPtr = (SimpleGPIOStructPtr)theTask->taskData;
-	gpioTaskPtr->pinBit = *(int *)modData;
+	int * pinBitPtr =(int *)modData;
+	gpioTaskPtr->pinBit = * pinBitPtr;
+	delete (pinBitPtr);
 	return 0;
 }
 
@@ -69,13 +71,14 @@ so also will be notion of setting hi vs setting lo .
 last modified:
 2018/02/02 by Jamie Boyd - initial version */
 int SimpleGPIO_setLevelCallBack (void * modData, taskParams * theTask){
-	int theLevel = * (int *)modData;
+	int * theLevel =  (int *)modData;
 	SimpleGPIOStructPtr gpioTaskPtr = (SimpleGPIOStructPtr)theTask->taskData;		
-	if (theLevel ==0){
+	if (*theLevel ==0){
 		*(gpioTaskPtr->GPIOperiLo) = gpioTaskPtr->pinBit;
 	}else{
 		*(gpioTaskPtr->GPIOperiHi) = gpioTaskPtr->pinBit;
 	}
+	delete (theLevel);
 	return 0;
 }
 
