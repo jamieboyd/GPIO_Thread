@@ -1,22 +1,50 @@
 #include <Python.h>
 #include "HX711.h"
 
+/* ************ Python bindings for HX711 Scale******************************
+Last Modifed:
+2018/03/05 by Jamie Boyd - updates for pulsedThread class/HX711subclass
 
+
+******************** Function called automatically when PyCapsule object is deleted in Python *****************************************
+Last Modified:
+2018/02/20 by Jamie Boyd - initial version */
 void  py_HX711_del(PyObject * PyPtr){
-    delete static_cast<HX711 *> (PyCapsule_GetPointer (PyPtr, "HX711"));
+    delete static_cast<HX711*> (PyCapsule_GetPointer (PyPtr, "HX711"));
 }
 
+
+/* ******************** Make a new HX711 object and return a pointer to it, wrapped in a PyCapsule *****************************
+Last Modified:
+2018/03/05 by Jamie Boyd - get array at object init and hold a pointer to it */
 static PyObject* py_HX711_new (PyObject *self, PyObject *args) {
-	int dp;
-	int cp;
-	float sp;
-	if (!PyArg_ParseTuple(args,"iif", &dp, &cp, &sp)) {
+	// parse inputs for dataPin, clockPin, grams per A/D unit scaling, and floating point buffer object, 
+	int dataPin;
+	int clockPin;
+	float scaling;
+	PyObject * bufferObj;
+	if (!PyArg_ParseTuple(args,"iifO", &dataPin, &clockPin, &scaling, &bufferObj)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for dataPin, clockPin, scaling, and floating point buffer,");
 		return NULL;
 	}
-	int errCode;
-	HX711* HX711ptr = new HX711(dp, cp, sp, errCode);
-	if (errCode ){
-		PyRun_SimpleString ("print ('Making new HX711object failed to map the physical GPIO registers onto the virtual memory space.')");
+	// check that buffer is valid and that it is writable floating point buffer
+	 if (PyObject_CheckBuffer (bufferObj) == 0){
+		PyErr_SetString (PyExc_RuntimeError, "Error getting bufferObj from Python array.");
+		return NULL;
+	}
+	Py_buffer buffer;
+	if (PyObject_GetBuffer (bufferObj, &buffer, PyBUF_FORMAT)==-1){
+		PyErr_SetString (PyExc_RuntimeError,"Error getting C array from bufferObj from Python array");
+		return NULL;
+	}
+	if (strcmp (buffer.format, "f") != 0){
+		PyErr_SetString (PyExc_RuntimeError, "Error for bufferObj: data type of Python array is not float");
+		return NULL;
+	}
+	// make a new HX711 object
+	HX711* HX711ptr = HX711::HX711_threadMaker (dataPin, clockPin, scaling, static_cast <float *>(buffer.buf), (unsigned int) buffer.len/buffer.itemsize);
+	if (HX711ptr = nullptr ){
+		PyErr_SetString (PyExc_RuntimeError, "Failed to make HX711object.");
 		return NULL;
 	}
 	return PyCapsule_New(static_cast <void *>( HX711ptr), "HX711", py_HX711_del);

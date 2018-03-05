@@ -83,13 +83,13 @@ class HX711: public pulsedThread{
 	};
 	// destructor
 	~HX711(void);
-	static HX711* HX711_threadMaker (int dataPin, int clockPin, float scaling, float* weightData, unsigned int nWeights);
+	static HX711* HX711_threadMaker (int dataPin, int clockPin, float scaling, float weightData[], unsigned int nWeights);
 	float tare (int nAvg, bool printVals);
 	float getTareValue (void);
-	float weigh (int nAvg, bool printVals);
+	float weigh (unsigned int nAvg, bool printVals);
 	void turnON (void);
 	void turnOFF (void);
-	void weighThreadStart (float * weights, int nWeights);
+	void weighThreadStart (unsigned int nWeights);
 	int weighThreadStop (void);
 	int weighThreadCheck (void);
 	
@@ -97,13 +97,14 @@ class HX711: public pulsedThread{
 	int getClockPin(void);
 	float getScaling (void);
 	void setScaling (float newScaling);
-	
+	unsigned int getNweights (void);
 
 	protected:
-	float readSynchronous (int nAvg, bool printVals, int weighMode);
+	float readSynchronous (unsigned int nAvg, bool printVals, int weighMode);
 	int dataPin;
 	int clockPin;
 	bool isPoweredUp;
+	HX711structPtr HX711TaskPtr;
 
 };
 
