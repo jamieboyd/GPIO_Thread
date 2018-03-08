@@ -83,7 +83,7 @@ class HX711: public pulsedThread{
 	};
 	// destructor
 	~HX711(void);
-	static HX711* HX711_threadMaker (int dataPin, int clockPin, float scaling, float weightData[], unsigned int nWeights);
+	static HX711* HX711_threadMaker (int dataPin, int clockPin, float scaling, float * weightData, unsigned int nWeights);
 	float tare (int nAvg, bool printVals);
 	float getTareValue (void);
 	float weigh (unsigned int nAvg, bool printVals);

@@ -10,6 +10,7 @@ int HX711_Init (void * initDataP, void *  &taskDataP){
 	// task data pointer is a void pointer that needs to be initialized to a pointer to taskData and filled from our custom init structure 
 	HX711structPtr taskData  = new HX711struct;
 	taskDataP = taskData;
+	taskDataP = taskData;
 	// initData is a pointer to our custom init structure
 	HX711InitStructPtr initDataPtr = (HX711InitStructPtr) initDataP;
 	// calculate address to ON and OFF register  - HX711 always uses low to high pulses
@@ -115,7 +116,7 @@ HX711::~HX711 (){
 makes and fills an init structure and calls constructor
 last modified:
 2018/03/01 by Jamie Boyd - updated for modified constructor with fewer parameters */
-HX711* HX711::HX711_threadMaker  (int dataPin, int clockPin, float scaling, float weightData[], unsigned int nWeightData){
+HX711* HX711::HX711_threadMaker  (int dataPin, int clockPin, float scaling, float * weightData, unsigned int nWeightData){
 
 	// make and fill an init struct
 	HX711InitStructPtr initStruct= new HX711InitStruct;
@@ -254,14 +255,14 @@ void HX711::weighThreadStart (unsigned int nWeights){
 }
 
 /* stops the threaded version and returns the number of weights so far obtained */
-int HX711::weighThreadStop (void){
+unsigned int HX711::weighThreadStop (void){
 	UnDoTasks ();
 	//HX711structPtr HX711TaskPtr = (HX711structPtr)getTaskData (); // returns a pointer to the custom data for the task
 	return  HX711TaskPtr->iWeight;
 }
 
 /* checks how many weights have been obtained so far, but does not stop the thread */
-int HX711::weighThreadCheck (void){
+unsigned int HX711::weighThreadCheck (void){
 	//HX711structPtr HX711TaskPtr = (HX711structPtr)getTaskData (); // returns a pointer to the custom data for the task
 	return  HX711TaskPtr->iWeight;
 }

@@ -65,7 +65,7 @@ int main(int argc, char **argv){
 		printf ("Initializing HX711 with default values dataPin= %d and clockPin = %d.\n", dataPin, clockPin);
 	}
 	// make a floating point array to hold weights
-	float weightData [kNUM_WEIGHTS];
+	float * weightData = new float [kNUM_WEIGHTS];
 	// make a HX711 thread object
 	HX711 * scale = HX711::HX711_threadMaker (dataPin, clockPin, kSCALING, weightData, kNUM_WEIGHTS);
 	if (scale == nullptr){
@@ -127,6 +127,7 @@ int main(int argc, char **argv){
 				break;
 			case 6:
 				scale->weighThreadStart (100);
+				
 				break;
 			case 7:
 				scale->turnOFF();
