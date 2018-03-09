@@ -6,6 +6,7 @@
 #include <math.h>
 #include <wiringPi.h>
 #include <wiringPiSPI.h>
+#include <wiringPiI2C.h>
 #include <pulsedThread.h>
 #include "SimpleGPIO_thread.h"
 
@@ -99,10 +100,10 @@ class lever_thread : public pulsedThread{
 	public:
 	/* integer param constructor: delay =0, duration = 5000 (200 hz), pulses = 0 for infinite train, can change 
 	*/
-	lever_thread  (void * initData, int &errCode) : pulsedThread ((unsigned int) 0, (unsigned int)5000, (unsigned int) 0, initData, &lever_init, &lever_Hi, nullptr, 1, errCode) {
+	lever_thread  (void * initData, int &errCode) : pulsedThread ((unsigned int) 0, (unsigned int)5000, (unsigned int) 200, initData, &lever_init, nullptr, &lever_Hi, 1, errCode) {
 	
 	};
-	lever_thread * lever_thread_threadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircular, int goalCuerPin, float cuerFreq) {
+	static lever_thread * lever_thread_threadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircular, int goalCuerPin, float cuerFreq) ;
 
 	
 	protected:

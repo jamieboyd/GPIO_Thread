@@ -1,7 +1,7 @@
 /* ************************ Runs the lever_thread for testing purposes ***********************************
 
 Compile like this:
-g++ -O3 -std=gnu++11 -Wall -lpulsedThread SimpleGPIO_thread.cpp lever_thread.cpp lever_threadRunner.cpp -o leverThread
+g++ -O3 -std=gnu++11 -Wall -lpulsedThread -lwiringPi GPIOlowlevel.cpp SimpleGPIO_thread.cpp lever_thread.cpp lever_threadRunner.cpp -o leverThread
 
 last modified:
 2018/03/08 by Jamie Boyd - started lever_threadRunner */
@@ -35,12 +35,29 @@ Last modified :
 		line[len] = '\0';
 		return true;
 	}
-}
+} 
 
 
 
 int main(int argc, char **argv){
 	
+	printf ("leverThread reporting\n");
+	uint8_t * positionData = new uint8_t [200];
+		for (unsigned int i =0; i < 200; i +=1){ 
+			positionData [i] = i;
+	}
 	
+	lever_thread * myLeverThread= lever_thread::lever_thread_threadMaker (positionData, 200, 201, 0, 0);
+	printf ("leverThread made thread\n");
+	myLeverThread->modTrainLength(200);
+	myLeverThread->DoTask();
+	printf ("leverThread called doTask\n");
+	myLeverThread->waitOnBusy (1.0);
+	printf ("leverThread waited on busy.\n");
+	printf ("data=");
+	for (unsigned int i =0; i < 200; i +=1){ 
+		printf ("%i, ", positionData [i]);
+	}
+	printf ("\n");
 }
 	

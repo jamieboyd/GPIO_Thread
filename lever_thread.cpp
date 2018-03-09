@@ -23,7 +23,7 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	
 	// initialize the quadrature decoder
 	// clear status
-	taskData->spi_wpData[0] = CLEAR_STATUS;
+	taskData->spi_wpData[0] = kQD_CLEAR_STATUS;
 	wiringPiSPIDataRW(kQD_CS_LINE, taskData->spi_wpData, 1);
 	// clear counter
 	taskData->spi_wpData[0] = kQD_CLEAR_COUNTER;
@@ -50,12 +50,16 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	// copy pointer to lever position buffer
 	taskData->positionData = initDataPtr->positionData;
 	taskData->nPositionData = initDataPtr->nPositionData;
-	taskData->nCircular = initData->nCircular;
+	taskData->nCircular = initDataPtr->nCircular;
 	// init force data
 	taskData->nForceData = initDataPtr->nForceData;
 	taskData->forceData = new int [initDataPtr->nForceData];
 	// initialize iPosition to 0 - other initialization?
-	taskData->iPositionData =0;
+	taskData->iPosition=0;
+	taskData->forceStartPos = initDataPtr->nForceData + 1;
+	printf ("Initing lever pos data\n");
+
+	return 0;
 }
 
 
@@ -67,14 +71,17 @@ void lever_Hi (void * taskData){
 	// cast task data to  leverStruct
 	leverThreadStructPtr leverTaskPtr = (leverThreadStructPtr) taskData;
 	// read quadrature decoder into position data, so we can get lever position always
-	leverTaskPtr->spi_wpData[0] = READ_COUNTER;
+	leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
 	leverTaskPtr->spi_wpData[1] = 0;
 	wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
 	leverTaskPtr->leverPosition= leverTaskPtr->spi_wpData[1];
+	printf ("Lever position = %d.\n", leverTaskPtr->leverPosition);
 	// if we are at the end of a trial, then don't overwrite any data
 	if (leverTaskPtr->iPosition < leverTaskPtr-> nPositionData){
 		leverTaskPtr->positionData [leverTaskPtr->iPosition] = leverTaskPtr->leverPosition;
 		// light the lamp, or sound the horn
+			if (leverTaskPtr->goalCuer != nullptr){
+
 		if ((leverTaskPtr->inGoal== false)&&((leverTaskPtr->leverPosition > leverTaskPtr->goalBottom)&&(leverTaskPtr->leverPosition < leverTaskPtr->goalTop))){
 			leverTaskPtr->inGoal = true;
 			if (leverTaskPtr->goalMode == 1){
@@ -92,6 +99,7 @@ void lever_Hi (void * taskData){
 				}
 			}
 		}
+	}
 		// check for breakout of circular buffer
 		uint8_t lastLeverPos;
 		if (leverTaskPtr->iPosition == 0){
@@ -108,7 +116,7 @@ void lever_Hi (void * taskData){
 			leverTaskPtr->doForce = true;
 			leverTaskPtr->iForce =0;
 		}
-		if (leverTakPtr->doForce){
+		if (leverTaskPtr->doForce){
 			// write the DAC constant 
 			wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // put it in DAC mode
 			// write the data
@@ -116,7 +124,7 @@ void lever_Hi (void * taskData){
 			wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverTaskPtr->leverForce  >> 8) & 0x0F, leverTaskPtr->leverForce  & 0xFF);
 			leverTaskPtr->iForce +=1;
 			if (leverTaskPtr->iForce == leverTaskPtr->nForceData){ // all out of forces but leave force at final ramp pos until the end of the trial
-				leverTakPtr->doForce = false;
+				leverTaskPtr->doForce = false;
 			}
 		}
 		leverTaskPtr->iPosition +=1;
@@ -217,7 +225,7 @@ lever_thread * lever_thread::lever_thread_threadMaker (uint8_t * positionData, u
 	
 	// call class constructor which  calls pulsedThread constructor
 	int errCode;
-	lever_thread * newLever = new lever_thread::lever_thread (initStruct, errCode);
+	lever_thread * newLever = new lever_thread ((void *) initStruct, errCode);
 	if (errCode){
 #if beVerbose
 		printf ("lever_thread_threadMaker failed to make lever_thread object.\n");
