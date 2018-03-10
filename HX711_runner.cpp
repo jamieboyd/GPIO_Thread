@@ -117,7 +117,7 @@ int main(int argc, char **argv){
 				sscanf (line, "%f\n", &newScaling);
 				scale->setScaling (newScaling);
 			case 3:
-				printf ("Scaling factor is %.6f grams per A/D unit/n"),scale->getScaling());
+				printf ("Scaling factor is %.6f grams per A/D unit/n",scale->getScaling());
 				break;
 			case 4:
 				printf ("Measured Weight was %.2f grams.\n", scale->weigh (1,true));
@@ -138,3 +138,34 @@ int main(int argc, char **argv){
 		}
 	}
 }
+
+
+/*
+int main (int argc, char **argv){
+
+	volatile unsigned int * GPIOPeriAddr = useGpioPeri ();
+	int dataPin = 5;
+	int clockPin = 22;
+	// calculate address to ON and OFF register  - HX711 always uses low to high pulses
+	unsigned int * GPIOPeriHi = (unsigned int *) (GPIOPeriAddr + 7);
+	unsigned int * GPIOPeriLo = (unsigned int *) (GPIOPeriAddr + 10);
+	// calculate pin Bit for clock
+	unsigned int clockPinBit =  1 << clockPin;
+	// initialize pin for output
+	*(GPIOPeriAddr + ((clockPin) /10)) &= ~(7<<(((clockPin) %10)*3));
+	*(GPIOPeriAddr + ((clockPin)/10)) |=  (1<<(((clockPin)%10)*3));
+	// put clock pin in low state at start - this will tell HX711 to turn on
+	*(GPIOPeriHi ) = clockPinBit ;
+	// calculate address to data reading register
+	unsigned int * GPIOPeriRead = (unsigned int *) (GPIOPeriAddr + 13);
+	// initialize data pin for input
+	*(GPIOPeriAddr + ((dataPin) /10)) &= ~(7<<(((dataPin) %10)*3));
+	// calculate pin Bit for data
+	unsigned int dataPinBit =  1 << dataPin;
+	if (*GPIOPeriRead & dataPinBit){
+		printf ("Data bit was set.\n");
+	}else{
+		printf ("Data bit was clear.\n");
+	}
+	*(GPIOPeriLo) = clockPinBit ;
+}*/
