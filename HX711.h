@@ -90,8 +90,8 @@ class HX711: public pulsedThread{
 	void turnON (void);
 	void turnOFF (void);
 	void weighThreadStart (unsigned int nWeights);
-	int weighThreadStop (void);
-	int weighThreadCheck (void);
+	unsigned int weighThreadStop (void);
+	unsigned int weighThreadCheck (void);
 	
 	int getDataPin (void);
 	int getClockPin(void);

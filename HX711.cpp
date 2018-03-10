@@ -10,7 +10,6 @@ int HX711_Init (void * initDataP, void *  &taskDataP){
 	// task data pointer is a void pointer that needs to be initialized to a pointer to taskData and filled from our custom init structure 
 	HX711structPtr taskData  = new HX711struct;
 	taskDataP = taskData;
-	taskDataP = taskData;
 	// initData is a pointer to our custom init structure
 	HX711InitStructPtr initDataPtr = (HX711InitStructPtr) initDataP;
 	// calculate address to ON and OFF register  - HX711 always uses low to high pulses

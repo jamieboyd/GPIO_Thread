@@ -117,7 +117,7 @@ int main(int argc, char **argv){
 				sscanf (line, "%f\n", &newScaling);
 				scale->setScaling (newScaling);
 			case 3:
-				printf ("Scaling factor is %.4f grams per A/D unit)=",scale->getScaling());
+				printf ("Scaling factor is %.6f grams per A/D unit/n"),scale->getScaling());
 				break;
 			case 4:
 				printf ("Measured Weight was %.2f grams.\n", scale->weigh (1,true));
