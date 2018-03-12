@@ -12,8 +12,21 @@
 /*   
 	Class to get values from a HX711 Load Cell amplifier with scaling and taring
 	Pin PD_SCK (clockPin) and DOUT (dataPin) are used for data retrieval, input selection, 
-	gain selection and power down controls.
-	When output data is not ready for retrieval, digital output pin DOUT is high.
+	gain selection and power down controls.  The HX711 outputs data on the the dataPin
+	and the Pi controls the clock signal on the clock pin. 
+	
+	When the Pi holds the clockPin high for greater than 60 ms, the HX711 goes into low power mode, 
+	holding the dataPin high.
+	
+	When the Pi sets the dataPin low, the HX711 wakes up, but does not have new data ready until 0.5 seconds
+	after turning on. 
+	
+	When output data are not ready for retrieval, digital output pin DOUT is high.
+	       _                                                 _
+	____| |________________________________| |__________________________________
+	data clock pulses are 100 usec, frequency is 11.2 Hz (90 msec spacing)
+	each high-to-low transution indicates a new value is available from the HX711
+	
 	Serial clock input PD_SCK should be low. When DOUT goes to low, it indicates data is ready for retrieval.
 	By applying 25~27 positive clock pulses at the PD_SCK pin, data is shifted out from the DOUT output pin.
 	Each PD_SCK pulse shifts out one bit, starting with the MSB bit first, until all 24 bits are shifted out.
@@ -27,6 +40,7 @@
 	27               		A              	64
 
 	This code always runs the HX711 with high gain, input channel A, by using 25 pulses
+	
 		
 	Data is 24 bit two's-complement differential signal
 	min value is -8388608, max value is 8388607
@@ -65,7 +79,7 @@ typedef struct HX711struct {
 	int pow2 [24] ;			// precomputed array of powers of 2 used to translate bits that are set into data
 	int dataBitPos;			// tracks where we are in the 24 data bit positions
 	float * weightData;         	// pointer to the array to be filled with data, an array of floats
-	unsigned int nWeightData;	// number of points in array of weight data
+	unsigned int nWeights;	// number of points in array of weight data to collect data into
 	unsigned int iWeight;		// used as we iterate through the array
 	int controlCode;			// set to indicate weighing or taring. 
 	float tareVal;				// tare scale value, in raw A/D units, but we need a float becaue it is an average of multiple readings
@@ -76,9 +90,10 @@ typedef struct HX711struct {
 
 class HX711: public pulsedThread{
 	public:
-	HX711 (int dataPinP, int clockPinP,  void * initData, int &errCode) : pulsedThread ((unsigned int)1, (unsigned int)1, (unsigned int) 25, initData, &HX711_Init, &HX711_Hi, &HX711_Lo, 1, errCode) {
+	HX711 (int dataPinP, int clockPinP, unsigned int nDataP, void * initData,  int &errCode) : pulsedThread ((unsigned int)5, (unsigned int)5, (unsigned int) 25, initData, &HX711_Init, &HX711_Lo, &HX711_Hi, 1, errCode) {
 		dataPin = dataPinP;
 		clockPin = clockPinP;
+		nWeightData = nDataP;
 		isPoweredUp = true;
 	};
 	// destructor
@@ -104,6 +119,7 @@ class HX711: public pulsedThread{
 	int dataPin;
 	int clockPin;
 	bool isPoweredUp;
+	unsigned int nWeightData;
 	HX711structPtr HX711TaskPtr;
 
 };

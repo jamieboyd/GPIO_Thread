@@ -36,7 +36,6 @@ int HX711_Init (void * initDataP, void *  &taskDataP){
 	taskData->dataBitPos = 0;
 	// weight data saved in passed-in array - so data can be easily read from outside the thread
 	taskData->weightData =initDataPtr->weightData;
-	taskData->nWeightData = initDataPtr->nWeightData;
 	taskData->scaling = initDataPtr->scaling;
 	taskData->iWeight = 0;
 	taskData->tareVal =0;
@@ -57,13 +56,6 @@ void HX711_Hi (void *  taskData){
 		// zero this weight position
 		taskPtr->weightData [taskPtr->iWeight] = 0;
 		// wait for data pin to go low before first bit. When output data is not ready for retrieval, digital output pin DOUT is held high.
-		// if it's high, sleep a bit first as we only go at 10Hz
-		if (*(taskPtr->GPIOperiData) & taskPtr->dataPinBit){
-			struct timespec Sleeper;
-			Sleeper.tv_sec = 0;
-			Sleeper.tv_nsec = 7.5e07;
-			nanosleep (&Sleeper, NULL);
-		}
 		while (*(taskPtr->GPIOperiData) & taskPtr->dataPinBit){} ;
 	}
 	// set clock pin high to shift out next bit of data
@@ -132,10 +124,9 @@ HX711* HX711::HX711_threadMaker  (int dataPin, int clockPin, float scaling, floa
 	initStruct->theClockPin=clockPin;
 	initStruct->scaling = scaling;
 	initStruct->weightData = weightData;
-	initStruct->nWeightData = nWeightData;
 	// call constructor with initStruct
 	int errCode;
-	HX711 * newHX711 = new HX711(dataPin, clockPin,  (void *) initStruct, errCode);
+	HX711 * newHX711 = new HX711(dataPin, clockPin, nWeightData, (void *) initStruct, errCode);
 	if (errCode){
 #if beVerbose
         printf ("HX711_threadMaker failed to make HX711_thread object.\n");
@@ -144,7 +135,7 @@ HX711* HX711::HX711_threadMaker  (int dataPin, int clockPin, float scaling, floa
 	}
 	// set custom task delete function
 	newHX711->setTaskDataDelFunc (&HX711_delTask);
-	// make an HX711TaskPtr pointer to 
+	// make an HX711TaskPtr pointer for easy access to thread task data 
 	newHX711->HX711TaskPtr = (HX711structPtr)newHX711->getTaskData ();
 
 	return newHX711;
@@ -163,24 +154,36 @@ void HX711::turnOFF (void){
 
 /* **********************set the clock pin low to wake the HX711 after putting it into a low power state *********************************
 Last Modified:
+2018/03/11 by jamie Boyd - put in a sleep after measuring how long it takes this thing to wake up
 2018/03/01 by Jamie Boyd - updated for pulsedThread subclass  */
 void HX711::turnON(void){
 	//HX711structPtr HX711TaskPtr = (HX711structPtr)getTaskData (); // returns a pointer to the custom data for the task
 	*(HX711TaskPtr->GPIOperiLo) = HX711TaskPtr->clockPinBit;
-	// wait 5 microseconds before returning to give device time to wake up
-	struct timeval waitMicroSecs;
+	// HX711 takes 0.5 seconds to wake up
+	// sleep for 0.498 seconds first, then wake up and spin for rest of time
+	struct timespec sleeper;
+	sleeper.tv_sec = 0;
+	sleeper.tv_nsec = 0.4998E09;
+	nanosleep (&sleeper, NULL);
+	while (*(HX711TaskPtr->GPIOperiData) & HX711TaskPtr->dataPinBit){} ;
+	isPoweredUp = true;
+}
+
+
+/*
+struct timeval waitMicroSecs;
 	struct timeval currentTime;
 	struct timeval endTime;
 	// start time is now
 	gettimeofday (&currentTime, NULL);
 	// end time is now + waitMicroSecs
 	waitMicroSecs.tv_sec =0;
-	waitMicroSecs.tv_usec =5;
+	waitMicroSecs.tv_usec =0.5E06;
 	timeradd (&currentTime, &waitMicroSecs, &endTime);
 	// loop till time is up
 	for (; (timercmp (&currentTime, &endTime, <)); gettimeofday (&currentTime, NULL)){};
 	isPoweredUp = true;
-}
+*/
 
 /* ************************** takes a series of readings and stores the average value as a tare value *****************************
 Tare value is not scaled, but in raw A/D units
@@ -202,17 +205,19 @@ float HX711::readSynchronous (unsigned int nAvg, bool printVals, int weighMode){
 		turnON ();
 	}
 	//HX711structPtr HX711TaskPtr = (HX711structPtr)getTaskData (); // returns a pointer to the custom data for the task
-	if (nAvg > HX711TaskPtr->nWeightData){
-		printf ("Requested number to average, %d, was greater than size of array, %d.\n", nAvg, HX711TaskPtr->nWeightData);
+	if (nAvg > nWeightData){
+		printf ("Requested number to average, %d, was greater than size of array, %d.\n", nAvg, nWeightData);
 		return 0;
 	}else{
 		HX711TaskPtr->controlCode = weighMode;
 		HX711TaskPtr-> iWeight = 0;
+		HX711TaskPtr-> nWeights = nAvg;
 		DoTasks (nAvg);
 		int waitVal = waitOnBusy(2 + nAvg/10);
 		if (waitVal){
 			nAvg -= waitVal;
 			printf ("Ony weighed %d times in alotted time.\n", nAvg );
+			
 		}
 		double resultVal =0;
 		if (printVals){
@@ -245,8 +250,8 @@ float HX711::getTareValue (void){
 /* starts the thread weighing into the array */
 void HX711::weighThreadStart (unsigned int nWeights){
 	//HX711structPtr HX711TaskPtr = (HX711structPtr)getTaskData (); // returns a pointer to the custom data for the task
-	if (nWeights > HX711TaskPtr->nWeightData){
-		printf ("Requested number to weigh, %d, was greater than size of array, %d.\n", nWeights, HX711TaskPtr->nWeightData);
+	if (nWeights > nWeightData){
+		printf ("Requested number to weigh, %d, was greater than size of array, %d.\n", nWeights, nWeightData);
 	}else{
 		HX711TaskPtr->iWeight =0;
 		DoTasks (nWeights);
@@ -291,7 +296,7 @@ void HX711::setScaling (float newScaling){
 
 unsigned int HX711::getNweights (void){
 	//HX711structPtr HX711TaskPtr = (HX711structPtr)getTaskData (); // returns a pointer to the custom data for the task
-	return HX711TaskPtr->nWeightData;
+	return nWeightData;
 }
 
 /* reads a single value from the HX711 and returns the signed integer value 
