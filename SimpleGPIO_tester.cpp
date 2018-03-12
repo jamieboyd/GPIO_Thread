@@ -3,7 +3,7 @@
 
 /* ******************************** makes a GPIO output that does software pulse width modulation *********************************************/
 
-static const int GPIO_PIN = 22;
+static const int GPIO_PIN = 23;
 static const int POLARITY = 0;
 
 int main(int argc, char **argv){
@@ -17,7 +17,7 @@ int main(int argc, char **argv){
 	}
 	// make an array of floats and fill it with values that vary from 0.2 to 1 in a sinusoidal fashion
 	float * endFuncArrayData = new float [128];
-	myGPIO->cosineDutyCycleArray (endFuncArrayData, 128, 64, 0.6, 0.4);
+	myGPIO->cosineDutyCycleArray (endFuncArrayData, 128, 64, 0.75, 0.1);
 	// Set a ponter to this array as endFunc data 
 	myGPIO->setUpEndFuncArray (endFuncArrayData, 128, 1);
 	// set the endFunc to modify pulse dutycycle from the array  
