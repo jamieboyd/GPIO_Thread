@@ -27,7 +27,7 @@
 	data clock pulses are 100 usec, frequency is 11.2 Hz (90 msec spacing)
 	each high-to-low transution indicates a new value is available from the HX711
 	
-	Serial clock input PD_SCK should be low. When DOUT goes to low, it indicates data is ready for retrieval.
+	Serial clock input PD_SCK should be low to request data. When DOUT goes to low, it indicates data is ready for retrieval.
 	By applying 25~27 positive clock pulses at the PD_SCK pin, data is shifted out from the DOUT output pin.
 	Each PD_SCK pulse shifts out one bit, starting with the MSB bit first, until all 24 bits are shifted out.
 	The 25th pulse at PD_SCK input will pull DOUT pin back to high.
@@ -90,7 +90,7 @@ typedef struct HX711struct {
 
 class HX711: public pulsedThread{
 	public:
-	HX711 (int dataPinP, int clockPinP, unsigned int nDataP, void * initData,  int &errCode) : pulsedThread ((unsigned int)5, (unsigned int)5, (unsigned int) 25, initData, &HX711_Init, &HX711_Lo, &HX711_Hi, 1, errCode) {
+	HX711 (int dataPinP, int clockPinP, unsigned int nDataP, void * initData,  int &errCode) : pulsedThread ((unsigned int)1, (unsigned int)1, (unsigned int) 25, initData, &HX711_Init, &HX711_Lo, &HX711_Hi, 1, errCode) {
 		dataPin = dataPinP;
 		clockPin = clockPinP;
 		nWeightData = nDataP;

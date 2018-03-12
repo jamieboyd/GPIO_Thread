@@ -1,4 +1,4 @@
-1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq$T6GHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHN#include "HX711.h"
+#include "HX711.h"
 
 /* ************************************* Driver program for HX711 *************************************************
 Does most everything you need to use to operate the HX711 amplifier with a load-cell  to weigh things
@@ -117,7 +117,7 @@ int main(int argc, char **argv){
 				sscanf (line, "%f\n", &newScaling);
 				scale->setScaling (newScaling);
 			case 3:
-				printf ("Scaling factor is %.6f grams per A/D unit/n",scale->getScaling());
+				printf ("Scaling factor is %.8f grams per A/D unit\n",scale->getScaling());
 				break;
 			case 4:
 				printf ("Measured Weight was %.2f grams.\n", scale->weigh (1,true));
@@ -127,7 +127,15 @@ int main(int argc, char **argv){
 				break;
 			case 6:
 				scale->weighThreadStart (100);
-				
+				struct timespec sleeper;
+				sleeper.tv_sec = 0;
+				sleeper.tv_nsec = 0.11E09;
+				for (int ii =0; ii  < 20; ii +=1){
+					nanosleep (&sleeper, NULL);
+					printf ("Weight at %d = %.3f.\n", scale->weighThreadCheck (), weightData [scale->weighThreadCheck ()-1]);
+					
+				}
+				scale->weighThreadStop ();
 				break;
 			case 7:
 				scale->turnOFF();

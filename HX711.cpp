@@ -56,10 +56,27 @@ void HX711_Hi (void *  taskData){
 		// zero this weight position
 		taskPtr->weightData [taskPtr->iWeight] = 0;
 		// wait for data pin to go low before first bit. When output data is not ready for retrieval, digital output pin DOUT is held high.
+		struct timespec sleeper;
+		sleeper.tv_sec = 0;
+		sleeper.tv_nsec = 0.075E09;
+		nanosleep (&sleeper, NULL);
 		while (*(taskPtr->GPIOperiData) & taskPtr->dataPinBit){} ;
 	}
 	// set clock pin high to shift out next bit of data
 	*(taskPtr->GPIOperiHi) = taskPtr->clockPinBit;
+	if (taskPtr->dataBitPos==0){
+		struct timeval currentTime;
+		struct timeval endTime;
+		struct timeval waitMicroSecs;
+		// start time is now
+		gettimeofday (&currentTime, NULL);
+		// end time is now + 2
+		waitMicroSecs.tv_sec =0;
+		waitMicroSecs.tv_usec =2;
+		timeradd (&currentTime, &waitMicroSecs, &endTime);
+		// loop till time is up
+		for (; (timercmp (&currentTime, &endTime, <)); gettimeofday (&currentTime, NULL)){};
+	}
 }
 
 /* ***************** Lo Callback ******************************
@@ -73,8 +90,11 @@ void HX711_Lo (void *  taskData){
 		if (*(taskPtr->GPIOperiData) & taskPtr->dataPinBit){
 			taskPtr->weightData [taskPtr->iWeight]  += taskPtr->pow2[taskPtr->dataBitPos];
 		}
+		// set clock pin low
+		*(taskPtr->GPIOperiLo) = taskPtr->clockPinBit;
 		taskPtr->dataBitPos +=1;
 	}else{ // we have all the bits, so calculate weight and send out one 25th pulse on clock pin for input and gain selection
+		*(taskPtr->GPIOperiLo) = taskPtr->clockPinBit;
 		// if we are weighing, not calculating a tare value, subtract tare value and multiple by scaling 
 		if (taskPtr->controlCode == kCTRL_WEIGH){
 			taskPtr->weightData [taskPtr->iWeight] = (taskPtr->weightData [taskPtr->iWeight] - taskPtr->tareVal) * taskPtr->scaling;
@@ -83,8 +103,6 @@ void HX711_Lo (void *  taskData){
 		taskPtr->dataBitPos = 0; 
 		taskPtr->iWeight +=1;
 	}
-	// set clock pin low
-	*(taskPtr->GPIOperiLo) = taskPtr->clockPinBit;
 }
 
 /* ************* Custom task data delete function *********************/
@@ -213,10 +231,11 @@ float HX711::readSynchronous (unsigned int nAvg, bool printVals, int weighMode){
 		HX711TaskPtr-> iWeight = 0;
 		HX711TaskPtr-> nWeights = nAvg;
 		DoTasks (nAvg);
-		int waitVal = waitOnBusy(2 + nAvg/10);
+		int waitVal = waitOnBusy((float)(nAvg * 2));
 		if (waitVal){
 			nAvg -= waitVal;
 			printf ("Ony weighed %d times in alotted time.\n", nAvg );
+			UnDoTasks ();
 			
 		}
 		double resultVal =0;
