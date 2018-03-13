@@ -16,11 +16,14 @@ int lever_init (void * initDataP, void *  &taskDataP){
 		return 1;
 	}
 	wiringPiI2CWrite (taskData->i2c_fd, kDAC_WRITEDAC); // leave it in DAC mode
+	//leverTaskPtr->leverForce =leverTaskPtr->forceData[leverTaskPtr->iForce] ;
+	wiringPiI2CWriteReg8(taskData->i2c_fd, (2048  >> 8) & 0x0F, 2048 & 0xFF);
+	
+	
 	// initialize quad decoder - it returns spi file descriptor, but further calls to wiringPi don't use it
 	if (wiringPiSPISetup(kQD_CS_LINE, kQD_CLOCK_FREQ) == -1){
 		return 2;
 	}
-	
 	// initialize the quadrature decoder
 	// clear status
 	taskData->spi_wpData[0] = kQD_CLEAR_STATUS;
@@ -56,7 +59,7 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	taskData->forceData = new int [initDataPtr->nForceData];
 	// initialize iPosition to 0 - other initialization?
 	taskData->iPosition=0;
-	taskData->forceStartPos = initDataPtr->nForceData + 1;
+	taskData->forceStartPos = initDataPtr->nForceData -100;
 	printf ("Initing lever pos data\n");
 
 	return 0;
@@ -75,7 +78,7 @@ void lever_Hi (void * taskData){
 	leverTaskPtr->spi_wpData[1] = 0;
 	wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
 	leverTaskPtr->leverPosition= leverTaskPtr->spi_wpData[1];
-	printf ("Lever position = %d.\n", leverTaskPtr->leverPosition);
+	//printf ("Lever position = %d.\n", leverTaskPtr->leverPosition);
 	// if we are at the end of a trial, then don't overwrite any data
 	if (leverTaskPtr->iPosition < leverTaskPtr-> nPositionData){
 		leverTaskPtr->positionData [leverTaskPtr->iPosition] = leverTaskPtr->leverPosition;

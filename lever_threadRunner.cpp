@@ -42,20 +42,17 @@ Last modified :
 int main(int argc, char **argv){
 	
 	printf ("leverThread reporting\n");
-	uint8_t * positionData = new uint8_t [200];
-		for (unsigned int i =0; i < 200; i +=1){ 
-			positionData [i] = i;
-	}
-	
-	lever_thread * myLeverThread= lever_thread::lever_thread_threadMaker (positionData, 200, 201, 0, 0);
+	uint8_t * positionData = new uint8_t [400];
+
+	lever_thread * myLeverThread= lever_thread::lever_thread_threadMaker (positionData, 400, 401, 0, 0);
 	printf ("leverThread made thread\n");
-	myLeverThread->modTrainLength(200);
+	myLeverThread->modTrainLength(400);
 	myLeverThread->DoTask();
 	printf ("leverThread called doTask\n");
-	myLeverThread->waitOnBusy (1.0);
+	myLeverThread->waitOnBusy (3.0);
 	printf ("leverThread waited on busy.\n");
 	printf ("data=");
-	for (unsigned int i =0; i < 200; i +=1){ 
+	for (unsigned int i =0; i < 400; i +=1){ 
 		printf ("%i, ", positionData [i]);
 	}
 	printf ("\n");
