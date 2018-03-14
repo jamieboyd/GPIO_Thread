@@ -38,7 +38,7 @@ int HX711_Init (void * initDataP, void *  &taskDataP){
 	taskData->weightData =initDataPtr->weightData;
 	taskData->scaling = initDataPtr->scaling;
 	taskData->iWeight = 0;
-	taskPtr->dataBitPos=0;
+	taskData->dataBitPos=0;
 	taskData->tareVal =0;
 	return 0; // 
 }
@@ -244,7 +244,7 @@ void HX711::weighThreadStart (unsigned int nWeightsP){
 		printf ("Requested number to weigh, %d, was greater than size of array, %d.\n", nWeightsP, nWeightData);
 	}else{
 		HX711TaskPtr->iWeight =0;
-		HX711TaskPtr->controlCode = weighMode;
+		HX711TaskPtr->controlCode = kCTRL_WEIGH;
 		HX711TaskPtr->dataBitPos =0;
 		DoTasks (nWeightsP);
 	}

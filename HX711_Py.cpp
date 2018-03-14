@@ -4,6 +4,7 @@
 /* ************ Python bindings for HX711 Scale******************************
 Last Modifed:
 
+2018/03/15 by Jamie Boyd - updates for pulsedThread subclass
 2018/03/05 by Jamie Boyd - updates for pulsedThread class/HX711subclass
 
 
@@ -43,7 +44,7 @@ static PyObject* py_HX711_new (PyObject *self, PyObject *args) {
 	}
 	// make a new HX711 object
 	HX711* HX711ptr = HX711::HX711_threadMaker (dataPin, clockPin, scaling, static_cast <float *>(buffer.buf), (unsigned int) buffer.len/buffer.itemsize);
-	if (HX711ptr = nullptr ){
+	if (HX711ptr == nullptr ){
 		PyErr_SetString (PyExc_RuntimeError, "Failed to make HX711object.");
 		return NULL;
 	}
@@ -85,12 +86,13 @@ Last Modified:
 2018/03/05 by Jamie Boyd - modified for new pulsedThread subclassed verson */
 static PyObject* py_HX711_weighThreadStart (PyObject *self, PyObject *args) {
 	PyObject * PyPtr;
-	unsigned int arraySize;
+	unsigned int weighSize;
 	
 	if (!PyArg_ParseTuple(args,"OI", &PyPtr, &weighSize)) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for number to weigh.");
 		return NULL;
 	}
+	HX711 * HX711Ptr = static_cast<HX711 * > (PyCapsule_GetPointer(PyPtr, "HX711"));
 	HX711Ptr->weighThreadStart (weighSize);
 	Py_RETURN_NONE;
 }
