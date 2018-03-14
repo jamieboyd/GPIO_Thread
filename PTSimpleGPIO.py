@@ -217,9 +217,9 @@ class Train (PTSimpleGPIO):
     
     def __init__ (self, mode, gpio_pin, polarity, pulseDelayOrTrainFreq, pulseDurationOrTrainDutyCycle, nPulsesOrTrainDuration, accuracy_level):
         if mode == PTSimpleGPIO.MODE_FREQ:
-            self.task_ptr = ptSimpleGPIO.newDelayDur (gpio_pin, polarity, pulseDelayOrTrainFreq, pulseDurationOrTrainDutyCycle, nPulsesOrTrainDuration, accuracy_level)
+            self.task_ptr = ptSimpleGPIO.trainDelayDur (gpio_pin, polarity, pulseDelayOrTrainFreq, pulseDurationOrTrainDutyCycle, nPulsesOrTrainDuration, accuracy_level)
         elif mode == PTSimpleGPIO.MODE_PULSES:
-            self.task_ptr = ptSimpleGPIO.newFreqDuty (gpio_pin, polarity, pulseDelayOrTrainFreq, pulseDurationOrTrainDutyCycle, nPulsesOrTrainDuration, accuracy_level)
+            self.task_ptr = ptSimpleGPIO.trainFreqDuty (gpio_pin, polarity, pulseDelayOrTrainFreq, pulseDurationOrTrainDutyCycle, nPulsesOrTrainDuration, accuracy_level)
 		
     def do_train (self):
         return ptSimpleGPIO.doTask(self.task_ptr)

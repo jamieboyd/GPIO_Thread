@@ -21,32 +21,37 @@
 	When the Pi sets the dataPin low, the HX711 wakes up, but does not have new data ready until 0.5 seconds
 	after turning on. 
 	
+	
 	When output data are not ready for retrieval, digital output pin DOUT is high.
 	       _                                                 _
-	____| |________________________________| |__________________________________
-	data clock pulses are 100 usec, frequency is 11.2 Hz (90 msec spacing)
+	____| |________________________________| |_________________________
+	with clock pin held low, (not reading any data) data pin pulses are 100 usec, frequency is 11.2 Hz (90 msec spacing)
 	each high-to-low transution indicates a new value is available from the HX711
 	
-	Serial clock input PD_SCK should be low to request data. When DOUT goes to low, it indicates data is ready for retrieval.
-	By applying 25~27 positive clock pulses at the PD_SCK pin, data is shifted out from the DOUT output pin.
-	Each PD_SCK pulse shifts out one bit, starting with the MSB bit first, until all 24 bits are shifted out.
-	The 25th pulse at PD_SCK input will pull DOUT pin back to high.
-	Input and gain selection is controlled by adding a number of extra input PD_SCK pulses to the train
+	The data pin goes high when data has been read, and only goes low when new data is available
+	__        _   _         _    __________________
+	   |____| |_| |_____| |__|                          |__Data Pin
+	
+	
+	___|||||||||||||||||||||||||____________________|| Clock Pin
+	
+	
+	By applying 25~27 positive clock pulses at the clock pin, data is shifted out from the data output pin.
+	Each clock pulse shifts out one bit, starting with the MSB bit first, until all 24 bits are shifted out.
+	The 25th pulse at clock input will pull data pin back to high.
+	Input and gain selection is controlled by adding a number of extra input clock pulses to the train
 	after the data is collected
 
-	PD_SCK Pulses   	Input channel   Gain
+	clock Pulses   	Input channel   Gain
 	25               		A              	128
 	26               		B              	32
 	27               		A              	64
 
-	This code always runs the HX711 with high gain, input channel A, by using 25 pulses
-	
+	This code always runs the HX711 with high gain, input channel A, by using 25 pulses. 
+	This maps onto a pulsedThread train with 25 pulses with 1 us delay and duration time
 		
 	Data is 24 bit two's-complement differential signal
 	min value is -8388608, max value is 8388607
-	
-	This maps onto a pulsedThread train with 25 pulses with 1 us delay and duration time
-	
 	
 ************ Forward declaration of functions used by thread so we can refer to them in constructor *********************************/
 
@@ -66,7 +71,7 @@ typedef struct HX711InitStruct{
 	volatile unsigned int * GPIOperiAddr; // base address needed when writing to registers for setting and unsetting
 	float scaling;			// scaling in grams per A/D unit
 	float * weightData;         // pointer to the array to be filled with data, an array of floats
-	unsigned int nWeightData;
+	unsigned int nWeightData; // size of the array
 }HX711InitStruct, *HX711InitStructPtr;
 
 // this C-style struct contains all the relevant thread variables and task variables, and is shared with the pulsedThread pthread
@@ -74,12 +79,11 @@ typedef struct HX711struct {
 	unsigned int * GPIOperiHi; // address of register to WRITE clockPinBit bit to on Hi for clock
 	unsigned int * GPIOperiLo; // address of register to WRITE clockPinBit bit to on Lo for clock
 	unsigned int clockPinBit;	// clock pin number translated to bit position in register
-	unsigned int * GPIOperiData; // address of register to READ from to get the data	
+	volatile unsigned int * GPIOperiData; // address of register to READ from to get the data	THIS NEEDS TO BE VOLATILE FFS
 	unsigned int dataPinBit;	// data pin number translated to bit position in register 
 	int pow2 [24] ;			// precomputed array of powers of 2 used to translate bits that are set into data
 	int dataBitPos;			// tracks where we are in the 24 data bit positions
 	float * weightData;         	// pointer to the array to be filled with data, an array of floats
-	unsigned int nWeights;	// number of points in array of weight data to collect data into
 	unsigned int iWeight;		// used as we iterate through the array
 	int controlCode;			// set to indicate weighing or taring. 
 	float tareVal;				// tare scale value, in raw A/D units, but we need a float becaue it is an average of multiple readings
@@ -113,8 +117,7 @@ class HX711: public pulsedThread{
 	float getScaling (void);
 	void setScaling (float newScaling);
 	unsigned int getNweights (void);
-
-	protected:
+	private:
 	float readSynchronous (unsigned int nAvg, bool printVals, int weighMode);
 	int dataPin;
 	int clockPin;

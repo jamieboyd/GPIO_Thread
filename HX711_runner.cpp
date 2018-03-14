@@ -66,6 +66,9 @@ int main(int argc, char **argv){
 	}
 	// make a floating point array to hold weights
 	float * weightData = new float [kNUM_WEIGHTS];
+	for (unsigned int ii =0; ii < kNUM_WEIGHTS; ii+=1){
+		weightData [ii] = ii;
+	}
 	// make a HX711 thread object
 	HX711 * scale = HX711::HX711_threadMaker (dataPin, clockPin, kSCALING, weightData, kNUM_WEIGHTS);
 	if (scale == nullptr){
@@ -117,23 +120,24 @@ int main(int argc, char **argv){
 				sscanf (line, "%f\n", &newScaling);
 				scale->setScaling (newScaling);
 			case 3:
-				printf ("Scaling factor is %.8f grams per A/D unit\n",scale->getScaling());
+				printf ("Scaling factor is %.5E grams per A/D unit\n",scale->getScaling());
 				break;
 			case 4:
-				printf ("Measured Weight was %.2f grams.\n", scale->weigh (1,true));
+				printf ("Measured Weight was %.3f grams.\n", scale->weigh (1,true));
 				break;
 			case 5:
-				printf ("Measured Weight was %.2f grams.\n", scale->weigh (10,false));
+				printf ("Measured Weight was %.3f grams.\n", scale->weigh ((unsigned int)10,true));
 				break;
 			case 6:
-				scale->weighThreadStart (100);
+				scale->weighThreadStart (kNUM_WEIGHTS);
 				struct timespec sleeper;
 				sleeper.tv_sec = 0;
 				sleeper.tv_nsec = 0.11E09;
-				for (int ii =0; ii  < 20; ii +=1){
+				
+				for (unsigned int nWeights=0; nWeights < 20;){
 					nanosleep (&sleeper, NULL);
-					printf ("Weight at %d = %.3f.\n", scale->weighThreadCheck (), weightData [scale->weighThreadCheck ()-1]);
-					
+					nWeights =scale->weighThreadCheck ();
+					printf ("Weight at %d = %.3f.\n", nWeights, weightData [nWeights-1]);
 				}
 				scale->weighThreadStop ();
 				break;
