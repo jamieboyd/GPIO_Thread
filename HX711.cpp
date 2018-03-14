@@ -38,6 +38,7 @@ int HX711_Init (void * initDataP, void *  &taskDataP){
 	taskData->weightData =initDataPtr->weightData;
 	taskData->scaling = initDataPtr->scaling;
 	taskData->iWeight = 0;
+	taskPtr->dataBitPos=0;
 	taskData->tareVal =0;
 	return 0; // 
 }
@@ -198,7 +199,6 @@ float HX711::readSynchronous (unsigned int nAvg, bool printVals, int weighMode){
 		HX711TaskPtr->controlCode = weighMode;
 		HX711TaskPtr-> iWeight = 0;
 		HX711TaskPtr->dataBitPos =0;
-		//HX711TaskPtr-> nWeights = nAvg;
 		this->DoTasks (nAvg);
 		
 		int waitVal = this->waitOnBusy((float)(1 + nAvg/5));
@@ -244,6 +244,8 @@ void HX711::weighThreadStart (unsigned int nWeightsP){
 		printf ("Requested number to weigh, %d, was greater than size of array, %d.\n", nWeightsP, nWeightData);
 	}else{
 		HX711TaskPtr->iWeight =0;
+		HX711TaskPtr->controlCode = weighMode;
+		HX711TaskPtr->dataBitPos =0;
 		DoTasks (nWeightsP);
 	}
 }
@@ -288,136 +290,3 @@ unsigned int HX711::getNweights (void){
 	//HX711structPtr HX711TaskPtr = (HX711structPtr)getTaskData (); // returns a pointer to the custom data for the task
 	return nWeightData;
 }
-
-/* reads a single value from the HX711 and returns the signed integer value 
-	without taring or scaling 
-int HX711::readValue (void){
-	// zero data array
-	for (int ibit =0; ibit < 24; ibit++){
-		dataArray [ibit] =0;
-	}
-	// wait for data pin to go low
-	unsigned int dataVal;
-	do{
-		dataVal= GPIO_READ(GPIOperi->addr, dataPinBit);
-	} while (dataVal == dataPinBit);
-	//while (digitalRead (dataPin) == HIGH){}
-	// get data for each of 24 bits
-	gettimeofday (&expectedTime, NULL);
-	for (int ibit =0; ibit < 24; ibit++){
-		// set clock pin high, wait dur for data bit to be set
-		GPIO_SET (GPIOperi->addr, clockPinBit);
-		//digitalWrite (clockPin, HIGH) ;
-		timeradd (&expectedTime, &durTime, &expectedTime);
-		for ( gettimeofday (&actualTime, NULL);(timercmp (&actualTime, &expectedTime, <)); gettimeofday (&actualTime, NULL));
-		// read data
-		dataVal=GPIO_READ (GPIOperi->addr, dataPinBit);
-		if ( dataVal == dataPinBit){
-			// if (digitalRead (dataPin) == HIGH)
-			dataArray [ibit] = 1;
-		}
-		// set clock pin low, wait for delay period
-		GPIO_CLR (GPIOperi->addr, clockPinBit);
-		//digitalWrite (clockPin, LOW) ;
-		timeradd (&expectedTime, &delayTime, &expectedTime);
-		for ( gettimeofday (&actualTime, NULL) ;(timercmp (&actualTime, &expectedTime, <)); gettimeofday (&actualTime, NULL));
-	}
-	// write out another clock pulse with no data collection to set scaling to channel A, high gain
-	GPIO_SET (GPIOperi->addr, clockPinBit);
-	//digitalWrite (clockPin, HIGH) ;
-	timeradd (&expectedTime, &delayTime, &expectedTime);
-	gettimeofday (&actualTime, NULL);
-	for ( ;(timercmp (&actualTime, &expectedTime, <)); gettimeofday (&actualTime, NULL));
-   GPIO_CLR (GPIOperi->addr, clockPinBit);
-	//digitalWrite (clockPin, LOW) ;
-	timeradd (&expectedTime, &delayTime, &expectedTime);
-	for (gettimeofday (&actualTime, NULL) ;(timercmp (&actualTime, &expectedTime, <)); gettimeofday (&actualTime, NULL));
-	// get values for each bit set from pre-computer array of powers of 2
-	int result =0;
-	for (int ibit =0; ibit < 24; ibit ++)
-		result += dataArray [ibit] * pow2 [ibit];
-	return result;
-}
-
-
-
-// *********************************************************************************************
-// threaded function for weighing needs to be a C  style function, not a class method
-// It gets a bunch of weights as fast as possible, until array is full or thread is interrupted
-// Last Modified 2016/08/16 by Jamie Boyd
-extern "C" void* HX711ThreadFunc (void * tData){
-	// cast tData to task param stuct pointer
-	taskParams *theTask = (taskParams *) tData;
-	
-	// set durations for timing for data/clock pulse length
-	struct timeval durTime;
-	struct timeval delayTime;
-	struct timeval actualTime;
-	struct timeval expectedTime;
-	durTime.tv_sec = 0;
-	durTime.tv_usec =1;
-	delayTime.tv_sec = 0;
-	delayTime.tv_usec =1;
-	//give thread high priority
-	struct sched_param param ;
-	param.sched_priority = sched_get_priority_max (SCHED_RR) ;
-	pthread_setschedparam (pthread_self (), SCHED_RR, &param) ;
-	// loop forever, waiting for a request to weigh
-	unsigned int dataVal;
-	for (;;){
-		// get the lock on getWeight and wait for weights to be requested
-		pthread_mutex_lock (&theTask->taskMutex);
-		while (theTask->getWeights==0)
-			pthread_cond_wait(&theTask->taskVar, &theTask->taskMutex);
-		//printf ("Thread was signalled.\n");
-		// Unlock the mutex right away so calling thread can give countermanding signal
-		pthread_mutex_unlock (&theTask->taskMutex);
-		for (theTask->gotWeights =0; theTask->gotWeights < theTask->getWeights; theTask->gotWeights ++){
-			// zero data array
-			for (int ibit =0; ibit < 24; ibit++)
-				theTask->dataArray [ibit] =0;
-			// wait for data pin to go low
-			do{
-				dataVal = GPIO_READ (theTask->GPIOperi ->addr, theTask->dataPinBit);
-			}
-			while (dataVal == theTask->dataPinBit);
-			//while (digitalRead (theTask->dataPin) == HIGH){}
-			// get data for each of 24 bits
-			gettimeofday (&expectedTime, NULL);
-			for (int ibit =0; ibit < 24; ibit++){
-				// set clock pin high, wait dur for data bit to be set
-				GPIO_SET (theTask->GPIOperi ->addr, theTask->clockPinBit);
-				//digitalWrite (theTask->clockPin, HIGH) ;
-				timeradd (&expectedTime, &durTime, &expectedTime);
-				for (gettimeofday (&actualTime, NULL); (timercmp (&actualTime, &expectedTime, <)); gettimeofday (&actualTime, NULL));
-				// read data
-				dataVal = GPIO_READ (theTask->GPIOperi ->addr, theTask->dataPinBit) ;
-				if (dataVal == theTask->dataPinBit)
-					//if (digitalRead (theTask->dataPin) == HIGH)
-					theTask->dataArray [ibit] = 1;
-				// set clock pin low, wait for delay period
-				GPIO_CLR (theTask->GPIOperi ->addr, theTask->clockPinBit);
-				//digitalWrite (theTask->clockPin, LOW) ;
-				timeradd (&expectedTime, &delayTime, &expectedTime);
-				for (gettimeofday (&actualTime, NULL); (timercmp (&actualTime, &expectedTime, <)); gettimeofday (&actualTime, NULL));
-			}
-			// write out another clock pulse with no data collection to set scaling to channel A, high gain
-			GPIO_SET (theTask->GPIOperi ->addr, theTask->clockPinBit);
-			//digitalWrite (theTask->clockPin, HIGH) ;
-			timeradd (&expectedTime, &delayTime, &expectedTime);
-			for (gettimeofday (&actualTime, NULL); (timercmp (&actualTime, &expectedTime, <)); gettimeofday (&actualTime, NULL));
-			GPIO_CLR (theTask->GPIOperi ->addr, theTask->clockPinBit);
-			//digitalWrite (theTask->clockPin, LOW) ;
-			timeradd (&expectedTime, &delayTime, &expectedTime);
-			for (gettimeofday (&actualTime, NULL); (timercmp (&actualTime, &expectedTime, <)); gettimeofday (&actualTime, NULL));
-			// get values for each bit set from pre-computer array of powers of 2
-			theTask->weightData [theTask->gotWeights] =theTask->dataArray [0] * theTask->pow2 [0];
-			for (int ibit =1; ibit < 24; ibit ++)
-				theTask->weightData [theTask->gotWeights] += theTask->dataArray [ibit] * theTask->pow2 [ibit];
-			theTask->weightData [theTask->gotWeights] = (theTask->weightData [theTask->gotWeights]  - theTask->tareValue) * theTask->scaling;
-		}
-		theTask->getWeights = 0;
-	}
-	return NULL;
-} */
-
