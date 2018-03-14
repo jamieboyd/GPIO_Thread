@@ -7,7 +7,7 @@ setup(name='leverThread',
 	#py_modules=['Scale'],
 	ext_modules=[
 	Extension('leverThread',
-	['lever_thread.cpp', 'GPIOlowlevel.cpp', 'lever_thread_Py.cpp'],
+	['lever_thread.cpp', 'GPIOlowlevel.cpp', 'SimpleGPIO_thread.cpp', 'lever_thread_Py.cpp'],
 		include_dirs = ['./', '/usr/include'],
 		library_dirs = ['./', '/usr/local/lib'],
 		extra_compile_args=["-O3", "-std=gnu++11"],

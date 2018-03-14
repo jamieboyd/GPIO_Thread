@@ -134,7 +134,6 @@ void lever_Hi (void * taskData){
 	}else{ // we are at end of a trial.
 		// 
 	}
-		
 }
 
 
