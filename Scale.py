@@ -1,7 +1,7 @@
 from array import array
 import HX711
 """HX711 is a c++ module that does the GPIO clocking and data reading from
-the HX711 load cell at C++ speed using the pulsedThread library
+the HX711 load cell on a seperate thread at C++ speed using the pulsedThread library
 """
 
 class Scale:
@@ -9,7 +9,7 @@ class Scale:
     Class to operate a scale based on an HX711 load cell amplifier
     """
 
-    def __init__ (self,  dataPin, clockPin, gmPerUnit, arraySize):
+    def __init__ (self,  dataPin, clockPin, gmPerUnit, arraySizeP):
         """  
         Initializes a Python scale object, containing a pointer to a C++
         object that does threaded and non-threaded reading from HX711
@@ -17,14 +17,10 @@ class Scale:
         :param dataPin:pin connected to the DAT pin on the HX711 breakout.
         :param ClockPin:pin connected to the SCK pin on the HX711 breakout
         :param gmPerUnit:scaling in grams/ 24-bit A/D unit
-        initGPIO: set this only if GPIO has not been initialized yet
         """
-        self.threadArray = array ('f', (0 for i in range (0,arraySize)))
-        self.arraySize = newSize
-        self.hx711ptr = HX711.new (dataPin, clockPin, gmPerUnit)
-        self.threadArray = array ('f', (0 for i in range (0,arraySize)))
-        self.arraySize = arraySize
-        self.turnOn ()
+        self.threadArray = array ('f', [0] * arraySizeP)
+        self.arraySize = arraySizeP
+        self.hx711ptr = HX711.new (dataPin, clockPin, gmPerUnit, self.threadArray)
     
     def tare(self, nAvg, printVal):
         """
@@ -37,7 +33,6 @@ class Scale:
         HX711.tare (self.hx711ptr, nAvg)
         if printVal == True:
             print ('Tare value is', self.getTareVal(), 'g')
-        
         
     def weigh (self, nAvg):
         """
@@ -55,15 +50,6 @@ class Scale:
         """
         return HX711.weigh (self.hx711ptr, 1)
     
-
-    def threadSetArraySize (self, newSize):
-        """
-        Resizes the array that is passed to the C++ module and is used for reading the scale
-        rapidly from an independent thread
-        :param newSize:number of elements in the array after resizing
-        """
-        self.threadArray = array ('f', (0 for i in range (0,newSize)))
-        self.arraySize = newSize
         
     def threadStart (self, size):
         """

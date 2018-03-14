@@ -3,6 +3,7 @@
 
 /* ************ Python bindings for HX711 Scale******************************
 Last Modifed:
+
 2018/03/05 by Jamie Boyd - updates for pulsedThread class/HX711subclass
 
 
@@ -46,7 +47,7 @@ static PyObject* py_HX711_new (PyObject *self, PyObject *args) {
 		PyErr_SetString (PyExc_RuntimeError, "Failed to make HX711object.");
 		return NULL;
 	}
-	PyBuffer_Release (&buffer); // we don't need the buffer object 
+	PyBuffer_Release (&buffer); // we don't need the buffer object after extracting a pointer to start of buffer
 	return PyCapsule_New(static_cast <void *>( HX711ptr), "HX711", py_HX711_del);
   }
 
@@ -112,7 +113,7 @@ static PyObject* py_HX711_weighThreadCheck  (PyObject *self, PyObject *PyPtr) {
 
 static PyObject* py_HX711_getDataPin (PyObject *self, PyObject *PyPtr) {
 	HX711 * HX711Ptr = static_cast<HX711 * > (PyCapsule_GetPointer(PyPtr, "HX711"));
-	return Py_BuildValue("i", HX711Ptr->weighThreadStop());
+	return Py_BuildValue("i", HX711Ptr->getDataPin());
 }
  
 static PyObject* py_HX711_getClockPin (PyObject *self, PyObject *PyPtr) {
@@ -134,6 +135,7 @@ static PyObject* py_HX711_setScaling (PyObject *self, PyObject *args) {
 	PyObject *PyPtr;
 	float newScaling;
 	if (!PyArg_ParseTuple(args, "Of", &PyPtr, &newScaling)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for new scaling.");
 		return NULL;
 	}
 	HX711 * HX711Ptr = static_cast<HX711 * > (PyCapsule_GetPointer(PyPtr, "HX711"));
@@ -160,7 +162,7 @@ static PyMethodDef HX711Methods[] = {
   {"weigh", py_HX711_weigh, METH_VARARGS, "Weighs with the HX711 load cell amplifier"},
   {"weighThreadStart",py_HX711_weighThreadStart, METH_VARARGS, "Starts the thread weighing into the array"},
   {"weighThreadStop", py_HX711_weighThreadStop, METH_O, "Stops the thread weighing, returns number of weights so far"},
-   {"weighThreadCheck", py_HX711_weighThreadCheck, METH_O, "returns number of weights so far, but does not stop thread"},
+  {"weighThreadCheck", py_HX711_weighThreadCheck, METH_O, "returns number of weights so far, but does not stop thread"},
   {"getDataPin", py_HX711_getDataPin, METH_O, "returns data pin used with the HX711"},
   {"getClockPin", py_HX711_getClockPin, METH_O, "returns clock pin used with the HX711"},
   {"getTareValue", py_HX711_getTareValue, METH_O, "returns current tare value used with HX711"},

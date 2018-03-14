@@ -77,7 +77,7 @@ void HX711_Lo (void *  taskData){
 			taskPtr->weightData [taskPtr->iWeight]  += taskPtr->pow2[taskPtr->dataBitPos];
 		}
 		taskPtr->dataBitPos +=1;
-	}else{ // we have all the bits, so calculate weight and send out  25th pulse on clock pin for input and gain selection
+	}else{ // we have all the bits, so calculate weight and send out 25th pulse on clock pin for input and gain selection
 		// if we are weighing, not calculating a tare value, subtract tare value and multiple by scaling 
 		if (taskPtr->controlCode == kCTRL_WEIGH){
 			taskPtr->weightData [taskPtr->iWeight] = (taskPtr->weightData [taskPtr->iWeight] - taskPtr->tareVal) * taskPtr->scaling;
@@ -96,7 +96,6 @@ void HX711_delTask (void * taskData){
 	HX711structPtr taskPtr = (HX711structPtr) taskData;
 	delete (taskPtr);
 }
-
 
 /* ****************************** Destructor handles GPIO peripheral mapping*************************
 Thread data is destroyed by the pulsedThread destructor.  All we need to do here is take care of GPIO peripheral mapping
@@ -249,7 +248,7 @@ void HX711::weighThreadStart (unsigned int nWeightsP){
 	}
 }
 
-/* stops the threaded version and returns the number of weights so far obtained */
+/* stops the threaded and returns the number of weights so far obtained */
 unsigned int HX711::weighThreadStop (void){
 	UnDoTasks ();
 	//HX711structPtr HX711TaskPtr = (HX711structPtr)getTaskData (); // returns a pointer to the custom data for the task
