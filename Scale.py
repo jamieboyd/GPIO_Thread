@@ -61,7 +61,7 @@ class Scale:
         """
         if size > self.arraySize:
             size = self.arraySize
-        HX711.weighThreadStart(self.hx711ptr, self.threadArray, size)
+        HX711.weighThreadStart(self.hx711ptr, size)
 
     def threadStop (self):
         """

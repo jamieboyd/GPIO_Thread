@@ -72,8 +72,8 @@ Last Modified:
 2018/03/05 by Jamie Boyd - modified for new pulsedThread subclassed verson */
 static PyObject* py_HX711_weigh (PyObject *self, PyObject *args) {
 	PyObject *PyPtr;
-	int nAvg;
-	if (!PyArg_ParseTuple(args,"Oi", &PyPtr, &nAvg)) {
+	unsigned int nAvg;
+	if (!PyArg_ParseTuple(args,"OI", &PyPtr, &nAvg)) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for nAvg.");
 		return NULL;
 	}
