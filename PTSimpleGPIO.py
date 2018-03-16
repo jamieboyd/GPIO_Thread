@@ -186,7 +186,7 @@ class PTSimpleGPIO (object, metaclass = ABCMeta):
 """ 
 class Pulse (PTSimpleGPIO):
    
-    def __init__ (self, delay, duration, polarity, gpio_pin, accuracy_level):
+    def __init__ (self, gpio_pin, polarity, delay, duration, accuracy_level):
         self.task_ptr = newDelayDur.pulse(gpio_pin, polarity, delay, duration, 1, accuracy_level)
 
     """
@@ -209,12 +209,10 @@ class Pulse (PTSimpleGPIO):
 
     def get_pulse_len (self):
         return ptSimpleGPIO.getTrainDuration (self.task_ptr)
-
 """
     Train class is a task to output a defined length train of pulses on a GPIO pin
 """
 class Train (PTSimpleGPIO):
-    
     def __init__ (self, mode, gpio_pin, polarity, pulseDelayOrTrainFreq, pulseDurationOrTrainDutyCycle, nPulsesOrTrainDuration, accuracy_level):
         if mode == PTSimpleGPIO.MODE_PULSES:
             self.task_ptr = ptSimpleGPIO.newDelayDur (gpio_pin, polarity, pulseDelayOrTrainFreq, pulseDurationOrTrainDutyCycle, nPulsesOrTrainDuration, accuracy_level)
@@ -251,11 +249,11 @@ class Train (PTSimpleGPIO):
 """
 class Infinite_train (PTSimpleGPIO):
 
-    def __init__ (self, mode, pulseDelayOrTrainFreq, pulseDurationOrTrainDutyCycle, gpio_pin, accuracy_level):
-        if mode == PTSimpleGPIO.INIT_PULSES:
-            self.task_ptr = ptSimpleGPIO.trainDelayDur (pulseDelayOrTrainFreq, pulseDurationOrTrainDutyCycle, 0, gpio_pin, accuracy_level)
-        elif mode == PTSimpleGPIO.INIT_FREQ:
-            self.task_ptr = ptSimpleGPIO.trainFreqDuty (pulseDelayOrTrainFreq, pulseDurationOrTrainDutyCycle, 0, gpio_pin, accuracy_level)
+    def __init__ (self, mode, gpio_pin, pulseDelayOrTrainFreq, pulseDurationOrTrainDutyCycle, accuracy_level):
+        if mode == PTSimpleGPIO.MODE_PULSES:
+            self.task_ptr = ptSimpleGPIO.newDelayDur (gpio_pin, 0, pulseDelayOrTrainFreq, pulseDurationOrTrainDutyCycle, 0, accuracy_level)
+        elif mode == PTSimpleGPIO.MODE_FREQ:
+            self.task_ptr = ptSimpleGPIO.newFreqDuty (gpio_pin, 0, pulseDelayOrTrainFreq, pulseDurationOrTrainDutyCycle, 0, accuracy_level)
 
     """
     Starts an infinite train, as configured, endlessly repeating pulses
