@@ -91,7 +91,6 @@ const int kDAC_WRITEEPROM = 0x60; // to the EPROM
 const int kDAC_ADDRESS = 0x62; 	// i2c address to use
 
 
-
 /* ********************* lever_thread class extends pulsedThread ****************
 Works the motorized lever for the leverPulling task 
 last modified:

@@ -4,7 +4,7 @@ from distutils.core import setup, Extension
 setup(name='leverThread',
 	author = 'Jamie Boyd',
 	author_email = 'jadobo@gmail.com',
-	#py_modules=['Scale'],
+	#py_modules=[''],
 	ext_modules=[
 	Extension('leverThread',
 	['lever_thread.cpp', 'GPIOlowlevel.cpp', 'SimpleGPIO_thread.cpp', 'lever_thread_Py.cpp'],
