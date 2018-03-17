@@ -16,7 +16,7 @@ static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 	unsigned int nCircular;
 	int goalCuerPin;
 	float cuerFreq;
-	if (!PyArg_ParseTuple(args,"OIIif", &bufferObj, &nCircular, &goalCuerPin, &cuerFreq)) {
+	if (!PyArg_ParseTuple(args,"OIif", &bufferObj, &nCircular, &goalCuerPin, &cuerFreq)) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for lever position buffer, number for circular buffer, goal cuer pin, and cuer frequency.");
 		return NULL;
 	}
@@ -30,15 +30,15 @@ static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 		PyErr_SetString (PyExc_RuntimeError,"Error getting C array from bufferObj from Python array");
 		return NULL;
 	}
-	if (strcmp (buffer.format, "b") != 0){
+	if (strcmp (buffer.format, "B") != 0){
 		PyErr_SetString (PyExc_RuntimeError, "Error for bufferObj: data type of Python array is not unsigned byte");
 		return NULL;
 	}
 	// make a lever_thread object
-	lever_thread * leverThreadPtr = lever_thread::lever_thread_threadMaker (static_cast <uint8_t *>(buffer.buf), (unsigned int) buffer.len/buffer.itemsize, nCircular, goalCuerPin,cuerFreq );
+	lever_thread * leverThreadPtr = lever_thread::lever_threadMaker (static_cast <uint8_t *>(buffer.buf), (unsigned int) buffer.len/buffer.itemsize, nCircular, goalCuerPin,cuerFreq );
 	
 	if (leverThreadPtr == nullptr){
-		PyErr_SetString (PyExc_RuntimeError, "lever_thread_threadMaker was not able to make a lever_thread object");
+		PyErr_SetString (PyExc_RuntimeError, "lever_threadMaker was not able to make a lever_thread object");
 		return NULL;
 	}else{
 		return PyCapsule_New (static_cast <void *>(leverThreadPtr), "leverThread", py_Lever_del);

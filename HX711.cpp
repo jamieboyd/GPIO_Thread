@@ -40,6 +40,29 @@ int HX711_Init (void * initDataP, void *  &taskDataP){
 	taskData->iWeight = 0;
 	taskData->dataBitPos=0;
 	taskData->tareVal =0;
+	// set up polling on data pin
+	char buf[64];
+	sprintf(buf, "/sys/class/gpio/export",);
+	FILE * f = fopen(buf,"w");
+	assert(f);
+	fprintf(f,"%d\n",initDataPtr->theDataPin);
+	fclose(f);
+	sprintf(buf, "/sys/class/gpio/gpio%d/direction", initDataPtr->theDataPin);
+	f = fopen(buf,"w");
+	assert(f);
+	fprintf(f,"in\n");
+	fclose(f);
+	sprintf(buf, "/sys/class/gpio/gpio%d/edge", initDataPtr->theDataPin);
+	f = fopen(buf,"w");
+	assert(f);
+	fprintf(f,"%s\n","falling");
+	fclose(f);
+	pfd.fd = fd;
+
+   pfd.events = POLLPRI;
+
+   lseek(fd, 0, SEEK_SET);    /* consume any prior interrupt */
+   read(fd, buf, sizeof buf);
 	return 0; // 
 }
 
@@ -203,10 +226,9 @@ float HX711::readSynchronous (unsigned int nAvg, bool printVals, int weighMode){
 		
 		int waitVal = this->waitOnBusy((float)(1 + nAvg/5));
 		if (waitVal){
-			//nAvg -= waitVal;
+			nAvg -= waitVal;
 			printf ("Ony weighed %d times in alotted time.\n", nAvg );
 			UnDoTasks ();
-			
 		}
 		double resultVal =0;
 		if (printVals){
