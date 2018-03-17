@@ -16,7 +16,7 @@ static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 	unsigned int nCircular;
 	int goalCuerPin;
 	float cuerFreq;
-	if (!PyArg_ParseTuple(args,"OIIif", &bufferObj, &nCircular, &goalCuerPin, &cuerFreq)) {
+	if (!PyArg_ParseTuple(args,"OIif", &bufferObj, &nCircular, &goalCuerPin, &cuerFreq)) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for lever position buffer, number for circular buffer, goal cuer pin, and cuer frequency.");
 		return NULL;
 	}
@@ -30,7 +30,7 @@ static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 		PyErr_SetString (PyExc_RuntimeError,"Error getting C array from bufferObj from Python array");
 		return NULL;
 	}
-	if (strcmp (buffer.format, "b") != 0){
+	if (strcmp (buffer.format, "B") != 0){
 		PyErr_SetString (PyExc_RuntimeError, "Error for bufferObj: data type of Python array is not unsigned byte");
 		return NULL;
 	}
