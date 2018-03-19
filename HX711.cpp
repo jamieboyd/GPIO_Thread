@@ -42,27 +42,25 @@ int HX711_Init (void * initDataP, void *  &taskDataP){
 	taskData->tareVal =0;
 	// set up polling on data pin
 	char buf[64];
-	sprintf(buf, "/sys/class/gpio/export",);
+	/*Export pin */
+	sprintf(buf, "/sys/class/gpio/export");
 	FILE * f = fopen(buf,"w");
-	assert(f);
 	fprintf(f,"%d\n",initDataPtr->theDataPin);
 	fclose(f);
+	/* set direction to input*/
 	sprintf(buf, "/sys/class/gpio/gpio%d/direction", initDataPtr->theDataPin);
 	f = fopen(buf,"w");
-	assert(f);
 	fprintf(f,"in\n");
 	fclose(f);
+	/* set edge to falling*/
 	sprintf(buf, "/sys/class/gpio/gpio%d/edge", initDataPtr->theDataPin);
 	f = fopen(buf,"w");
-	assert(f);
-	fprintf(f,"%s\n","falling");
+	fprintf(f,"%s\n","Falling");
 	fclose(f);
-	pfd.fd = fd;
-
-   pfd.events = POLLPRI;
-
-   lseek(fd, 0, SEEK_SET);    /* consume any prior interrupt */
-   read(fd, buf, sizeof buf);
+	/*  */
+	sprintf(buf, "/sys/class/gpio%d/value", initDataPtr->theDataPin);
+	taskData->fd = open(buf,O_RDWR);
+	
 	return 0; // 
 }
 
@@ -181,17 +179,34 @@ void HX711::turnOFF (void){
 
 /* **********************set the clock pin low to wake the HX711 after putting it into a low power state *********************************
 Last Modified:
+2018/03/18 by Jamie Boyd - implementing polling on data pin
 2018/03/11 by jamie Boyd - put in a sleep after measuring how long it takes this thing to wake up
 2018/03/01 by Jamie Boyd - updated for pulsedThread subclass  */
 void HX711::turnON(void){
 	//HX711structPtr HX711TaskPtr = (HX711structPtr)getTaskData (); // returns a pointer to the custom data for the task
 	*(HX711TaskPtr->GPIOperiLo) = HX711TaskPtr->clockPinBit;
 	// HX711 takes 0.5 seconds to wake up
-	struct timespec sleeper;
-	sleeper.tv_sec = 0;
-	sleeper.tv_nsec = 0.5E09;
-	nanosleep (&sleeper, NULL);
-	while (*(HX711TaskPtr->GPIOperiData) & HX711TaskPtr->dataPinBit){} ;
+	struct pollfd polls;
+	polls.fd =  HX711TaskPtr->fd;			
+	polls.events = POLLPRI;
+
+
+	char buf[64];
+	lseek(polls.fd , 0, SEEK_SET);    /* consume any prior interrupt */
+	read(polls.fd, buf, sizeof buf);
+	int rc;
+	do{
+		rc= poll(&polls,1,-1);	/* Block */
+		printf ("poll returned %d.\n", rc);
+	}
+	while (rc < 0);
+	lseek(polls.fd , 0, SEEK_SET);    /* consume any prior interrupt */
+	read(polls.fd, buf, sizeof buf);
+	//~ struct timespec sleeper;
+	//~ sleeper.tv_sec = 0;
+	//~ sleeper.tv_nsec = 0.5E09;
+	//~ nanosleep (&sleeper, NULL);
+	//~ while (*(HX711TaskPtr->GPIOperiData) & HX711TaskPtr->dataPinBit){} ;
 	isPoweredUp = true;
 }
 

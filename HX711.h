@@ -5,6 +5,7 @@
 #include "GPIOlowlevel.h"
 #include <pulsedThread.h>
 
+#include <sys/poll.h>
 #include <stdio.h>
 #include <sys/time.h>
 #include <math.h>
@@ -88,7 +89,7 @@ typedef struct HX711struct {
 	int controlCode;			// set to indicate weighing or taring. 
 	float tareVal;				// tare scale value, in raw A/D units, but we need a float becaue it is an average of multiple readings
 	float scaling;				// grams per A/D unit
-	struct pollfd pfd;			// file descriptor for polling
+	int fd;				// file descriptor for polling
 
 }HX711struct, * HX711structPtr; 
 
