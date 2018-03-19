@@ -80,21 +80,12 @@ void HX711_Hi (void *  taskData){
 		// zero this weight position
 		taskPtr->weightData [taskPtr->iWeight] = 0;
 		// wait for data pin to go low before first bit. When output data is not ready for retrieval, digital output pin DOUT is held high.
-		// might want to use an interrupt here 
+		// We use an interrupt here 
 		/* consume any prior interrupt */
 		static char buf[32];
 		lseek(taskPtr->dataPolls.fd , 0, SEEK_SET);
 		read(taskPtr->dataPolls.fd, buf, 32);
 		poll(&taskPtr->dataPolls, 1, -1);	/* Block */
-	//~ struct timespec sleeper;
-	//~ sleeper.tv_sec = 0;
-	//~ sleeper.tv_nsec = 0.5E09;
-	//~ nanosleep (&sleeper, NULL);
-	//~ while (*(taskPtr->GPIOperiData) & tskPtr->dataPinBit){} ;
-		
-		
-		//while (*((taskPtr->GPIOperiData)) & (taskPtr->dataPinBit)){};
-			
 	}
 	// set clock pin high to shift out next bit of data
 	*(taskPtr->GPIOperiHi) = taskPtr->clockPinBit;
@@ -199,12 +190,17 @@ void HX711::turnOFF (void){
 
 /* **********************set the clock pin low to wake the HX711 after putting it into a low power state *********************************
 Last Modified:
-2018/03/18 by Jamie Boyd - implementing polling on data pin, so got rid of wait
+2018/03/18 by Jamie Boyd - implementing polling on data pin, so got rid of wait and added a poll
 2018/03/11 by jamie Boyd - put in a sleep after measuring how long it takes this thing to wake up
 2018/03/01 by Jamie Boyd - updated for pulsedThread subclass  */
 void HX711::turnON(void){
 	//HX711structPtr HX711TaskPtr = (HX711structPtr)getTaskData (); // returns a pointer to the custom data for the task
 	*(HX711TaskPtr->GPIOperiLo) = HX711TaskPtr->clockPinBit;
+	/* consume any prior interrupt */
+	static char buf[32];
+	lseek(HX711TaskPtr->dataPolls.fd , 0, SEEK_SET);
+	read(HX711TaskPtr->dataPolls.fd, buf, 32);
+	poll(&HX711TaskPtr->dataPolls, 1, -1);	/* Block */
 	isPoweredUp = true;
 }
 
