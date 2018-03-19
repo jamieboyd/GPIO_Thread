@@ -91,22 +91,24 @@ const int kDAC_WRITEEPROM = 0x60; // to the EPROM
 const int kDAC_ADDRESS = 0x62; 	// i2c address to use
 
 
-
 /* ********************* lever_thread class extends pulsedThread ****************
 Works the motorized lever for the leverPulling task 
 last modified:
 2018/02/08 by Jamie Boyd - initial verison */
 class lever_thread : public pulsedThread{
 	public:
-	/* integer param constructor: delay =0, duration = 5000 (200 hz), pulses = 0 for infinite train, can change 
+	/* integer param constructor: delay =0, duration = 5000 (200 hz), threadPulseN = 0 for infinite train for uncued, with circular buffer, or the size of the array, for cued trials
 	*/
-	lever_thread (void * initData, int &errCode) : pulsedThread ((unsigned int) 0, (unsigned int)5000, (unsigned int) 200, initData, &lever_init, nullptr, &lever_Hi, 1, errCode) {
-	
+	lever_thread (void * initData, int &errCode) : pulsedThread ((unsigned int) 0, (unsigned int)5000, (unsigned int) 0, initData, &lever_init, nullptr, &lever_Hi, 1, errCode) {
+	*leverThreadStructPtr;
 	};
-	static lever_thread * lever_thread_threadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircular, int goalCuerPin, float cuerFreq) ;
-
+	
+	static lever_thread * lever_threadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircular, int goalCuerPin, float cuerFreq) ;
+	void setConstForce (int theForce);
+	int getConstForce (void);
 	
 	protected:
+		leverThreadStructPtr taskPtr;
 };
 
 #endif

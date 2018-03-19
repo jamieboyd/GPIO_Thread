@@ -35,10 +35,10 @@ static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	// make a lever_thread object
-	lever_thread * leverThreadPtr = lever_thread::lever_thread_threadMaker (static_cast <uint8_t *>(buffer.buf), (unsigned int) buffer.len/buffer.itemsize, nCircular, goalCuerPin,cuerFreq );
+	lever_thread * leverThreadPtr = lever_thread::lever_threadMaker (static_cast <uint8_t *>(buffer.buf), (unsigned int) buffer.len/buffer.itemsize, nCircular, goalCuerPin,cuerFreq );
 	
 	if (leverThreadPtr == nullptr){
-		PyErr_SetString (PyExc_RuntimeError, "lever_thread_threadMaker was not able to make a lever_thread object");
+		PyErr_SetString (PyExc_RuntimeError, "lever_threadMaker was not able to make a lever_thread object");
 		return NULL;
 	}else{
 		return PyCapsule_New (static_cast <void *>(leverThreadPtr), "leverThread", py_Lever_del);

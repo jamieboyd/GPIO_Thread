@@ -60,6 +60,7 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	// initialize iPosition to 0 - other initialization?
 	taskData->iPosition=0;
 	taskData->forceStartPos = initDataPtr->nForceData -100;
+
 	printf ("Initing lever pos data\n");
 
 	return 0;
@@ -164,7 +165,20 @@ int leverThread_setPerturbCallback (void * modData, taskParams * theTask){
 	return 0;
 }
 
-/* ************************** zero Lever ***********************************************
+/* mod data is an integer for constant force */
+int leverThread_setConstForceCallback (void * modData, taskParams * theTask){
+	leverThreadStructPtr taskPtr = (leverThreadStructPtr) taskParams->taskData;
+	int * newConstForce= (int * )modData;
+	// write the DAC constant 
+	wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // put it in DAC mode
+	// write the data
+	leverTaskPtr->leverForce = * newConstForce ;
+	wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverTaskPtr->leverForce  >> 8) & 0x0F, leverTaskPtr->leverForce  & 0xFF);
+	delete (newConstForce);
+	return 0;
+}
+
+/* ************************** zero Lever ***********************************************/
 int leverThread_zeroLeverCallback (void * modData, taskParams, * theTask){
 	
 	leverThreadStructPtr taskPtr = (leverThreadStructPtr) taskParams->taskData;
@@ -215,7 +229,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams, * theTask){
  ******************** ThreadMaker with Integer pulse duration, delay, and number of pulses timing description inputs ********************
  Last Modified:
  2018/02/08 by Jamie Boyd - Initial Version */
-lever_thread * lever_thread::lever_thread_threadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircular, int goalCuerPin, float cuerFreq) {
+lever_thread * lever_thread::lever_threadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircular, int goalCuerPin, float cuerFreq) {
 	
 	// make and fill a leverTask struct
 	leverThreadInitStructPtr initStruct = new leverThreadInitStruct;
@@ -236,7 +250,22 @@ lever_thread * lever_thread::lever_thread_threadMaker (uint8_t * positionData, u
 	}
 	// set custom task delete function
 	newLever->setTaskDataDelFunc (&lever_thread_delTask);
-	
+	// make a lever_thread pointer for easy direct access to thread task data 
+	newLever->taskPtr = (leverThreadStructPtr)newLever->getTaskData ();
 	return newLever;
 
 }
+
+
+
+
+void lever_thread::setConstForce (int theForce){
+	
+}
+	
+
+int lever_thread::getConstForce (void){
+	return taskPtr->constForce;
+}	
+
+

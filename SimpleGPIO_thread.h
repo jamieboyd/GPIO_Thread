@@ -26,18 +26,19 @@ typedef struct SimpleGPIOStruct{
 	unsigned int pinBit;	// pin number translated to bit position in register
 }SimpleGPIOStruct, *SimpleGPIOStructPtr;
 
+
 /* *********************SimpleGPIO_thread class extends pulsedThread ****************
 Does pulses and trains of pulses on Raspberry Pi GPIO pins */
 class SimpleGPIO_thread : public pulsedThread{
 	public:
 	/* constructors, similar to pulsedThread, one expects unsigned ints for pulse delay and duration times in microseconds and number of pulses */
-	SimpleGPIO_thread  (int pinP, int polarityP, unsigned int delayUsecs, unsigned int durUsecs, unsigned int nPulses, void * initData, int accLevel , int &errCode) : pulsedThread (delayUsecs, durUsecs, nPulses, initData, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accLevel, errCode) {
+	SimpleGPIO_thread (int pinP, int polarityP, unsigned int delayUsecs, unsigned int durUsecs, unsigned int nPulses, void * initData, int accLevel , int &errCode) : pulsedThread (delayUsecs, durUsecs, nPulses, initData, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accLevel, errCode) {
 	pinNumber = pinP;
 	polarity = polarityP;
 	};
 	
 	/* the other constructor expects floats for frequency, duty cycle, and train duration */
-	SimpleGPIO_thread  (int pinP, int polarityP, float frequency, float dutyCycle, float trainDuration, void * initData, int accLevel , int &errCode) : pulsedThread (frequency, dutyCycle, trainDuration, initData, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accLevel,errCode) {
+	SimpleGPIO_thread (int pinP, int polarityP, float frequency, float dutyCycle, float trainDuration, void * initData, int accLevel, int &errCode) : pulsedThread (frequency, dutyCycle, trainDuration, initData, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accLevel,errCode) {
 	pinNumber = pinP;
 	polarity = polarityP;
 	};
@@ -53,7 +54,7 @@ class SimpleGPIO_thread : public pulsedThread{
 	int getPolarity (void);
 	int setLevel (int level, int isLocking);
 	// data members
-	private:
+protected:
 	int pinNumber;
 	int polarity;
 };

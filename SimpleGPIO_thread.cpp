@@ -51,6 +51,7 @@ void SimpleGPIO_Hi (void *  taskData){
 	*(gpioTaskPtr->GPIOperiHi) =gpioTaskPtr->pinBit;
 }
 
+
 /* **************** Custom data mod callbacks *****************************
 
 ********************Changes GPIO pin bit********************************
@@ -184,7 +185,6 @@ int SimpleGPIO_thread::getPin (void){
 int SimpleGPIO_thread::getPolarity (void){
 	return polarity;
 }
-
 
 int SimpleGPIO_thread::setLevel (int level, int isLocking){
 	int * setlevelPtr= new int;
