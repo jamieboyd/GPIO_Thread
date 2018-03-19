@@ -55,12 +55,12 @@ int HX711_Init (void * initDataP, void *  &taskDataP){
 	/* set edge to falling*/
 	sprintf(buf, "/sys/class/gpio/gpio%d/edge", initDataPtr->theDataPin);
 	f = fopen(buf,"w");
-	fprintf(f,"%s\n","Falling");
+	fprintf(f,"falling\n");
 	fclose(f);
-	/*  */
-	sprintf(buf, "/sys/class/gpio%d/value", initDataPtr->theDataPin);
-	taskData->fd = open(buf,O_RDWR);
-	
+	/*  open pin value and pass it to poll structure*/
+	sprintf(buf, "/sys/class/gpio/gpio%d/value", initDataPtr->theDataPin);
+	taskData->dataPolls.fd = open(buf,O_RDWR);
+	taskData->dataPolls.events = POLLPRI;
 	return 0; // 
 }
 
@@ -69,6 +69,7 @@ int HX711_Init (void * initDataP, void *  &taskDataP){
 untill data pin goes high (HX711 holds data pin low untill a weight measurement is ready to send
 
  last modified:
+2018/03/18 by Jamie Boyd -trying an interrupt - still needs testing
 2018/03/13 by Jamie Boyd - took out sleep for fastest performance - will try an interrupt ?
 2018/03/05 by Jamie Boyd - added sleep if data pin is low, as max speed is only 10Hz to begin with
 2018/03/01 by jamie Boyd - do calculations directly in data array
@@ -80,7 +81,20 @@ void HX711_Hi (void *  taskData){
 		taskPtr->weightData [taskPtr->iWeight] = 0;
 		// wait for data pin to go low before first bit. When output data is not ready for retrieval, digital output pin DOUT is held high.
 		// might want to use an interrupt here 
-		while (*((taskPtr->GPIOperiData)) & (taskPtr->dataPinBit)){};
+		/* consume any prior interrupt */
+		static char buf[32];
+		lseek(taskPtr->dataPolls.fd , 0, SEEK_SET);
+		read(taskPtr->dataPolls.fd, buf, 32);
+		poll(&taskPtr->dataPolls, 1, -1);	/* Block */
+	//~ struct timespec sleeper;
+	//~ sleeper.tv_sec = 0;
+	//~ sleeper.tv_nsec = 0.5E09;
+	//~ nanosleep (&sleeper, NULL);
+	//~ while (*(taskPtr->GPIOperiData) & tskPtr->dataPinBit){} ;
+		
+		
+		//while (*((taskPtr->GPIOperiData)) & (taskPtr->dataPinBit)){};
+			
 	}
 	// set clock pin high to shift out next bit of data
 	*(taskPtr->GPIOperiHi) = taskPtr->clockPinBit;
@@ -116,6 +130,7 @@ void HX711_Lo (void *  taskData){
 /* ************* Custom task data delete function *********************/
 void HX711_delTask (void * taskData){
 	HX711structPtr taskPtr = (HX711structPtr) taskData;
+	close (taskPtr->dataPolls.fd);
 	delete (taskPtr);
 }
 
@@ -125,6 +140,11 @@ HX711 object does not own the array of weight data, so should not delete it
 Last Modified:
 2018/03/01 by Jamie Boyd - Initial Version copied from SimpleGPIO*/
 HX711::~HX711 (){
+	char buf[64];
+	sprintf (buf, "/sys/class/gpio/unexport");
+	FILE *f= fopen(buf,"w");
+	fprintf(f,"%d\n",dataPin);
+	fclose(f);
 	unUseGPIOperi();
 }
 
@@ -179,34 +199,12 @@ void HX711::turnOFF (void){
 
 /* **********************set the clock pin low to wake the HX711 after putting it into a low power state *********************************
 Last Modified:
-2018/03/18 by Jamie Boyd - implementing polling on data pin
+2018/03/18 by Jamie Boyd - implementing polling on data pin, so got rid of wait
 2018/03/11 by jamie Boyd - put in a sleep after measuring how long it takes this thing to wake up
 2018/03/01 by Jamie Boyd - updated for pulsedThread subclass  */
 void HX711::turnON(void){
 	//HX711structPtr HX711TaskPtr = (HX711structPtr)getTaskData (); // returns a pointer to the custom data for the task
 	*(HX711TaskPtr->GPIOperiLo) = HX711TaskPtr->clockPinBit;
-	// HX711 takes 0.5 seconds to wake up
-	struct pollfd polls;
-	polls.fd =  HX711TaskPtr->fd;			
-	polls.events = POLLPRI;
-
-
-	char buf[64];
-	lseek(polls.fd , 0, SEEK_SET);    /* consume any prior interrupt */
-	read(polls.fd, buf, sizeof buf);
-	int rc;
-	do{
-		rc= poll(&polls,1,-1);	/* Block */
-		printf ("poll returned %d.\n", rc);
-	}
-	while (rc < 0);
-	lseek(polls.fd , 0, SEEK_SET);    /* consume any prior interrupt */
-	read(polls.fd, buf, sizeof buf);
-	//~ struct timespec sleeper;
-	//~ sleeper.tv_sec = 0;
-	//~ sleeper.tv_nsec = 0.5E09;
-	//~ nanosleep (&sleeper, NULL);
-	//~ while (*(HX711TaskPtr->GPIOperiData) & HX711TaskPtr->dataPinBit){} ;
 	isPoweredUp = true;
 }
 
