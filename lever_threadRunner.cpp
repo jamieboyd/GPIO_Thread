@@ -47,10 +47,10 @@ int main(int argc, char **argv){
 	leverThread * myLeverThread= leverThread::leverThreadMaker (positionData, 400, 0, 0, 0);
 	printf ("leverThread made thread\n");
 	//myLeverThread->modTrainLength(400);
-	myLeverThread->DoTask();
-	printf ("leverThread called doTask\n");
-	myLeverThread->waitOnBusy (3.0);
-	printf ("leverThread waited on busy.\n");
+	myLeverThread->startTrain();
+	printf ("leverThread called startTrain\n");
+	//myLeverThread->waitOnBusy (3.0);
+	//printf ("leverThread waited on busy.\n");
 	printf ("data=");
 	for (unsigned int i =0; i < 400; i +=1){ 
 		printf ("%i, ", positionData [i]);
