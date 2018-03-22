@@ -93,8 +93,8 @@ class PTSimpleGPIO (object, metaclass = ABCMeta):
 
     """
     wait_on_busy does not return until the thread is no longer busy
-    or the time out expires. It returns 0 if the task ended, 1 if the
-    time out expired.
+    or the time out expires. It returns 0 if the task ended, or the
+    number of tasks left to do if the time out expired.
     Don't call wait_on_busy on an Infinite_train
     Don't call ptSimpleGPIO.waitOnBusy on a thread with an endFunc from a Python object installed,
     or you will get GILled 
@@ -107,7 +107,7 @@ class PTSimpleGPIO (object, metaclass = ABCMeta):
                 nTasks = ptSimpleGPIO.isBusy(self.task_ptr)
                 if nTasks == 0:
                     break
-            return (nTasks > 0)
+            return (nTasks)
         else:
             return ptSimpleGPIO.waitOnBusy(self.task_ptr, waitSecs)
         
@@ -141,7 +141,7 @@ class PTSimpleGPIO (object, metaclass = ABCMeta):
     """
     set_endFunc_obj passes a Python object with a method named endFunc to the C++ thread
     The default object to pass is self. If set, the object's endFunc is run at the end
-    of every Pulse, at the end of every Train, or when an Infinite_train is stopped.
+    of every Train, or at the end of every Pulse, and after every pulse in an Infinite train
     An endFunc gets *args with current state of timing of the thread's task in either
     frequency/Duty cycle format (dataMode = 0: args[0] =trainFrequency (Hz);
     args[1] = trainDutyCycle (0 -1); args [2] = total train Duration (seconds);
@@ -187,8 +187,8 @@ class PTSimpleGPIO (object, metaclass = ABCMeta):
 class Pulse (PTSimpleGPIO):
    
     def __init__ (self, gpio_pin, polarity, delay, duration, accuracy_level):
-        self.task_ptr = newDelayDur.pulse(gpio_pin, polarity, delay, duration, 1, accuracy_level)
-
+        self.task_ptr = ptSimpleGPIO.newDelayDur(gpio_pin, polarity, delay, duration, 1, accuracy_level)
+        self.respectTheGIL = false
     """
     does a single pulse, as previously configured. GPIO pin is held in starting state (high or low,
     depending on direction when initied) for delay, then toggled and held for duration,
@@ -218,7 +218,8 @@ class Train (PTSimpleGPIO):
             self.task_ptr = ptSimpleGPIO.newDelayDur (gpio_pin, polarity, pulseDelayOrTrainFreq, pulseDurationOrTrainDutyCycle, nPulsesOrTrainDuration, accuracy_level)
         elif mode == PTSimpleGPIO.MODE_FREQ:
             self.task_ptr = ptSimpleGPIO.newFreqDuty (gpio_pin, polarity, pulseDelayOrTrainFreq, pulseDurationOrTrainDutyCycle, nPulsesOrTrainDuration, accuracy_level)
-		
+        self.respectTheGIL = False
+	
     def do_train (self):
         return ptSimpleGPIO.doTask(self.task_ptr)
 	
@@ -254,7 +255,8 @@ class Infinite_train (PTSimpleGPIO):
             self.task_ptr = ptSimpleGPIO.newDelayDur (gpio_pin, 0, pulseDelayOrTrainFreq, pulseDurationOrTrainDutyCycle, 0, accuracy_level)
         elif mode == PTSimpleGPIO.MODE_FREQ:
             self.task_ptr = ptSimpleGPIO.newFreqDuty (gpio_pin, 0, pulseDelayOrTrainFreq, pulseDurationOrTrainDutyCycle, 0, accuracy_level)
-
+        self.respectTheGIL = False
+        
     """
     Starts an infinite train, as configured, endlessly repeating pulses
     """
