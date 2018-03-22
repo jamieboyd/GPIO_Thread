@@ -1,5 +1,5 @@
 
-#include "lever_thread.h"
+#include "leverThread.h"
 
 int lever_init (void * initDataP, void *  &taskDataP){
 	// task data pointer is a void pointer that needs to be initialized to a pointer to taskData and filled from our custom init structure 
@@ -49,7 +49,7 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	}else{
 		taskData->goalCuer  = nullptr;
 	}
-	
+
 	// copy pointer to lever position buffer
 	taskData->positionData = initDataPtr->positionData;
 	taskData->nPositionData = initDataPtr->nPositionData;
@@ -124,8 +124,8 @@ void lever_Hi (void * taskData){
 			// write the DAC constant 
 			wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // put it in DAC mode
 			// write the data
-			leverTaskPtr->leverForce =leverTaskPtr->forceData[leverTaskPtr->iForce] ;
-			wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverTaskPtr->leverForce  >> 8) & 0x0F, leverTaskPtr->leverForce  & 0xFF);
+			int leverForce =leverTaskPtr->forceData[leverTaskPtr->iForce] ;
+			wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverForce  >> 8) & 0x0F, leverForce  & 0xFF);
 			leverTaskPtr->iForce +=1;
 			if (leverTaskPtr->iForce == leverTaskPtr->nForceData){ // all out of forces but leave force at final ramp pos until the end of the trial
 				leverTaskPtr->doForce = false;
@@ -136,7 +136,6 @@ void lever_Hi (void * taskData){
 		// 
 	}
 }
-
 
 /* ************* Custom task data delete function *********************/
 void leverThread_delTask (void * taskData){
@@ -165,20 +164,9 @@ int leverThread_setPerturbCallback (void * modData, taskParams * theTask){
 	return 0;
 }
 
-/* mod data is an integer for constant force */
-int leverThread_setConstForceCallback (void * modData, taskParams * theTask){
-	leverThreadStructPtr taskPtr = (leverThreadStructPtr) taskParams->taskData;
-	int * newConstForce= (int * )modData;
-	// write the DAC constant 
-	wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // put it in DAC mode
-	// write the data
-	leverTaskPtr->leverForce = * newConstForce ;
-	wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverTaskPtr->leverForce  >> 8) & 0x0F, leverTaskPtr->leverForce  & 0xFF);
-	delete (newConstForce);
-	return 0;
-}
 
-/* ************************** zero Lever ***********************************************/
+
+/* ************************** zero Lever ***********************************************
 int leverThread_zeroLeverCallback (void * modData, taskParams, * theTask){
 	
 	leverThreadStructPtr taskPtr = (leverThreadStructPtr) taskParams->taskData;
@@ -221,27 +209,33 @@ int leverThread_zeroLeverCallback (void * modData, taskParams, * theTask){
 	if (returnVal == false)
 		printf ("Could not find zero position for lever.\n");
 	return returnVal;
+}
 */
 
-
+	
+	
 /* *************************** leverThread Class Methods *******************************************************
  
  ******************** ThreadMaker with Integer pulse duration, delay, and number of pulses timing description inputs ********************
  Last Modified:
  2018/02/08 by Jamie Boyd - Initial Version */
-leverThread * leverThread::leverThreadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircular, int goalCuerPin, float cuerFreq) {
+leverThread * leverThread::leverThreadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircularOrZero,  int goalCuerPinOrZero, float cuerFreqOrZero) {
 	
+	int errCode;
+	leverThread * newLever ;
 	// make and fill a leverTask struct
 	leverThreadInitStructPtr initStruct = new leverThreadInitStruct;
 	initStruct->positionData = positionData;
 	initStruct->nPositionData = nPositionData;
-	initStruct->nCircular = nCircular;
-	initStruct->goalCuerPin = goalCuerPin;
-	initStruct->cuerFreq = cuerFreq;
-	
-	// call class constructor which  calls pulsedThread constructor
-	int errCode;
-	leverThread * newLever = new lever_thread ((void *) initStruct, errCode);
+	initStruct->goalCuerPin = goalCuerPinOrZero; // zero if we don't have in-goal cue
+	initStruct->cuerFreq = cuerFreqOrZero;		// freq is zero for a DC on or off task
+	if (nCircularOrZero == 0){				// if nCircular is 0, trials are cued
+		initStruct->nCircular = nPositionData;	// make sure nCircular never happens
+		newLever = new leverThread ((void *) initStruct, nPositionData, errCode); // initialize thread with pulses in a train equal to posiiton array size
+	}else{
+		initStruct->nCircular = nCircularOrZero;
+		newLever = new leverThread ((void *) initStruct, (unsigned int) 0, errCode);	// initialize thread with 0 pulses, AKA infinite train
+	}
 	if (errCode){
 #if beVerbose
 		printf ("leverThreadMaker failed to make leverThread object.\n");
@@ -252,15 +246,33 @@ leverThread * leverThread::leverThreadMaker (uint8_t * positionData, unsigned in
 	newLever->setTaskDataDelFunc (&leverThread_delTask);
 	// make a leverThread pointer for easy direct access to thread task data 
 	newLever->taskPtr = (leverThreadStructPtr)newLever->getTaskData ();
+	if (nCircularOrZero == 0){
+		newLever->cueMode = kUN_CUED;
+	}else{
+		newLever->cueMode = kCUED;
+	}
 	return newLever;
-
 }
 
 
+/* mod data is an integer for constant force */
+int leverThread_setConstForceCallback (void * modData, taskParams * theTask){
+	leverThreadStructPtr taskPtr = (leverThreadStructPtr) theTask->taskData;
+	int newConstForce= *(int * )modData;
+	// write the DAC constant 
+	wiringPiI2CWrite (taskPtr->i2c_fd, kDAC_WRITEDAC); // put it in DAC mode
+	// write the data
+	taskPtr->constForce = newConstForce;
+	wiringPiI2CWriteReg8(taskPtr->i2c_fd, (newConstForce >> 8) & 0x0F, newConstForce  & 0xFF);
+	delete ((int * )modData);
+	return 0;
+}
 
-
-void leverThread::setConstForce (int theForce){
-	
+int leverThread::setConstForce (int theForce, int isLocking){
+	int * newForceVal = new int;
+	* newForceVal =  theForce;
+	int returnVal = modCustom (&leverThread_setConstForceCallback, (void *) newForceVal, isLocking);	
+	return returnVal;
 }
 	
 

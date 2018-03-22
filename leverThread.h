@@ -42,27 +42,36 @@ typedef struct leverThreadInitStruct{
 /* ******************** Custom Data Struct for Lever Task***************************
 */
 typedef struct leverThreadStruct{
+	// lever positoin data
 	uint8_t * positionData;		// array for inputs from quadrature decoder, array passed in from calling function
-	unsigned int nPositionData; // number of points in lever position array,
-	unsigned int iPosition; 	// current place in position array
+	unsigned int nPositionData; // number of points in lever position array, this limits maximum amount of time we can set in-goal time
+	unsigned int iPosition; 		// current place in position array
 	uint8_t leverPosition; 		// current lever position in ticks of the lever, 0 -255
+	// fields used for un-cued trials, i.e., inifinite train with circular buffer 
 	unsigned int nCircular;		// number of points at start of position array to use for a circular buffer for uncued trials set to nPosition data for no circular buffer
 	uint8_t leverTrialStartPos;	// when lever crosses here, we break out of circular buffer and start a trial. set to nPosition when not circular
 	unsigned int circularBreak;	// where we broke out of circular buffer and started a trial.
-	uint8_t goalBottom;			// bottom of goal area
+	// for cued trials
+	unsigned int nToGoal;		// max number of ticks mouse has to get lever into goal position to be considered a good trial
+	// fields for task difficulty, lever position and time
+	uint8_t goalBottom;			// bottom of Goal area
 	uint8_t goalTop;			// top of Goal area
+	unsigned int nToFinish;		// number of ticks to end of a trial - must be less than nPositionData, or we need to delete and reallocate
 	bool inGoal;				// thread sets this to true if lever is in goal position
+	int trialPos;				// thread sets this to 0 for trial not started yet, 1 for trial started, -1 for trial with errror encountered
+							//  2 for trial completed with success, -2 for completed no success. The uncued version must be monitored for 2 or -2 and data dealt with
+	// fields for force data
+	int constForce;			// value for constant force applied to lever when no force prturbation is happening
 	int * forceData;			// array for output to DAC for force output
-	int constForce;			// value for constant force applied to lever
-	unsigned int nForceData;	// number of points in force data array
+	unsigned int nForceData;	// number of points in force data array, we always use all of them, so transition time is constant
 	unsigned int iForce;		// current position in array
-	int leverForce;				// current force on lever
-	unsigned int forceStartPos;	// position in input array to start force output - set to end of array for no force output
 	bool doForce;				// thread sets this to true when outputting force
+	unsigned int forceStartPos;	// position in input array to start force output - set forceStartPos to end of array for no force output and we never reach it
+	// hardware access
 	int i2c_fd; 				// file descriptor for i2c used by mcp4725 DAC
 	uint8_t spi_wpData [5];		 // buffer for spi read/write - 5 bytes is as big as we need it to be
 	SimpleGPIO_thread * goalCuer;// pre-made GPIO thread to give a cue when in goal range
-	int goalMode;				// 1 for setHigh, setLow, 2 for startTrain, stopTrain
+	int goalMode;				// for goal cuer, 1 for setHigh, setLow, 2 for startTrain, stopTrain
 	
 }leverThreadStruct, *leverThreadStructPtr;
 
@@ -85,11 +94,17 @@ const uint8_t kQD_FOURBYTE_COUNTER = 0x00;
 const uint8_t kQD_THREEBYTE_COUNTER = 0x01;
 const uint8_t kQD_TWOBYTE_COUNTER = 0x02;
 const uint8_t kQD_ONEBYTE_COUNTER = 0x03;
+
 /* *************************** MCP4725 DAC constants  *******************************************/
 const int kDAC_WRITEDAC = 0x040; // write to the DAC 
 const int kDAC_WRITEEPROM = 0x60; // to the EPROM
 const int kDAC_ADDRESS = 0x62; 	// i2c address to use
 
+
+/* Lever recording frequency, we use this to calculate length of array needed for however long we want to record*/
+const float kLEVER_FREQ = 200;
+const int kUN_CUED =0;
+const int kCUED =1;
 
 /* ********************* leverThread class extends pulsedThread ****************
 Works the motorized lever for the leverPulling task 
@@ -97,19 +112,18 @@ last modified:
 2018/02/08 by Jamie Boyd - initial verison */
 class leverThread : public pulsedThread{
 	public:
-	/* integer param constructor: delay =0, duration = 5000 (200 hz), threadPulseN = 0 for infinite train for uncued, with circular buffer, or the size of the array, for cued trials
+	/* integer param constructor: delay =0, duration = 5000 (200 hz), nThreadPulseOrZero = 0 for infinite train for uncued, with circular buffer, or the size of the array, for cued trials
 	*/
-	leverThread (void * initData, unsigned int threadPulseN, int &errCode) : pulsedThread ((unsigned int) 0, (unsigned int)5000, (unsigned int) threadPulseN, initData, &lever_init, nullptr, &lever_Hi, 1, errCode) {
-	nLeverTrain = threadPulseN;
+	leverThread (void * initData, unsigned int nThreadPulsesOrZero, int &errCode) : pulsedThread ((unsigned int) 0, (unsigned int)(1E06/kLEVER_FREQ), (unsigned int) nThreadPulsesOrZero, initData, &lever_init, nullptr, &lever_Hi, 1, errCode) {
 	};
 	
-	static leverThread * leverThreadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircular, int goalCuerPin, float cuerFreq) ;
-	void setConstForce (int theForce);
+	static leverThread * leverThreadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircularOrZero,  int goalCuerPinOrZero, float cuerFreqOrZero) ;
+	int setConstForce (int theForce, int isLocking);
 	int getConstForce (void);
 	
 	protected:
 		leverThreadStructPtr taskPtr;
-		unsigned int nLeverTrain;
+		int cueMode;
 };
 
 #endif
