@@ -34,8 +34,8 @@ typedef struct leverThreadInitStruct{
 	unsigned int nPositionData; 	// number of points in array,
 	unsigned int nCircular;			// number of points at start to reserve for circular buffer at start, use nCircular for finite length trials
 	int goalCuerPin;				// number of a GPIO pin to use for a cue that lever is in rewarded position, else 0 for no cue
-	float cuerFreq;				// if a tone, frequency of tone to play. duty cycle is assumed to 0.5. If a simple on/off, pass 0
-	unsigned int nForceData;		//
+	float cuerFreq;					// if a tone, frequency of tone to play. duty cycle is assumed to 0.5. If a simple on/off, pass 0
+	unsigned int nForceData;		// size of force data array - sets time it takes to switch on perturbation
 }leverThreadInitStruct, *leverThreadInitStructPtr;
 
 
@@ -44,8 +44,8 @@ typedef struct leverThreadInitStruct{
 typedef struct leverThreadStruct{
 	uint8_t * positionData;		// array for inputs from quadrature decoder, array passed in from calling function
 	unsigned int nPositionData; // number of points in lever position array,
-	unsigned int iPosition; 		// current place in position array
-	uint8_t leverPosition; 		// current lever position
+	unsigned int iPosition; 	// current place in position array
+	uint8_t leverPosition; 		// current lever position in ticks of the lever, 0 -255
 	unsigned int nCircular;		// number of points at start of position array to use for a circular buffer for uncued trials set to nPosition data for no circular buffer
 	uint8_t leverTrialStartPos;	// when lever crosses here, we break out of circular buffer and start a trial. set to nPosition when not circular
 	unsigned int circularBreak;	// where we broke out of circular buffer and started a trial.
@@ -91,24 +91,25 @@ const int kDAC_WRITEEPROM = 0x60; // to the EPROM
 const int kDAC_ADDRESS = 0x62; 	// i2c address to use
 
 
-/* ********************* lever_thread class extends pulsedThread ****************
+/* ********************* leverThread class extends pulsedThread ****************
 Works the motorized lever for the leverPulling task 
 last modified:
 2018/02/08 by Jamie Boyd - initial verison */
-class lever_thread : public pulsedThread{
+class leverThread : public pulsedThread{
 	public:
 	/* integer param constructor: delay =0, duration = 5000 (200 hz), threadPulseN = 0 for infinite train for uncued, with circular buffer, or the size of the array, for cued trials
 	*/
-	lever_thread (void * initData, int &errCode) : pulsedThread ((unsigned int) 0, (unsigned int)5000, (unsigned int) 0, initData, &lever_init, nullptr, &lever_Hi, 1, errCode) {
-	*leverThreadStructPtr;
+	leverThread (void * initData, unsigned int threadPulseN, int &errCode) : pulsedThread ((unsigned int) 0, (unsigned int)5000, (unsigned int) threadPulseN, initData, &lever_init, nullptr, &lever_Hi, 1, errCode) {
+	nLeverTrain = threadPulseN;
 	};
 	
-	static lever_thread * lever_threadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircular, int goalCuerPin, float cuerFreq) ;
+	static leverThread * leverThreadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircular, int goalCuerPin, float cuerFreq) ;
 	void setConstForce (int theForce);
 	int getConstForce (void);
 	
 	protected:
 		leverThreadStructPtr taskPtr;
+		unsigned int nLeverTrain;
 };
 
 #endif

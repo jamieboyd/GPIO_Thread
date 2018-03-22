@@ -139,7 +139,7 @@ void lever_Hi (void * taskData){
 
 
 /* ************* Custom task data delete function *********************/
-void lever_thread_delTask (void * taskData){
+void leverThread_delTask (void * taskData){
 	leverThreadStructPtr taskPtr = (leverThreadStructPtr) taskData;
 	delete (taskPtr->forceData);
 	delete (taskPtr);
@@ -224,12 +224,12 @@ int leverThread_zeroLeverCallback (void * modData, taskParams, * theTask){
 */
 
 
-/* *************************** lever_thread Class Methods *******************************************************
+/* *************************** leverThread Class Methods *******************************************************
  
  ******************** ThreadMaker with Integer pulse duration, delay, and number of pulses timing description inputs ********************
  Last Modified:
  2018/02/08 by Jamie Boyd - Initial Version */
-lever_thread * lever_thread::lever_threadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircular, int goalCuerPin, float cuerFreq) {
+leverThread * leverThread::leverThreadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircular, int goalCuerPin, float cuerFreq) {
 	
 	// make and fill a leverTask struct
 	leverThreadInitStructPtr initStruct = new leverThreadInitStruct;
@@ -241,16 +241,16 @@ lever_thread * lever_thread::lever_threadMaker (uint8_t * positionData, unsigned
 	
 	// call class constructor which  calls pulsedThread constructor
 	int errCode;
-	lever_thread * newLever = new lever_thread ((void *) initStruct, errCode);
+	leverThread * newLever = new lever_thread ((void *) initStruct, errCode);
 	if (errCode){
 #if beVerbose
-		printf ("lever_thread_threadMaker failed to make lever_thread object.\n");
+		printf ("leverThreadMaker failed to make leverThread object.\n");
 #endif
 		return nullptr;
 	}
 	// set custom task delete function
-	newLever->setTaskDataDelFunc (&lever_thread_delTask);
-	// make a lever_thread pointer for easy direct access to thread task data 
+	newLever->setTaskDataDelFunc (&leverThread_delTask);
+	// make a leverThread pointer for easy direct access to thread task data 
 	newLever->taskPtr = (leverThreadStructPtr)newLever->getTaskData ();
 	return newLever;
 
@@ -259,12 +259,12 @@ lever_thread * lever_thread::lever_threadMaker (uint8_t * positionData, unsigned
 
 
 
-void lever_thread::setConstForce (int theForce){
+void leverThread::setConstForce (int theForce){
 	
 }
 	
 
-int lever_thread::getConstForce (void){
+int leverThread::getConstForce (void){
 	return taskPtr->constForce;
 }	
 

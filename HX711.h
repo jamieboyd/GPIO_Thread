@@ -30,8 +30,8 @@
 	each high-to-low transution indicates a new value is available from the HX711
 	
 	The data pin goes high when data has been read, and only goes low when new data is available
-	___      _   _       _    __________________
-	   |____| |_| |_____| |__|                          |__Data Pin
+	___      _   _       _    ______________________
+	   |____| |_| |_____| |__|                      |__Data Pin
 	
 	
 	___|||||||||||||||||||||||||____________________|| Clock Pin
