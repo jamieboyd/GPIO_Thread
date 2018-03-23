@@ -241,7 +241,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams, * theTask){
 	spi_wpData[0] = kQD_CLEAR_COUNTER;
 	wiringPiSPIDataRW(kQD_CS_LINE, taskData->spi_wpData, 1);
 	
-	
+
 	uint8_t prevLeverPos = 255, leverPos;
 	// make values for motor, and set inital value
 	int dacBase = 500;
@@ -272,7 +272,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams, * theTask){
 		printf ("Could not find zero position for lever.\n");
 	return returnVal;
 }
-*/
+
 
 	
 	
@@ -343,3 +343,8 @@ int leverThread::getConstForce (void){
 }	
 
 
+void leverThread::startUncued (void){
+	taskPtr->iPosition =0;
+	taskPtr->trialPosition =0;
+	DoTask ();
+}

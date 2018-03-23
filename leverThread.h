@@ -26,7 +26,9 @@
 
 /* *********************** Forward declare functions used by thread so we can refer to them in constructor *************************/
 int lever_init (void * initDataP, void *  &taskDataP);
-void lever_Hi (void * taskData);
+void lever_UnCued (void * taskData);
+void lever_Cued (void * taskData);
+
 
 /* ***************** Init Data for lever Task ********************************/
 typedef struct leverThreadInitStruct{
