@@ -106,7 +106,10 @@ class leverThread : public pulsedThread{
 	static leverThread * leverThreadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircular, int goalCuerPin, float cuerFreq) ;
 	void setConstForce (int theForce);
 	int getConstForce (void);
+	/* Un-cued trials */
+	void startUncued (void);
 	
+	int checkTrial(void);
 	protected:
 		leverThreadStructPtr taskPtr;
 		unsigned int nLeverTrain;

@@ -71,7 +71,8 @@ int lever_init (void * initDataP, void *  &taskDataP){
 Runs as an infinite train when mouse is present, filling circular buffer till we pass threshold
 Or run as a cued trial with a train of length nPositionData, you do the cue and start the train
 */
-void lever_Hi (void * taskData){
+
+void lever_UnCued (void * taskData){
 	// cast task data to  leverStruct
 	leverThreadStructPtr leverTaskPtr = (leverThreadStructPtr) taskData;
 	// read quadrature decoder into position data, so we can get lever position always
@@ -80,7 +81,6 @@ void lever_Hi (void * taskData){
 	wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
 	leverTaskPtr->leverPosition= leverTaskPtr->spi_wpData[1];
 	//printf ("Lever position = %d.\n", leverTaskPtr->leverPosition);
-	// if we are at the end of a trial, then don't overwrite any data
 	if (leverTaskPtr->iPosition < leverTaskPtr-> nPositionData){
 		leverTaskPtr->positionData [leverTaskPtr->iPosition] = leverTaskPtr->leverPosition;
 		// light the lamp, or sound the horn
@@ -132,9 +132,59 @@ void lever_Hi (void * taskData){
 			}
 		}
 		leverTaskPtr->iPosition +=1;
-	}else{ // we are at end of a trial.
+	}else{ //if we are at the end of a trial, then don't overwrite any data
+
 		// 
 	}
+}
+
+void lever_Cued (void * taskData){
+	// cast task data to  leverStruct
+	leverThreadStructPtr leverTaskPtr = (leverThreadStructPtr) taskData;
+	// read quadrature decoder into position data, so we can get lever position always
+	leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
+	leverTaskPtr->spi_wpData[1] = 0;
+	wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
+	leverTaskPtr->leverPosition= leverTaskPtr->spi_wpData[1];
+	//printf ("Lever position = %d.\n", leverTaskPtr->leverPosition);
+	leverTaskPtr->positionData [leverTaskPtr->iPosition] = leverTaskPtr->leverPosition;
+	// light the lamp, or sound the horn
+	if (leverTaskPtr->goalCuer != nullptr){
+		if ((leverTaskPtr->inGoal== false)&&((leverTaskPtr->leverPosition > leverTaskPtr->goalBottom)&&(leverTaskPtr->leverPosition < leverTaskPtr->goalTop))){
+			leverTaskPtr->inGoal = true;
+			if (leverTaskPtr->goalMode == 1){
+				leverTaskPtr->goalCuer->setLevel(1,1);
+			}else{
+				leverTaskPtr->goalCuer->startInfiniteTrain ();
+			}
+		}else{
+			if ((leverTaskPtr->inGoal== true)&&((leverTaskPtr->leverPosition < leverTaskPtr->goalBottom) || (leverTaskPtr->leverPosition > leverTaskPtr->goalTop))){
+				leverTaskPtr->inGoal = false;
+				if (leverTaskPtr->goalMode == 1){
+					leverTaskPtr->goalCuer->setLevel(0,1);
+				}else{
+					leverTaskPtr->goalCuer->stopInfiniteTrain ();
+				}
+			}
+		}
+	}
+	// check for seting force
+	if (leverTaskPtr->iPosition == leverTaskPtr->forceStartPos){
+		leverTaskPtr->doForce = true;
+		leverTaskPtr->iForce =0;
+	}
+	if (leverTaskPtr->doForce){
+		// write the DAC constant 
+		wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // put it in DAC mode
+		// write the data
+		leverTaskPtr->leverForce =leverTaskPtr->forceData[leverTaskPtr->iForce] ;
+		wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverTaskPtr->leverForce  >> 8) & 0x0F, leverTaskPtr->leverForce  & 0xFF);
+		leverTaskPtr->iForce +=1;
+		if (leverTaskPtr->iForce == leverTaskPtr->nForceData){ // all out of forces but leave force at final ramp pos until the end of the trial
+			leverTaskPtr->doForce = false;
+		}
+	}
+	leverTaskPtr->iPosition +=1;
 }
 
 
