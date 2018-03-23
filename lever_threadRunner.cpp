@@ -44,10 +44,10 @@ int main(int argc, char **argv){
 	printf ("leverThread reporting\n");
 	uint8_t * positionData = new uint8_t [400];
 
-	leverThread * myLeverThread= leverThread::leverThreadMaker (positionData, 400, 0, 0, 0);
+	leverThread * myLeverThread= leverThread::leverThreadMaker (positionData, 400, 0, 23, 0);
 	printf ("leverThread made thread\n");
 	//myLeverThread->modTrainLength(400);
-	myLeverThread->startTrain();
+	myLeverThread->startInfiniteTrain();
 	printf ("leverThread called startTrain\n");
 	//myLeverThread->waitOnBusy (3.0);
 	//printf ("leverThread waited on busy.\n");

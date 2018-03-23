@@ -104,8 +104,8 @@ Last Modified:
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object, level, and isLocking");
 		return NULL;
 	}
-	SimpleGPIO_thread * threadPtr = static_cast<SimpleGPIO_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
-	int returnVal =threadPtr->setLevel (theLevel, isLocking);
+	leverThread* threadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	int returnVal =threadPtr->setConstForce (theLevel, isLocking);
 	return  Py_BuildValue("i", returnVal);
 }
 
