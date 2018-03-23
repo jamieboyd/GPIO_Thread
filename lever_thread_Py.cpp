@@ -1,5 +1,5 @@
 #include <Python.h>
-#include "lever_thread.h"
+#include "leverThread.h"
 
 /* *** Makes and returns a new lever thread object. 
 
@@ -8,7 +8,7 @@
 Last Modified:
 2018/03/12 by Jamie Boyd - initial version */
 void  py_Lever_del(PyObject * PyPtr){
-	delete static_cast<lever_thread*> (PyCapsule_GetPointer (PyPtr, "leverThread"));
+	delete static_cast<leverThread*> (PyCapsule_GetPointer (PyPtr, "leverThread"));
 }
 
 static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
@@ -45,6 +45,16 @@ static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 	}
   }
   
+  
+  static PyObject* leverThread_setConstForce (PyObject *self, PyObject *args){
+	  PyObject *PyPtr;
+	  int newForce;
+	  int isLocking;
+	  if (!PyArg_ParseTuple(args,"Oii", &PyPtr, &theLevel, &isLocking)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object, force level, and isLocking");
+		return NULL;
+	}
+	
   
 /* Module method table */
 static PyMethodDef leverThreadMethods[] = {

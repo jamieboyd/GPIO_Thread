@@ -1,12 +1,12 @@
 /* ************************ Runs the lever_thread for testing purposes ***********************************
 
 Compile like this:
-g++ -O3 -std=gnu++11 -Wall -lpulsedThread -lwiringPi GPIOlowlevel.cpp SimpleGPIO_thread.cpp lever_thread.cpp lever_threadRunner.cpp -o leverThread
+g++ -O3 -std=gnu++11 -Wall -lpulsedThread -lwiringPi GPIOlowlevel.cpp SimpleGPIO_thread.cpp leverThread.cpp lever_threadRunner.cpp -o leverThread
 
 last modified:
 2018/03/08 by Jamie Boyd - started lever_threadRunner */
 
-#include "lever_thread.h"
+#include "leverThread.h"
 
 
 /* ************************ Gets a line of input from stdin into a passed-in char buffer ************************************************************************************
@@ -44,13 +44,13 @@ int main(int argc, char **argv){
 	printf ("leverThread reporting\n");
 	uint8_t * positionData = new uint8_t [400];
 
-	lever_thread * myLeverThread= lever_thread::lever_thread_threadMaker (positionData, 400, 401, 0, 0);
+	leverThread * myLeverThread= leverThread::leverThreadMaker (positionData, 400, 0, 23, 0);
 	printf ("leverThread made thread\n");
-	myLeverThread->modTrainLength(400);
-	myLeverThread->DoTask();
-	printf ("leverThread called doTask\n");
-	myLeverThread->waitOnBusy (3.0);
-	printf ("leverThread waited on busy.\n");
+	//myLeverThread->modTrainLength(400);
+	myLeverThread->startInfiniteTrain();
+	printf ("leverThread called startTrain\n");
+	//myLeverThread->waitOnBusy (3.0);
+	//printf ("leverThread waited on busy.\n");
 	printf ("data=");
 	for (unsigned int i =0; i < 400; i +=1){ 
 		printf ("%i, ", positionData [i]);
