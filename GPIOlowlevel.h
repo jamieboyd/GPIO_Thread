@@ -150,6 +150,11 @@ PWM_BASE is defined by 0x20C000 offset from the base peripheral addresss */
 #define	PWM0_SERIAL     0x0002  // Run in serial mode
 #define	PWM0_ENABLE     0x0001  // Channel Enable
 
+extern bcm_peripheralPtr PWMperi ;
+extern int PWMperi_users;
+volatile unsigned int * usePWMPeri (void);
+void unUsePWMperi (void);
+
 /************************************************* BSC peripheral, for I2C******************************************************************
 I2C  Control, done with one of the Broadcom Serial Controllers, BSC0 for Pi 1, BSC1 for Pi 2 */
 #ifdef RPI
