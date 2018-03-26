@@ -72,50 +72,39 @@ Runs as an infinite train when mouse is present, filling circular buffer till we
 Or run as a cued trial with a train of length nPositionData, you do the cue and start the train
 */
 
-void lever_UnCued (void * taskData){
+void lever_Hi (void * taskData){
 	// cast task data to  leverStruct
 	leverThreadStructPtr leverTaskPtr = (leverThreadStructPtr) taskData;
 	// read quadrature decoder into position data, so we can get lever position always
 	leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
 	leverTaskPtr->spi_wpData[1] = 0;
 	wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
-	leverTaskPtr->leverPosition= leverTaskPtr->spi_wpData[1];
+	uint8_t leverPosition = leverTaskPtr->spi_wpData[1];
+	leverTaskPtr->leverPosition= leverPosition;
 	//printf ("Lever position = %d.\n", leverTaskPtr->leverPosition);
-	if (leverTaskPtr->iPosition < leverTaskPtr-> nPositionData){
-		leverTaskPtr->positionData [leverTaskPtr->iPosition] = leverTaskPtr->leverPosition;
+	if (leverTaskPtr->iPosition < leverTaskPtr-> nToFinish){
+		leverTaskPtr->positionData [leverTaskPtr->iPosition] = leverPosition;
 		// light the lamp, or sound the horn
-			if (leverTaskPtr->goalCuer != nullptr){
-
-		if ((leverTaskPtr->inGoal== false)&&((leverTaskPtr->leverPosition > leverTaskPtr->goalBottom)&&(leverTaskPtr->leverPosition < leverTaskPtr->goalTop))){
-			leverTaskPtr->inGoal = true;
-			if (leverTaskPtr->goalMode == 1){
-				leverTaskPtr->goalCuer->setLevel(1,1);
-			}else{
-				leverTaskPtr->goalCuer->startInfiniteTrain ();
-			}
-		}else{
-			if ((leverTaskPtr->inGoal== true)&&((leverTaskPtr->leverPosition < leverTaskPtr->goalBottom) || (leverTaskPtr->leverPosition > leverTaskPtr->goalTop))){
-				leverTaskPtr->inGoal = false;
+		if (leverTaskPtr->goalCuer != nullptr){
+			if ((leverTaskPtr->inGoal== false)&&((leverPosition > leverTaskPtr->goalBottom)&&(leverPosition < leverTaskPtr->goalTop))){
+				leverTaskPtr->inGoal = true;
 				if (leverTaskPtr->goalMode == 1){
-					leverTaskPtr->goalCuer->setLevel(0,1);
+					leverTaskPtr->goalCuer->setLevel(1,1);
 				}else{
-					leverTaskPtr->goalCuer->stopInfiniteTrain ();
+					leverTaskPtr->goalCuer->startInfiniteTrain ();
+				}
+			}else{
+				if ((leverTaskPtr->inGoal== true)&&((leverPosition < leverTaskPtr->goalBottom) || (leverPosition > leverTaskPtr->goalTop))){
+					leverTaskPtr->inGoal = false;
+					if (leverTaskPtr->goalMode == 1){
+						leverTaskPtr->goalCuer->setLevel(0,1);
+					}else{
+						leverTaskPtr->goalCuer->stopInfiniteTrain ();
+					}
 				}
 			}
 		}
-	}
-		// check for breakout of circular buffer
-		uint8_t lastLeverPos;
-		if (leverTaskPtr->iPosition == 0){
-			lastLeverPos = leverTaskPtr->positionData [leverTaskPtr->circularBreak - 1];
-		}else{
-			lastLeverPos = leverTaskPtr->positionData  [(leverTaskPtr->iPosition)-1];
-		}
-		if ((lastLeverPos <  leverTaskPtr->leverTrialStartPos) && (leverTaskPtr->leverPosition >  leverTaskPtr->leverTrialStartPos)){
-			leverTaskPtr->circularBreak = leverTaskPtr->iPosition;
-			leverTaskPtr->iPosition = leverTaskPtr->nCircular;
-		}
-		// check for seting force
+		// check for seting force, and maybe do the force
 		if (leverTaskPtr->iPosition == leverTaskPtr->forceStartPos){
 			leverTaskPtr->doForce = true;
 			leverTaskPtr->iForce =0;
@@ -131,60 +120,47 @@ void lever_UnCued (void * taskData){
 				leverTaskPtr->doForce = false;
 			}
 		}
-		leverTaskPtr->iPosition +=1;
-	}else{ //if we are at the end of a trial, then don't overwrite any data
-
-		// 
-	}
-}
-
-void lever_Cued (void * taskData){
-	// cast task data to  leverStruct
-	leverThreadStructPtr leverTaskPtr = (leverThreadStructPtr) taskData;
-	// read quadrature decoder into position data, so we can get lever position always
-	leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
-	leverTaskPtr->spi_wpData[1] = 0;
-	wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
-	leverTaskPtr->leverPosition= leverTaskPtr->spi_wpData[1];
-	//printf ("Lever position = %d.\n", leverTaskPtr->leverPosition);
-	leverTaskPtr->positionData [leverTaskPtr->iPosition] = leverTaskPtr->leverPosition;
-	// light the lamp, or sound the horn
-	if (leverTaskPtr->goalCuer != nullptr){
-		if ((leverTaskPtr->inGoal== false)&&((leverTaskPtr->leverPosition > leverTaskPtr->goalBottom)&&(leverTaskPtr->leverPosition < leverTaskPtr->goalTop))){
-			leverTaskPtr->inGoal = true;
-			if (leverTaskPtr->goalMode == 1){
-				leverTaskPtr->goalCuer->setLevel(1,1);
-			}else{
-				leverTaskPtr->goalCuer->startInfiniteTrain ();
-			}
-		}else{
-			if ((leverTaskPtr->inGoal== true)&&((leverTaskPtr->leverPosition < leverTaskPtr->goalBottom) || (leverTaskPtr->leverPosition > leverTaskPtr->goalTop))){
-				leverTaskPtr->inGoal = false;
-				if (leverTaskPtr->goalMode == 1){
-					leverTaskPtr->goalCuer->setLevel(0,1);
+		// trial position specific stuff
+		if (leverTaskPtr -> trialPos ==0){// 0 means lever not moved into goal area yet
+			if (leverTaskPtr->isCued){
+				if (leverPosition >  leverTaskPtr -> goalBottom){
+					leverTaskPtr -> trialPos = 1;
 				}else{
-					leverTaskPtr->goalCuer->stopInfiniteTrain ();
+					if (leverTaskPtr->iPosition ==  leverTaskPtr->nToGoal){
+						leverTaskPtr -> trialPos = -1;
+					}
+				}
+			}else { // uncued trial
+				if (leverPosition >  leverTaskPtr -> goalBottom){
+					leverTaskPtr->circularBreak = leverTaskPtr->iPosition;
+					leverTaskPtr->iPosition =  leverTaskPtr->nCircular; 
+					leverTaskPtr ->trialPos =1;
+				}else{
+					// check for wraparound of circular buffer
+					if (leverTaskPtr->iPosition ==  leverTaskPtr->nCircular){
+						leverTaskPtr->iPosition = 1;
+					}
+				}
+			}
+		} else{
+			if (leverTaskPtr ->trialPos ==1){ // check if we are still in goal range 
+				if (leverTaskPtr->inGoal = false){
+					leverTaskPtr ->trialPos = -1;
 				}
 			}
 		}
 	}
-	// check for seting force
-	if (leverTaskPtr->iPosition == leverTaskPtr->forceStartPos){
-		leverTaskPtr->doForce = true;
-		leverTaskPtr->iForce =0;
-	}
-	if (leverTaskPtr->doForce){
-		// write the DAC constant 
-		wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // put it in DAC mode
-		// write the data
-		leverTaskPtr->leverForce =leverTaskPtr->forceData[leverTaskPtr->iForce] ;
-		wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverTaskPtr->leverForce  >> 8) & 0x0F, leverTaskPtr->leverForce  & 0xFF);
-		leverTaskPtr->iForce +=1;
-		if (leverTaskPtr->iForce == leverTaskPtr->nForceData){ // all out of forces but leave force at final ramp pos until the end of the trial
-			leverTaskPtr->doForce = false;
-		}
-	}
+	// increment position and see if we are done
 	leverTaskPtr->iPosition +=1;
+	if (leverTaskPtr->iPosition == nToFinish){
+		if (leverTaskPtr ->trialPos == 1){
+			leverTaskPtr ->trialPos = 2;
+		}else{
+			leverTaskPtr ->trialPos = -2;
+		}
+		int leverForce =leverTaskPtr->constForce;
+		wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverForce  >> 8) & 0x0F, leverForce  & 0xFF);
+	}
 }
 
 
@@ -194,6 +170,7 @@ void leverThread_delTask (void * taskData){
 	delete (taskPtr->forceData);
 	delete (taskPtr);
 }
+
 
 typedef struct pertubSetStruct{
 	unsigned int forceStartPos;
@@ -343,8 +320,14 @@ int leverThread::getConstForce (void){
 }	
 
 
-void leverThread::startUncued (void){
+void leverThread::startTrial (void){
 	taskPtr->iPosition =0;
 	taskPtr->trialPosition =0;
-	DoTask ();
+	taskPtr->inGoal=false;
+	leverTaskPtr->doForce = false;
+	if (leverTaskPtr->isCued){
+		DoTask ();
+	}else{
+		startInfiniteTrain ();
+	}
 }

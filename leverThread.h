@@ -26,9 +26,8 @@
 
 /* *********************** Forward declare functions used by thread so we can refer to them in constructor *************************/
 int lever_init (void * initDataP, void *  &taskDataP);
-void lever_UnCued (void * taskData);
-void lever_Cued (void * taskData);
-
+void lever_Hi (void * taskData);
+void leverThread_delTask (void * taskData);
 
 /* ***************** Init Data for lever Task ********************************/
 typedef struct leverThreadInitStruct{
@@ -51,8 +50,8 @@ typedef struct leverThreadStruct{
 	uint8_t leverPosition; 		// current lever position in ticks of the lever, 0 -255
 	// fields used for un-cued trials, i.e., inifinite train with circular buffer 
 	unsigned int nCircular;		// number of points at start of position array to use for a circular buffer for uncued trials set to nPosition data for no circular buffer
-	uint8_t leverTrialStartPos;	// when lever crosses here, we break out of circular buffer and start a trial. set to nPosition when not circular
 	unsigned int circularBreak;	// where we broke out of circular buffer and started a trial.
+	bool isCued;				// true if we are running in cued mode, false for uncued mode
 	// for cued trials
 	unsigned int nToGoal;		// max number of ticks mouse has to get lever into goal position to be considered a good trial
 	// fields for task difficulty, lever position and time

@@ -4,8 +4,8 @@
 void ptPWM_delChan (char bcm_PWM_chan){
 	if (bcm_PWM_chan == 0){
 		INP_GPIO(GPIOperi->addr,18);
-		OUT_GPIO(GPIOperi->addr,18);
-		GPIO_CLR(GPIOperi->addr, (1 << 18)) ;
+		//OUT_GPIO(GPIOperi->addr,18);
+		//GPIO_CLR(GPIOperi->addr, (1 << 18)) ;
 	}else{
 		if (bcm_PWM_chan == 1){
 			INP_GPIO(GPIOperi->addr,19);
