@@ -124,21 +124,49 @@ static PyObject* py_leverThread_startTrial (PyObject *self, PyObject *PyPtr) {
 static PyObject* py_leverThread_checkTrial (PyObject *self, PyObject *PyPtr) {
 	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "leverThread"));
 	int trialCode;
-	bool isDone=leverThreadPtr->checkTrial(trialCode);
+	unsigned int goalEntryPos;
+	bool isDone=leverThreadPtr->checkTrial(trialCode, goalEntryPos);
 	PyObject *returnTuple;
 	if (isDone){
-		returnTuple = Py_BuildValue("(Oi)", Py_True, trialCode);
+		returnTuple = Py_BuildValue("(OiI)", Py_True, trialCode,goalEntryPos );
 		Py_INCREF (Py_True);
 	}else{
-		returnTuple = Py_BuildValue("(Oi)", Py_False, trialCode);
+		returnTuple = Py_BuildValue("(OiI)", Py_False, trialCode, goalEntryPos);
 		Py_INCREF (Py_False);
 	}
 	return returnTuple;
 }
 
+static PyObject* py_leverThread_doGoalCue (PyObject *self, PyObject *args){
+	  PyObject *PyPtr;
+	  int offOn;
+	  if (!PyArg_ParseTuple(args,"Oi", &PyPtr, &offOn)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object and offOn");
+		return NULL;
+	}
+	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "leverThread"));
+	leverThreadPtr->doGoalCue (offOn);
+	Py_RETURN_NONE;
+}
 
+static PyObject* py_leverThread_setHoldParams (PyObject *self, PyObject *args){
+	PyObject *PyPtr;
+	uint8_t goalBottom;
+	uint8_t goalTop;
+	unsigned int nHoldTicks;
+	if (!PyArg_ParseTuple(args,"OBBI", &PyPtr, &goalBottom, &goalTop, &nHoldTicks)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object, goalBottom, goalTop, and holdTicks");
+		return NULL;
+	}
+	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "leverThread"));
+	leverThreadPtr->setHoldParams (goalBottom, goalTop, nHoldTicks);
+	Py_RETURN_NONE;
+}
 
-
+static PyObject* py_leverThread_getLeverPos(PyObject *self, PyObject *PyPtr) {
+	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "leverThread"));
+	return Py_BuildValue("B", leverThreadPtr->getLeverPos());
+}
 
 /* Module method table */
 static PyMethodDef leverThreadMethods[] = {
@@ -150,7 +178,10 @@ static PyMethodDef leverThreadMethods[] = {
   {"setPerturbForce", py_leverThread_setPerturbForce, METH_VARARGS, "Fills perturbation force array with sigmoid ramp"},
   {"setPerturbStartPos", py_leverThread_setPerturbStartPos, METH_VARARGS, "sets start position of perturb force"},
   {"startTrial", py_leverThread_startTrial, METH_O, "starts a trial"},
-  {"checkTrial", py_leverThread_checkTrial, METH_O, "returns a tuple of a boolean for trial completion and an integer for trial result"},
+  {"checkTrial", py_leverThread_checkTrial, METH_O, "returns a three tuple of a boolean for trial completion and integers for trial result and goal position"},
+  {"doGoalCue", py_leverThread_doGoalCue, METH_VARARGS, "turns In-Goal Cue on or off"},
+  {"setHoldParams", py_leverThread_setHoldParams,  METH_VARARGS, "leverThread, goalBottom, goalTop, nHoldTicks, sets lever hold params for next trial."},
+  {"getLeverPos",py_leverThread_getLeverPos, METH_O, "returns the current lever position"},
   { NULL, NULL, 0, NULL}
 };
 

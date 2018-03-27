@@ -57,10 +57,10 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	taskData->forceData = new int [initDataPtr->nForceData];
 	// initialize iPosition to 0 - other initialization?
 	taskData->iPosition=0;
-	taskData->forceStartPos = initDataPtr->nForceData -100;
+	taskData->forceStartPos = initDataPtr->nPositionData; // no force will be applied cause we never get to here
 	
-	// stuff for testing, not production
-	taskData->goalBottom =2;
+	// initialize values for testing, remember to reset
+	taskData->goalBottom =20;
 	taskData->goalTop = 250;
 	taskData->nHoldTicks = 100;
 	printf ("Initing lever pos data\n");
@@ -127,10 +127,12 @@ void lever_Hi (void * taskData){
 				if (leverPosition >  leverTaskPtr -> goalBottom){
 					leverTaskPtr -> trialPos = 2;
 					leverTaskPtr ->nToFinish = leverTaskPtr->iPosition  + leverTaskPtr->nHoldTicks;
+					leverTaskPtr->circularBreak = leverTaskPtr->iPosition;
 				}else{
 					if (leverTaskPtr->iPosition ==  leverTaskPtr->nToGoal){
 						leverTaskPtr -> trialPos = -1;
 						leverTaskPtr ->nToFinish = leverTaskPtr->iPosition  + leverTaskPtr->nHoldTicks;
+						leverTaskPtr->circularBreak = leverTaskPtr->iPosition;
 					}
 				}
 			}else { // uncued trial
@@ -302,6 +304,10 @@ int leverThread::getConstForce (void){
 }
 
 
+uint8_t leverThread::getLeverPos (void){
+	return taskPtr->leverPosition;
+}
+
 /* ************applies a given force ****************************
 If theForce is less than 0, the value for constant force will be used
 Force is also scrunched to max, 4095
@@ -373,8 +379,9 @@ void leverThread::startTrial (void){
 /* *********************************Checks if trial is complete or what stage it is at *********************************************
 Returns truth that a trial is completed, sets trial code to trial code, which will be 3 at end of a successful trial
 last modified 2018/03/26 by Jamie Boyd - initial version */
-bool leverThread::checkTrial(int &trialCode){
+bool leverThread::checkTrial(int &trialCode, unsigned int &goalEntryPos){
 	trialCode = taskPtr->trialPos;
+	goalEntryPos = taskPtr->circularBreak;
 	bool isComplete = taskPtr->trialComplete;
 	if (isComplete){
 		if (!(taskPtr->isCued)){
@@ -383,3 +390,32 @@ bool leverThread::checkTrial(int &trialCode){
 	}
 	return isComplete;
 }
+
+/* ************************************** tests the in-goal cuer manually***********************************************
+If you dont have a goal cuer, it does nothing
+last modified 2018/03/27 by Jamie Boyd - initial version */
+void leverThread::doGoalCue (int offOn){
+	if (taskPtr->goalCuer != nullptr){
+		if (taskPtr->goalMode == 0){
+			if (offOn){
+				taskPtr->goalCuer->setLevel(1,0);
+			}else{
+				taskPtr->goalCuer->setLevel(0,0);
+				}
+		}else{
+			if (offOn){
+				taskPtr->goalCuer->startInfiniteTrain ();
+			}else{
+				taskPtr->goalCuer->stopInfiniteTrain ();
+			}
+		}
+	}
+}
+
+void leverThread::setHoldParams (uint8_t goalBottomP, uint8_t goalTopP, unsigned int nHoldTicksP){
+	taskPtr->goalBottom =goalBottomP;
+	taskPtr->goalTop = goalTopP;
+	taskPtr->nHoldTicks = nHoldTicksP;
+}
+
+
