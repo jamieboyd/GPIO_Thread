@@ -151,9 +151,7 @@ void lever_Hi (void * taskData){
 	leverTaskPtr->iPosition +=1;
 	if (leverTaskPtr->iPosition == leverTaskPtr->nToFinish){
 		leverTaskPtr->trialComplete =true;
-		if (leverTaskPtr ->trialPos == 2){
-			leverTaskPtr ->trialPos = 3;
-		}
+		
 		int leverForce =leverTaskPtr->constForce;
 		wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
 		wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverForce  >> 8) & 0x0F, leverForce  & 0xFF);
@@ -167,7 +165,6 @@ void leverThread_delTask (void * taskData){
 	delete (taskPtr->forceData);
 	delete (taskPtr);
 }
-
 
 
 /* ************************** zero Lever **********************************************
@@ -318,7 +315,7 @@ void leverThread::applyForce (int theForce){
 
 /* ************************************** Zeroing the Lever ************************************************
 Last Modified 2018/03/26 by Jamie Boyd - initial version */
-int  leverThread::zeroLever (int mode, int isLocking){
+int leverThread::zeroLever (int mode, int isLocking){
 	
 	int * modePtr = new int;
 	* modePtr = mode;
@@ -346,7 +343,7 @@ void leverThread::setPerturbForce (int perturbForce){
 
 /* ************************ Sets posiiton where perturb force is applied *****************
 last modified 2018/03/26 by Jamie Boyd - initial version */
-void leverThread::setPerturbStartPos(int perturbStartPos){
+void leverThread::setPerturbStartPos(unsigned int perturbStartPos){
 	taskPtr->forceStartPos =  perturbStartPos;
 }
 
