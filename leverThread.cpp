@@ -39,8 +39,10 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	if (initDataPtr->goalCuerPin > 0){
 		if (initDataPtr->cuerFreq ==0){
 			taskData->goalCuer = SimpleGPIO_thread::SimpleGPIO_threadMaker (initDataPtr->goalCuerPin, 1, (float) 100, (float) 0.5, (float) 0.1, 1);
+			taskData->goalMode = 0;
 		}else{
 			taskData->goalCuer = SimpleGPIO_thread::SimpleGPIO_threadMaker (initDataPtr->goalCuerPin, 1, (float) initDataPtr->cuerFreq , (float) 0.5, (float) 0, 1);
+			taskData->goalMode = 1;
 		}
 	}else{
 		taskData->goalCuer  = nullptr;
@@ -56,7 +58,11 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	// initialize iPosition to 0 - other initialization?
 	taskData->iPosition=0;
 	taskData->forceStartPos = initDataPtr->nForceData -100;
-
+	
+	// stuff for testing, not production
+	taskData->goalBottom =2;
+	taskData->goalTop = 250;
+	taskData->nHoldTicks = 100;
 	printf ("Initing lever pos data\n");
 
 	return 0;
@@ -84,7 +90,7 @@ void lever_Hi (void * taskData){
 		if (leverTaskPtr->goalCuer != nullptr){
 			if ((leverTaskPtr->inGoal== false)&&((leverPosition > leverTaskPtr->goalBottom)&&(leverPosition < leverTaskPtr->goalTop))){
 				leverTaskPtr->inGoal = true;
-				if (leverTaskPtr->goalMode == 1){
+				if (leverTaskPtr->goalMode == 0){
 					leverTaskPtr->goalCuer->setLevel(1,1);
 				}else{
 					leverTaskPtr->goalCuer->startInfiniteTrain ();
@@ -369,5 +375,11 @@ Returns truth that a trial is completed, sets trial code to trial code, which wi
 last modified 2018/03/26 by Jamie Boyd - initial version */
 bool leverThread::checkTrial(int &trialCode){
 	trialCode = taskPtr->trialPos;
-	return  taskPtr->trialComplete;
+	bool isComplete = taskPtr->trialComplete;
+	if (isComplete){
+		if (!(taskPtr->isCued)){
+			stopInfiniteTrain ();
+		}
+	}
+	return isComplete;
 }
