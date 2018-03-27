@@ -127,7 +127,7 @@ class leverThread : public pulsedThread{
 	void applyForce (int theForce);
 	// setting perturb force and start positon
 	void setPerturbForce(int perturbForce);
-	void setPerturbStartPos(int perturbStartPos);
+	void setPerturbStartPos(unsigned int perturbStartPos);
 	
 	int zeroLever (int mode, int isLocking);
 	

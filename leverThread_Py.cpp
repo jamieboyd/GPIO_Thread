@@ -60,7 +60,7 @@ static PyObject* py_leverThread_setConstForce (PyObject *self, PyObject *args){
 
 static PyObject* py_leverThread_getConstForce (PyObject *self, PyObject *PyPtr) {
 	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "leverThread"));
-	return Py_BuildValue("i", leverThreadPtr->getConstForce();
+	return Py_BuildValue("i", leverThreadPtr->getConstForce());
 }
 
 static PyObject* py_leverThread_applyForce (PyObject *self, PyObject *args){
@@ -83,7 +83,7 @@ static PyObject* py_leverThread_zeroLever (PyObject *self, PyObject *args){
 		return NULL;
 	}
 	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "leverThread"));
-	return Py_BuildValue("i", leverThreadPtr-> zeroLever (zeroMode, isLocking);
+	return Py_BuildValue("i", leverThreadPtr-> zeroLever (zeroMode, isLocking));
 }
 
 static PyObject* py_leverThread_setPerturbForce (PyObject *self, PyObject *args){
@@ -110,13 +110,26 @@ static PyObject* py_leverThread_setPerturbStartPos (PyObject *self, PyObject *ar
 	Py_RETURN_NONE;
 }
 
+
+static PyObject* py_leverThread_startTrial (PyObject *self, PyObject *PyPtr) {
+	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "leverThread"));
+	leverThreadPtr->startTrial();
+	Py_RETURN_NONE;
+}
+
 static PyObject* py_leverThread_checkTrial (PyObject *self, PyObject *PyPtr) {
 	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "leverThread"));
 	int trialCode;
-	leverThreadPtr->checkTrial(trialCode);
-	
-	PyObject *tuple;
-	tuple = Py_BuildValue("(iis)", 1, 2, "three");
+	bool isDone=leverThreadPtr->checkTrial(trialCode);
+	PyObject *returnTuple;
+	if (isDone){
+		returnTuple = Py_BuildValue("(Oi)", Py_True, trialCode);
+		Py_INCREF (Py_True);
+	}else{
+		returnTuple = Py_BuildValue("(Oi)", Py_False, trialCode);
+		Py_INCREF (Py_False);
+	}
+	return returnTuple;
 }
 
 
@@ -131,8 +144,9 @@ static PyMethodDef leverThreadMethods[] = {
   {"applyForce", py_leverThread_applyForce, METH_VARARGS, "Sets force on lever for leverThread"},
   {"zeroLever", py_leverThread_zeroLever, METH_VARARGS, "Returns lever to front rail, optionally zeroing encoder"},
   {"setPerturbForce", py_leverThread_setPerturbForce, METH_VARARGS, "Fills perturbation force array with sigmoid ramp"},
+  {"setPerturbStartPos", py_leverThread_setPerturbStartPos, METH_VARARGS, "sets start position of perturb force"},
   {"startTrial", py_leverThread_startTrial, METH_O, "starts a trial"},
-
+  {"checkTrial", py_leverThread_checkTrial, METH_O, "returns a tuple of a boolean for trial completion and an integer for trial result"},
   { NULL, NULL, 0, NULL}
 };
 

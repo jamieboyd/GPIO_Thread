@@ -1,7 +1,7 @@
 /* ************************ Runs the lever_thread for testing purposes ***********************************
 
 Compile like this:
-g++ -O3 -std=gnu++11 -Wall -lpulsedThread -lwiringPi GPIOlowlevel.cpp SimpleGPIO_thread.cpp leverThread.cpp lever_threadRunner.cpp -o leverThread
+g++ -O3 -std=gnu++11 -Wall -lpulsedThread -lwiringPi GPIOlowlevel.cpp SimpleGPIO_thread.cpp leverThread.cpp leverThread_Runner.cpp -o leverThread
 
 last modified:
 2018/03/08 by Jamie Boyd - started lever_threadRunner */

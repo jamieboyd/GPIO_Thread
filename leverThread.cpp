@@ -181,7 +181,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 	sleeper.tv_sec = 0;
 	sleeper.tv_nsec = 5e07;
 	
-	int dacBase = taskPtr->constForce;
+	int dacBase = leverTaskPtr->constForce;
 	float dacIncr = (3500 - dacBase)/10;
 	int dacOut;
 	uint8_t prevLeverPos;
@@ -200,7 +200,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 	// set initial value as constant force
 	dacOut = (uint16_t) dacBase ;
 	wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
-	wiringPiI2CWriteReg8 (leverTaskPtr->fd, (dacOut  >> 8) & 0x0F, dacOut & 0xFF);
+	wiringPiI2CWriteReg8 (leverTaskPtr->i2c_fd, (dacOut  >> 8) & 0x0F, dacOut & 0xFF);
 	for (int ii =0; ii < 10; ii +=1, prevLeverPos =leverPos){
 		nanosleep (&sleeper, NULL) ;
 		// check new position, see if we are moving
@@ -211,8 +211,8 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 		// if lever is not moving in right direction, up the power
 		if (leverPos >= prevLeverPos){
 			dacOut = (uint16_t) (dacBase + (ii * dacIncr));
-			wiringPiI2CWrite (taskData->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
-			wiringPiI2CWriteReg8 (leverTaskPtr->fd, (dacOut  >> 8) & 0x0F, dacOut & 0xFF);
+			wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
+			wiringPiI2CWriteReg8 (leverTaskPtr->i2c_fd, (dacOut  >> 8) & 0x0F, dacOut & 0xFF);
 		}
 	}
 	prevLeverPos =leverPos;
@@ -233,7 +233,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 		}
 		// clear counter
 		leverTaskPtr->spi_wpData[0] = kQD_CLEAR_COUNTER;
-		wiringPiSPIDataRW(kQD_CS_LINE, taskData->spi_wpData, 1);
+		wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 1);
 		if (ii < 10){
 			returnVal= 1;
 		}else{
@@ -309,7 +309,6 @@ void leverThread::applyForce (int theForce){
 	}
 	// write the data
 	wiringPiI2CWriteReg8(taskPtr->i2c_fd, (theForce >> 8) & 0x0F, theForce  & 0xFF);
-	return 0;
 }
 
 
@@ -319,7 +318,7 @@ int leverThread::zeroLever (int mode, int isLocking){
 	
 	int * modePtr = new int;
 	* modePtr = mode;
-	int returnVal = modCustom (&leverThread_zerolever, (void * ) modePtr, isLocking);
+	int returnVal = modCustom (&leverThread_zeroLeverCallback, (void * ) modePtr, isLocking);
 	return returnVal;
 }
 
@@ -353,14 +352,14 @@ Starts a trial, either cued or un-cued
 last modified 2018/03/26 by Jamie Boyd - initial version */
 void leverThread::startTrial (void){
 	taskPtr->iPosition =1;
-	taskPtr->trialPosition =1;
+	taskPtr->trialPos =1;
 	taskPtr->trialComplete =false;
 	taskPtr->inGoal=false;
-	leverTaskPtr->doForce = false;
-	if (leverTaskPtr->isCued){
+	taskPtr->doForce = false;
+	if (taskPtr->isCued){
 		DoTask ();
 	}else{
-		leverTaskPtr ->nToFinish = leverTaskPtr->nCircular  + leverTaskPtr->nHoldTicks;
+		taskPtr ->nToFinish = taskPtr->nCircular  + taskPtr->nHoldTicks;
 		startInfiniteTrain ();
 	}
 }
