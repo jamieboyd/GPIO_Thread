@@ -28,6 +28,7 @@
 int lever_init (void * initDataP, void *  &taskDataP);
 void lever_Hi (void * taskData);
 void leverThread_delTask (void * taskData);
+int leverThread_zeroLeverCallback (void * modData, taskParams * theTask);
 
 /* ***************** Init Data for lever Task ********************************/
 typedef struct leverThreadInitStruct{
@@ -57,10 +58,12 @@ typedef struct leverThreadStruct{
 	// fields for task difficulty, lever position and time
 	uint8_t goalBottom;			// bottom of Goal area
 	uint8_t goalTop;			// top of Goal area
-	unsigned int nToFinish;		// number of ticks to end of a trial - must be less than nPositionData, or we need to delete and reallocate
+	unsigned int nHoldTicks;	// number of ticks lever needs to be held. must be less than nPositionData, or we need to delete and reallocate
+	unsigned int nToFinish;		// number of ticks to end of a trial - 
 	bool inGoal;				// thread sets this to true if lever is in goal position
 	int trialPos;				// thread sets this to 0 for trial not started yet, 1 for trial started, -1 for trial with errror encountered
-							//  2 for trial completed with success, -2 for completed no success. The uncued version must be monitored for 2 or -2 and data dealt with
+							//  2 for trial completed with success, -2 for completed no success. 
+	bool trialComplete;			// true when trial is complete
 	// fields for force data
 	int constForce;			// value for constant force applied to lever when no force prturbation is happening
 	int * forceData;			// array for output to DAC for force output
@@ -117,17 +120,22 @@ class leverThread : public pulsedThread{
 	*/
 	leverThread (void * initData, unsigned int nThreadPulsesOrZero, int &errCode) : pulsedThread ((unsigned int) 0, (unsigned int)(1E06/kLEVER_FREQ), (unsigned int) nThreadPulsesOrZero, initData, &lever_init, nullptr, &lever_Hi, 1, errCode) {
 	};
-	
 	static leverThread * leverThreadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircularOrZero,  int goalCuerPinOrZero, float cuerFreqOrZero) ;
-	int setConstForce (int theForce, int isLocking);
+	// constant force, setting, geting, applying a force
+	void setConstForce (int theForce);
 	int getConstForce (void);
-	/* Un-cued trials */
-	void startUncued (void);
+	void applyForce (int theForce);
+	// setting perturb force and start positon
+	void setPerturbForce(int perturbForce);
+	void setPerturbStartPos(int perturbStartPos);
 	
-	int checkTrial(void);
+	int zeroLever (int mode, int isLocking);
+	
+	void startTrial(void);
+	bool checkTrial(int &trialCode);
 	protected:
-		leverThreadStructPtr taskPtr;
-		int cueMode;
+	leverThreadStructPtr taskPtr;
+	int cueMode;
 };
 
 #endif

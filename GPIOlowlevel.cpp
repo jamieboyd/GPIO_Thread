@@ -46,7 +46,7 @@ int PWMperi_users=0;
 			return nullptr;
   		}
  	}
-	PWMperiperi_users +=1;
+	PWMperi_users +=1;
 	return PWMperi->addr;
   }
   

@@ -15,10 +15,6 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	if (taskData->i2c_fd <= 0){
 		return 1;
 	}
-	wiringPiI2CWrite (taskData->i2c_fd, kDAC_WRITEDAC); // leave it in DAC mode
-	//leverTaskPtr->leverForce =leverTaskPtr->forceData[leverTaskPtr->iForce] ;
-	wiringPiI2CWriteReg8(taskData->i2c_fd, (2048  >> 8) & 0x0F, 2048 & 0xFF);
-	
 	
 	// initialize quad decoder - it returns spi file descriptor, but further calls to wiringPi don't use it
 	if (wiringPiSPISetup(kQD_CS_LINE, kQD_CLOCK_FREQ) == -1){
@@ -82,7 +78,7 @@ void lever_Hi (void * taskData){
 	uint8_t leverPosition = leverTaskPtr->spi_wpData[1];
 	leverTaskPtr->leverPosition= leverPosition;
 	//printf ("Lever position = %d.\n", leverTaskPtr->leverPosition);
-	if (leverTaskPtr->iPosition < leverTaskPtr-> nToFinish){
+	if (!(leverTaskPtr->trialComplete)){
 		leverTaskPtr->positionData [leverTaskPtr->iPosition] = leverPosition;
 		// light the lamp, or sound the horn
 		if (leverTaskPtr->goalCuer != nullptr){
@@ -110,10 +106,9 @@ void lever_Hi (void * taskData){
 			leverTaskPtr->iForce =0;
 		}
 		if (leverTaskPtr->doForce){
-			// write the DAC constant 
-			wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // put it in DAC mode
 			// write the data
 			int leverForce =leverTaskPtr->forceData[leverTaskPtr->iForce] ;
+			wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
 			wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverForce  >> 8) & 0x0F, leverForce  & 0xFF);
 			leverTaskPtr->iForce +=1;
 			if (leverTaskPtr->iForce == leverTaskPtr->nForceData){ // all out of forces but leave force at final ramp pos until the end of the trial
@@ -121,20 +116,22 @@ void lever_Hi (void * taskData){
 			}
 		}
 		// trial position specific stuff
-		if (leverTaskPtr -> trialPos ==0){// 0 means lever not moved into goal area yet
+		if (leverTaskPtr -> trialPos ==1){// 1 means lever not moved into goal area yet
 			if (leverTaskPtr->isCued){
 				if (leverPosition >  leverTaskPtr -> goalBottom){
-					leverTaskPtr -> trialPos = 1;
+					leverTaskPtr -> trialPos = 2;
+					leverTaskPtr ->nToFinish = leverTaskPtr->iPosition  + leverTaskPtr->nHoldTicks;
 				}else{
 					if (leverTaskPtr->iPosition ==  leverTaskPtr->nToGoal){
 						leverTaskPtr -> trialPos = -1;
+						leverTaskPtr ->nToFinish = leverTaskPtr->iPosition  + leverTaskPtr->nHoldTicks;
 					}
 				}
 			}else { // uncued trial
 				if (leverPosition >  leverTaskPtr -> goalBottom){
 					leverTaskPtr->circularBreak = leverTaskPtr->iPosition;
 					leverTaskPtr->iPosition =  leverTaskPtr->nCircular; 
-					leverTaskPtr ->trialPos =1;
+					leverTaskPtr ->trialPos =2;
 				}else{
 					// check for wraparound of circular buffer
 					if (leverTaskPtr->iPosition ==  leverTaskPtr->nCircular){
@@ -143,22 +140,22 @@ void lever_Hi (void * taskData){
 				}
 			}
 		} else{
-			if (leverTaskPtr ->trialPos ==1){ // check if we are still in goal range 
-				if (leverTaskPtr->inGoal = false){
-					leverTaskPtr ->trialPos = -1;
+			if (leverTaskPtr ->trialPos ==2){ // check if we are still in goal range 
+				if (leverTaskPtr->inGoal == false){
+					leverTaskPtr ->trialPos = -2;
 				}
 			}
 		}
 	}
 	// increment position and see if we are done
 	leverTaskPtr->iPosition +=1;
-	if (leverTaskPtr->iPosition == nToFinish){
-		if (leverTaskPtr ->trialPos == 1){
-			leverTaskPtr ->trialPos = 2;
-		}else{
-			leverTaskPtr ->trialPos = -2;
+	if (leverTaskPtr->iPosition == leverTaskPtr->nToFinish){
+		leverTaskPtr->trialComplete =true;
+		if (leverTaskPtr ->trialPos == 2){
+			leverTaskPtr ->trialPos = 3;
 		}
 		int leverForce =leverTaskPtr->constForce;
+		wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
 		wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverForce  >> 8) & 0x0F, leverForce  & 0xFF);
 	}
 }
@@ -172,90 +169,85 @@ void leverThread_delTask (void * taskData){
 }
 
 
-typedef struct pertubSetStruct{
-	unsigned int forceStartPos;
-	float addedForce;
-}pertubSetStruct, *perturbSetStructPtr;
 
-
-/* ************************* Callbacks for thread *************************/
-int leverThread_setPerturbCallback (void * modData, taskParams * theTask){
-	perturbSetStructPtr perturbData= (perturbSetStructPtr)modData;
-	leverThreadStructPtr taskPtr = (leverThreadStructPtr) theTask->taskData;
-	float halfWay = taskPtr->nForceData/2;
-	float rate = taskPtr->nForceData/10;
-	float base = taskPtr->constForce;
-	for (unsigned int iPt =0; iPt <  taskPtr->nForceData; iPt +=1){
-		taskPtr->forceData [iPt] = (int) (base + perturbData->addedForce/(1 + exp (-(iPt - halfWay)/rate)));
-	}
-	taskPtr->forceStartPos =  perturbData->forceStartPos;
-	return 0;
-}
-
-/* mod data is an integer for constant force */
-int leverThread_setConstForceCallback (void * modData, taskParams * theTask){
-	leverThreadStructPtr taskPtr = (leverThreadStructPtr) taskParams->taskData;
-	int * newConstForce= (int * )modData;
-	// write the DAC constant 
-	wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // put it in DAC mode
-	// write the data
-	leverTaskPtr->leverForce = * newConstForce ;
-	wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverTaskPtr->leverForce  >> 8) & 0x0F, leverTaskPtr->leverForce  & 0xFF);
-	delete (newConstForce);
-	return 0;
-}
-
-/* ************************** zero Lever ***********************************************/
-int leverThread_zeroLeverCallback (void * modData, taskParams, * theTask){
+/* ************************** zero Lever **********************************************
+Paramater for  zeroing encoder at ralied position, vs returning lever to existing set start position (if possible)
+ 0 for taking the lever back to zero posiiton, 1 for  rezeroing the encoder as well as railing it,  */
+int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 	
-	leverThreadStructPtr taskPtr = (leverThreadStructPtr) taskParams->taskData;
-	// configure a time spec to sleep for 0.1 seconds
+	leverThreadStructPtr leverTaskPtr = (leverThreadStructPtr) theTask->taskData;
+	int mode = *(int *) modData;
+	
+	int returnVal;
+	// configure a time spec to sleep for 0.05 seconds
 	struct timespec sleeper;
 	sleeper.tv_sec = 0;
-	sleeper.tv_nsec = 1e08;
+	sleeper.tv_nsec = 5e07;
 	
-	// clear counter
-	spi_wpData[0] = kQD_CLEAR_COUNTER;
-	wiringPiSPIDataRW(kQD_CS_LINE, taskData->spi_wpData, 1);
-	
-
-	uint8_t prevLeverPos = 255, leverPos;
-	// make values for motor, and set inital value
-	int dacBase = 500;
-	float dacIncr = (4095 - dacBase)/10;
+	int dacBase = taskPtr->constForce;
+	float dacIncr = (3500 - dacBase)/10;
 	int dacOut;
-	bool returnVal = false;
-	for (int ii =0; ii < 10; ii +=1){
-		// set a value and wait,
-		dacOut = (uint16_t) (dacBase + (ii * dacIncr));
-		wiringPiI2CWriteReg8(leverTaskPtr->fd, (dacOut  >> 8) & 0x0F, dacOut & 0xFF);
+	uint8_t prevLeverPos;
+	uint8_t leverPos;
+	if (mode == 1){ // 1 for  rezeroing the encoder as well as railing it, 0 for taking the lever back to zero posiiton 
+		// clear counter
+		leverTaskPtr->spi_wpData[0] = kQD_CLEAR_COUNTER;
+		wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 1);
+		prevLeverPos = 255;
+	}else{
+		leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
+		leverTaskPtr->spi_wpData[1] = 0;
+		wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
+		prevLeverPos = leverTaskPtr->spi_wpData[1];
+	}
+	// set initial value as constant force
+	dacOut = (uint16_t) dacBase ;
+	wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
+	wiringPiI2CWriteReg8 (leverTaskPtr->fd, (dacOut  >> 8) & 0x0F, dacOut & 0xFF);
+	for (int ii =0; ii < 10; ii +=1, prevLeverPos =leverPos){
 		nanosleep (&sleeper, NULL) ;
 		// check new position, see if we are moving
-		
-		leverPos= decoder->readOneByteCounter ();
-		if ((leverPos < prevLeverPos + 2) && (leverPos > prevLeverPos - 2)){
-			// we have stopped moving, zero decoder and break out of loop, with returnVal true
-			decoder->clearCounter();
-			returnVal= true;
-			break;
-		}else // we hvae not stopped moving, save new lever pos
-			prevLeverPos = leverPos;
-			
+		leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
+		leverTaskPtr->spi_wpData[1] = 0;
+		wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
+		leverPos = leverTaskPtr->spi_wpData[1];
+		// if lever is not moving in right direction, up the power
+		if (leverPos >= prevLeverPos){
+			dacOut = (uint16_t) (dacBase + (ii * dacIncr));
+			wiringPiI2CWrite (taskData->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
+			wiringPiI2CWriteReg8 (leverTaskPtr->fd, (dacOut  >> 8) & 0x0F, dacOut & 0xFF);
+		}
 	}
-	// zero lever force, whatever the outcome
-	if (hasMotor)
-		DAC->setValue (0);
-	if (returnVal == false)
-		printf ("Could not find zero position for lever.\n");
+	prevLeverPos =leverPos;
+	// for just just putting lever back in position, check that lever is close to original 0
+	if ((mode ==0) && ((leverPos <  2) || (prevLeverPos > 253))){
+		returnVal =0;
+	}else{
+		int ii;
+		for (ii =0; ii < 5; ii +=1, prevLeverPos =leverPos){
+			nanosleep (&sleeper, NULL) ;
+			leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
+			leverTaskPtr->spi_wpData[1] = 0;
+			wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
+			leverPos = leverTaskPtr->spi_wpData[1];
+			if ((leverPos < prevLeverPos -2) || (leverPos > prevLeverPos +2)){
+				break;
+			}
+		}
+		// clear counter
+		leverTaskPtr->spi_wpData[0] = kQD_CLEAR_COUNTER;
+		wiringPiSPIDataRW(kQD_CS_LINE, taskData->spi_wpData, 1);
+		if (ii < 10){
+			returnVal= 1;
+		}else{
+			returnVal= 0;
+		}
+	}
+	delete((int *) modData);
 	return returnVal;
 }
 
-
-	
-	
-/* *************************** leverThread Class Methods *******************************************************
- 
- ******************** ThreadMaker with Integer pulse duration, delay, and number of pulses timing description inputs ********************
+ /* ******************* ThreadMaker with Integer pulse duration, delay, and number of pulses timing description inputs ********************
  Last Modified:
  2018/02/08 by Jamie Boyd - Initial Version */
 leverThread * leverThread::leverThreadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircularOrZero,  int goalCuerPinOrZero, float cuerFreqOrZero) {
@@ -293,41 +285,93 @@ leverThread * leverThread::leverThreadMaker (uint8_t * positionData, unsigned in
 	return newLever;
 }
 
+/* ***********************************************Constant Force ************************************************
+This function sets the saved value, but does not apply the force
+Last Modified 2018/03/26 by Jamie Boyd - initial version */
+void leverThread::setConstForce (int theForce){
+	taskPtr->constForce = theForce;
+}
 
-/* mod data is an integer for constant force */
-int leverThread_setConstForceCallback (void * modData, taskParams * theTask){
-	leverThreadStructPtr taskPtr = (leverThreadStructPtr) theTask->taskData;
-	int newConstForce= *(int * )modData;
-	// write the DAC constant 
-	wiringPiI2CWrite (taskPtr->i2c_fd, kDAC_WRITEDAC); // put it in DAC mode
+/* ********************* returns the vlaue for constant force ********************
+Last Modified 2018/03/26 by Jamie Boyd - initial version */
+int leverThread::getConstForce (void){
+	return taskPtr->constForce;
+}
+
+
+/* ************applies a given force ****************************
+If theForce is less than 0, the value for constant force will be used
+Force is also scrunched to max, 4095
+Last Modified 2018/03/26 by Jamie Boyd - initial version */
+void leverThread::applyForce (int theForce){
+	if (theForce < 0){
+		theForce = taskPtr->constForce;
+	}
+	if (theForce > 4095){
+		theForce = 4095;
+	}
 	// write the data
-	taskPtr->constForce = newConstForce;
-	wiringPiI2CWriteReg8(taskPtr->i2c_fd, (newConstForce >> 8) & 0x0F, newConstForce  & 0xFF);
-	delete ((int * )modData);
+	wiringPiI2CWriteReg8(taskPtr->i2c_fd, (theForce >> 8) & 0x0F, theForce  & 0xFF);
 	return 0;
 }
 
-int leverThread::setConstForce (int theForce, int isLocking){
-	int * newForceVal = new int;
-	* newForceVal =  theForce;
-	int returnVal = modCustom (&leverThread_setConstForceCallback, (void *) newForceVal, isLocking);	
+
+/* ************************************** Zeroing the Lever ************************************************
+Last Modified 2018/03/26 by Jamie Boyd - initial version */
+int  leverThread::zeroLever (int mode, int isLocking){
+	
+	int * modePtr = new int;
+	* modePtr = mode;
+	int returnVal = modCustom (&leverThread_zerolever, (void * ) modePtr, isLocking);
 	return returnVal;
 }
-	
 
-int leverThread::getConstForce (void){
-	return taskPtr->constForce;
-}	
+/* *********************************** Setting perturbation ***********************************
+fills the array with force data 
+last modified 2018/03/26 by Jamie Boyd - initial version */
+void leverThread::setPerturbForce (int perturbForce){
+	if (perturbForce < 0){
+		perturbForce = 0;
+	}
+	if (perturbForce > 4095){
+		perturbForce = 4095;
+	}
+	float halfWay = taskPtr->nForceData/2;
+	float rate = taskPtr->nForceData/10;
+	float base = taskPtr->constForce;
+	for (unsigned int iPt =0; iPt <  taskPtr->nForceData; iPt +=1){
+		taskPtr->forceData [iPt] = (int) (base + perturbForce/(1 + exp (-(iPt - halfWay)/rate)));
+	}
+}
+
+/* ************************ Sets posiiton where perturb force is applied *****************
+last modified 2018/03/26 by Jamie Boyd - initial version */
+void leverThread::setPerturbStartPos(int perturbStartPos){
+	taskPtr->forceStartPos =  perturbStartPos;
+}
 
 
+/* ******************************************************* Starting, Stopping, Checking Trials**************************************************** 
+Starts a trial, either cued or un-cued 
+last modified 2018/03/26 by Jamie Boyd - initial version */
 void leverThread::startTrial (void){
-	taskPtr->iPosition =0;
-	taskPtr->trialPosition =0;
+	taskPtr->iPosition =1;
+	taskPtr->trialPosition =1;
+	taskPtr->trialComplete =false;
 	taskPtr->inGoal=false;
 	leverTaskPtr->doForce = false;
 	if (leverTaskPtr->isCued){
 		DoTask ();
 	}else{
+		leverTaskPtr ->nToFinish = leverTaskPtr->nCircular  + leverTaskPtr->nHoldTicks;
 		startInfiniteTrain ();
 	}
+}
+
+/* *********************************Checks if trial is complete or what stage it is at *********************************************
+Returns truth that a trial is completed, sets trial code to trial code, which will be 3 at end of a successful trial
+last modified 2018/03/26 by Jamie Boyd - initial version */
+bool leverThread::checkTrial(int &trialCode){
+	trialCode = taskPtr->trialPos;
+	return  taskPtr->trialComplete;
 }
