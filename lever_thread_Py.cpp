@@ -46,34 +46,93 @@ static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
   }
   
   
-  static PyObject* leverThread_setConstForce (PyObject *self, PyObject *args){
+static PyObject* py_leverThread_setConstForce (PyObject *self, PyObject *args){
 	  PyObject *PyPtr;
 	  int newForce;
-	  int isLocking;
-	  if (!PyArg_ParseTuple(args,"Oii", &PyPtr, &theLevel, &isLocking)) {
-		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object, force level, and isLocking");
+	  if (!PyArg_ParseTuple(args,"Oi", &PyPtr, &newForce)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object and constant force");
 		return NULL;
 	}
+	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "leverThread"));
+	leverThreadPtr->setConstForce (newForce);
+	Py_RETURN_NONE;
+}
+
+static PyObject* py_leverThread_getConstForce (PyObject *self, PyObject *PyPtr) {
+	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "leverThread"));
+	return Py_BuildValue("i", leverThreadPtr->getConstForce();
+}
+
+static PyObject* py_leverThread_applyForce (PyObject *self, PyObject *args){
+	  PyObject *PyPtr;
+	  int newForce;
+	  if (!PyArg_ParseTuple(args,"Oi", &PyPtr, &newForce)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object and force");
+		return NULL;
+	}
+	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "leverThread"));
+	leverThreadPtr->applyForce (newForce);
+	Py_RETURN_NONE;
+}
+static PyObject* py_leverThread_zeroLever (PyObject *self, PyObject *args){
+	  PyObject *PyPtr;
+	  int zeroMode;
+	  int isLocking;
+	  if (!PyArg_ParseTuple(args,"Oii", &PyPtr, &zeroMode, &isLocking)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object, zero Mode and isLocking");
+		return NULL;
+	}
+	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "leverThread"));
+	return Py_BuildValue("i", leverThreadPtr-> zeroLever (zeroMode, isLocking);
+}
+
+static PyObject* py_leverThread_setPerturbForce (PyObject *self, PyObject *args){
+	  PyObject *PyPtr;
+	  int perturbForce;
+	  if (!PyArg_ParseTuple(args,"Oi", &PyPtr, &perturbForce)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object and perturbForce");
+		return NULL;
+	}
+	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "leverThread"));
+	leverThreadPtr->setPerturbForce (perturbForce);
+	Py_RETURN_NONE;
+}
+
+static PyObject* py_leverThread_setPerturbStartPos (PyObject *self, PyObject *args){
+	  PyObject *PyPtr;
+	  unsigned int perturbStartPos;
+	  if (!PyArg_ParseTuple(args,"OI", &PyPtr, &perturbStartPos)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object and perturb start position");
+		return NULL;
+	}
+	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "leverThread"));
+	leverThreadPtr->setPerturbStartPos (perturbStartPos);
+	Py_RETURN_NONE;
+}
+
+static PyObject* py_leverThread_checkTrial (PyObject *self, PyObject *PyPtr) {
+	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "leverThread"));
+	int trialCode;
+	leverThreadPtr->checkTrial(trialCode);
 	
-  
+	PyObject *tuple;
+	tuple = Py_BuildValue("(iis)", 1, 2, "three");
+}
+
+
+
+
+
 /* Module method table */
 static PyMethodDef leverThreadMethods[] = {
   {"new", py_LeverThread_New, METH_VARARGS, "Creates a new instance of leverThread"},
-  
-  /*
-  {"tare", py_leverThread_tare, METH_VARARGS, "Tares the leverThread load cell amplifier"},
-  {"weigh", py_leverThread_weigh, METH_VARARGS, "Weighs with the leverThread load cell amplifier"},
-  {"weighThreadStart",py_leverThread_weighThreadStart, METH_VARARGS, "Starts the thread weighing into the array"},
-  {"weighThreadStop", py_leverThread_weighThreadStop, METH_O, "Stops the thread weighing, returns number of weights so far"},
-  {"weighThreadCheck", py_leverThread_weighThreadCheck, METH_O, "returns number of weights so far, but does not stop thread"},
-  {"getDataPin", py_leverThread_getDataPin, METH_O, "returns data pin used with the leverThread"},
-  {"getClockPin", py_leverThread_getClockPin, METH_O, "returns clock pin used with the leverThread"},
-  {"getTareValue", py_leverThread_getTareValue, METH_O, "returns current tare value used with leverThread"},
-  {"getScaling", py_leverThread_getScaling, METH_O, "returns grams per ADC unit used with leverThread"},
-  {"setScaling", py_leverThread_setScaling, METH_VARARGS, "sets grams per ADC unit for leverThread"},
-  {"turnOn", py_leverThread_turnON, METH_O, "wakes leverThread from low power state"},
-  {"turnOff", py_leverThread_turnOFF, METH_O, "sets leverThread to low power state"},
-  */
+  {"setConstForce", py_leverThread_setConstForce, METH_VARARGS, "Sets constant force field for leverThread"},
+  {"getConstForce", py_leverThread_getConstForce, METH_O, "Returns constant force for leverThread"},
+  {"applyForce", py_leverThread_applyForce, METH_VARARGS, "Sets force on lever for leverThread"},
+  {"zeroLever", py_leverThread_zeroLever, METH_VARARGS, "Returns lever to front rail, optionally zeroing encoder"},
+  {"setPerturbForce", py_leverThread_setPerturbForce, METH_VARARGS, "Fills perturbation force array with sigmoid ramp"},
+  {"startTrial", py_leverThread_startTrial, METH_O, "starts a trial"},
+
   { NULL, NULL, 0, NULL}
 };
 
