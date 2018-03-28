@@ -129,11 +129,13 @@ class leverThread : public pulsedThread{
 	void setPerturbForce(int perturbForce);
 	void setPerturbStartPos(unsigned int perturbStartPos);
 	void setHoldParams (uint8_t goalBottomP, uint8_t goalTopP, unsigned int nHoldTicksP);
+	
 	int zeroLever (int mode, int isLocking);
 	
 	void startTrial(void);
 	bool checkTrial(int &trialCode, unsigned int &goalEntryPos);
 	void doGoalCue (int offOn);
+	void abortUncuedTrial(void);
 	uint8_t getLeverPos (void);
 	protected:
 	leverThreadStructPtr taskPtr;

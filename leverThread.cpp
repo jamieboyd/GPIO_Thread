@@ -63,6 +63,7 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	taskData->goalBottom =20;
 	taskData->goalTop = 250;
 	taskData->nHoldTicks = 100;
+	taskData->constForce=1000;
 	printf ("Initing lever pos data\n");
 
 	return 0;
@@ -368,6 +369,7 @@ void leverThread::startTrial (void){
 	taskPtr->trialComplete =false;
 	taskPtr->inGoal=false;
 	taskPtr->doForce = false;
+	leverTaskPtr->circularBreak=0;
 	if (taskPtr->isCued){
 		DoTask ();
 	}else{
@@ -389,6 +391,12 @@ bool leverThread::checkTrial(int &trialCode, unsigned int &goalEntryPos){
 		}
 	}
 	return isComplete;
+}
+
+void leverThread::abortUncuedTrial(void){
+	if (!(taskPtr->isCued)){
+		stopInfiniteTrain ();
+	}
 }
 
 /* ************************************** tests the in-goal cuer manually***********************************************

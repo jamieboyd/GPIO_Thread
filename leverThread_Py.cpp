@@ -167,7 +167,11 @@ static PyObject* py_leverThread_getLeverPos(PyObject *self, PyObject *PyPtr) {
 	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "leverThread"));
 	return Py_BuildValue("B", leverThreadPtr->getLeverPos());
 }
-
+static PyObject* py_leverThread_abortUncuedTrial(PyObject *self, PyObject *PyPtr) {
+	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "leverThread"));
+	leverThreadPtr->abortUncuedTrial();
+	Py_RETURN_NONE
+}
 /* Module method table */
 static PyMethodDef leverThreadMethods[] = {
   {"new", py_LeverThread_New, METH_VARARGS, "Creates a new instance of leverThread"},
@@ -182,6 +186,7 @@ static PyMethodDef leverThreadMethods[] = {
   {"doGoalCue", py_leverThread_doGoalCue, METH_VARARGS, "turns In-Goal Cue on or off"},
   {"setHoldParams", py_leverThread_setHoldParams,  METH_VARARGS, "leverThread, goalBottom, goalTop, nHoldTicks, sets lever hold params for next trial."},
   {"getLeverPos",py_leverThread_getLeverPos, METH_O, "returns the current lever position"},
+  {"abortUncuedTrial", py_leverThread_abortUncuedTrial, METH_O, "aborts an uncued trial."},
   { NULL, NULL, 0, NULL}
 };
 
