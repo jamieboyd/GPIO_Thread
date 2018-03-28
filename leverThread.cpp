@@ -39,13 +39,14 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	if (initDataPtr->goalCuerPin > 0){
 		if (initDataPtr->cuerFreq ==0){
 			taskData->goalCuer = SimpleGPIO_thread::SimpleGPIO_threadMaker (initDataPtr->goalCuerPin, 1, (float) 100, (float) 0.5, (float) 0.1, 1);
-			taskData->goalMode = 0;
+			taskData->goalMode = kGOALMODE_HILO;
 		}else{
 			taskData->goalCuer = SimpleGPIO_thread::SimpleGPIO_threadMaker (initDataPtr->goalCuerPin, 1, (float) initDataPtr->cuerFreq , (float) 0.5, (float) 0, 1);
-			taskData->goalMode = 1;
+			taskData->goalMode = kGOALMODE_TRAIN;
 		}
 	}else{
 		taskData->goalCuer  = nullptr;
+		taskData->goalMode = kGOALMODE_NONE;
 	}
 
 	// copy pointer to lever position buffer
@@ -91,7 +92,7 @@ void lever_Hi (void * taskData){
 		if (leverTaskPtr->goalCuer != nullptr){
 			if ((leverTaskPtr->inGoal== false)&&((leverPosition > leverTaskPtr->goalBottom)&&(leverPosition < leverTaskPtr->goalTop))){
 				leverTaskPtr->inGoal = true;
-				if (leverTaskPtr->goalMode == 0){
+				if (leverTaskPtr->goalMode == kGOALMODE_HILO){
 					leverTaskPtr->goalCuer->setLevel(1,1);
 				}else{
 					leverTaskPtr->goalCuer->startInfiniteTrain ();
@@ -99,7 +100,7 @@ void lever_Hi (void * taskData){
 			}else{
 				if ((leverTaskPtr->inGoal== true)&&((leverPosition < leverTaskPtr->goalBottom) || (leverPosition > leverTaskPtr->goalTop))){
 					leverTaskPtr->inGoal = false;
-					if (leverTaskPtr->goalMode == 1){
+					if (leverTaskPtr->goalMode == kGOALMODE_HILO){
 						leverTaskPtr->goalCuer->setLevel(0,1);
 					}else{
 						leverTaskPtr->goalCuer->stopInfiniteTrain ();
@@ -171,8 +172,8 @@ void lever_Hi (void * taskData){
 /* ************* Custom task data delete function *********************/
 void leverThread_delTask (void * taskData){
 	leverThreadStructPtr taskPtr = (leverThreadStructPtr) taskData;
-	delete (taskPtr->forceData);
-	delete (taskPtr);
+	delete [] taskPtr->forceData;
+	delete taskPtr;
 }
 
 
@@ -249,7 +250,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 			returnVal= 0;
 		}
 	}
-	delete((int *) modData);
+	delete (int *) modData;
 	return returnVal;
 }
 
@@ -369,13 +370,8 @@ void leverThread::startTrial (void){
 	taskPtr->trialComplete =false;
 	taskPtr->inGoal=false;
 	taskPtr->doForce = false;
-	leverTaskPtr->circularBreak=0;
-	if (taskPtr->isCued){
-		DoTask ();
-	}else{
-		taskPtr ->nToFinish = taskPtr->nCircular  + taskPtr->nHoldTicks;
-		startInfiniteTrain ();
-	}
+	taskPtr->circularBreak=0;
+	DoTask ();
 }
 
 /* *********************************Checks if trial is complete or what stage it is at *********************************************
@@ -401,29 +397,41 @@ void leverThread::abortUncuedTrial(void){
 
 /* ************************************** tests the in-goal cuer manually***********************************************
 If you dont have a goal cuer, it does nothing
-last modified 2018/03/27 by Jamie Boyd - initial version */
+last modified:
+2018/03/28 by Jamie Boyd - added constants for mode, eliminated test for goalCuer, should be handled by init
+2018/03/27 by Jamie Boyd - initial version */
 void leverThread::doGoalCue (int offOn){
-	if (taskPtr->goalCuer != nullptr){
-		if (taskPtr->goalMode == 0){
-			if (offOn){
-				taskPtr->goalCuer->setLevel(1,0);
-			}else{
-				taskPtr->goalCuer->setLevel(0,0);
-				}
+	
+	if (taskPtr->goalMode == kGOALMODE_HILO){
+		if (offOn){
+			taskPtr->goalCuer->setLevel(1,0);
 		}else{
-			if (offOn){
-				taskPtr->goalCuer->startInfiniteTrain ();
-			}else{
-				taskPtr->goalCuer->stopInfiniteTrain ();
+				taskPtr->goalCuer->setLevel(0,0);
 			}
+	}else{
+		if (offOn){
+			taskPtr->goalCuer->startInfiniteTrain ();
+		}else{
+			taskPtr->goalCuer->stopInfiniteTrain ();
 		}
 	}
 }
 
+/* ******************************************* Sets hold goal width and time paramaters ************************************
+lever force paramaters are set separately
+last Modified:
+2018/03/28 by jamie Boyd - initial verison */
 void leverThread::setHoldParams (uint8_t goalBottomP, uint8_t goalTopP, unsigned int nHoldTicksP){
 	taskPtr->goalBottom =goalBottomP;
 	taskPtr->goalTop = goalTopP;
 	taskPtr->nHoldTicks = nHoldTicksP;
+	
+	if (taskPtr->isCued){
+		taskPtr ->nToFinish = taskPtr->nToGoal  + nHoldTicksP;
+		modTrainLength (taskPtr ->nToFinish);
+	}else{
+		taskPtr ->nToFinish = taskPtr->nCircular  + nHoldTicksP;
+	}
 }
 
 

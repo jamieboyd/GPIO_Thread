@@ -170,7 +170,7 @@ static PyObject* py_leverThread_getLeverPos(PyObject *self, PyObject *PyPtr) {
 static PyObject* py_leverThread_abortUncuedTrial(PyObject *self, PyObject *PyPtr) {
 	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "leverThread"));
 	leverThreadPtr->abortUncuedTrial();
-	Py_RETURN_NONE
+	Py_RETURN_NONE;
 }
 /* Module method table */
 static PyMethodDef leverThreadMethods[] = {
