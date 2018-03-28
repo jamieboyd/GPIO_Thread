@@ -44,6 +44,8 @@ from time import time, sleep
 from datetime import datetime
 from random import random
 
+import leverThread
+
 class AHF_Stimulator_LickNoLickSpeaker (AHF_Stimulator_LickNoLick):
     speakerPin_def = 17
     speakerFreq_def = 300
@@ -66,6 +68,18 @@ class AHF_Stimulator_LickNoLickSpeaker (AHF_Stimulator_LickNoLick):
         self.configDict.update({'speaker_pin' : self.speakerPin, 'speaker_duty' : self.speakerDuty, 'speaker_freq' : self.speakerFreq})
         self.configDict.update({'speaker_OffForReward' : self.speakerOffForReward, 'buzz_pulseProb': self.buzz_pulseProb})
         print ("buzzlead=", self.buzz_lead)
+
+        self.posArray = array ('B', [0] * 76)
+        self.posArray [75] = 249 
+        now = datetime.fromtimestamp (int (time()))
+        startDay = datetime (now.year, now.month,now.day, kDAYSTARTHOUR,0,0)
+        filename = '/home/pi/Documents/Lever_' + str (startDay.year) + '_' + '{:02}'.format(startDay.month)+ '_' + '{:02}'.format (startDay.day)
+        self.outFile=open (filename, 'ab')
+        self.lever = leverThread.new(self.posArray, 25, 0,0)
+        leverThread.zeroLever(self.lever, 1, 1)
+        leverThread.setConstForce (self.lever, 1000)
+        leverThread.applyForce (self.lever, -1)
+        leverThread.setHoldParams (self.lever, 10, 250, 50)
 
     @staticmethod
     def dict_from_user (stimDict):
@@ -94,11 +108,22 @@ class AHF_Stimulator_LickNoLickSpeaker (AHF_Stimulator_LickNoLick):
         endTime = time() + self.headFixTime
         speakerIsOn = False
         OffForRewardEnd = 0.0
+        leverOn =False
         # outer loop runs trials until time is up
         while time() < endTime:
             # setup to start a trial, witholding licking for lickWitholdRandom secs till buzzer
             lickWitholdRandom = self.lickWitholdTime + (0.5 - random())
             lickWitholdEnd = time() + lickWitholdRandom
+            if leverOn:
+                resultuple = leverThread.checkTrial (self.lever)
+                if resultuple [0]= True:
+                    leverOn = False
+                    if resultuple [1] =2:
+                        self.rewarder.giveReward('task')
+                    self.posArray[0:75].tofile(outFile)
+            else:
+                leverThread.startTrial (self.lever)
+                leverOn = True
             # inner loop keeps resetting lickWitholdEnd time until  a succsful withhold
             while time() < lickWitholdEnd and time() < endTime:
                 anyLicks = self.lickDetector.waitForLick_Soft (0.05)
@@ -160,7 +185,7 @@ class AHF_Stimulator_LickNoLickSpeaker (AHF_Stimulator_LickNoLick):
         # make sure to turn off buzzer at end of loop when we exit
         if speakerIsOn == True:
             self.speaker.stop_train()
-
+        outFile.close()
 
 
     def logfile (self):
