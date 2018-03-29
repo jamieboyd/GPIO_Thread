@@ -123,12 +123,14 @@ void lever_Hi (void * taskData){
 				leverTaskPtr->doForce = false;
 			}
 		}
+		// increment position in lever position array
+		leverTaskPtr->iPosition +=1;
 		// trial position specific stuff
 		if (leverTaskPtr -> trialPos ==1){// 1 means lever not moved into goal area yet
 			if (leverTaskPtr->isCued){
 				if (leverPosition >  leverTaskPtr -> goalBottom){
 					leverTaskPtr -> trialPos = 2;
-					leverTaskPtr ->nToFinish = leverTaskPtr->iPosition  + leverTaskPtr->nHoldTicks;
+					leverTaskPtr ->nToFinish = leverTaskPtr-> iPosition  + leverTaskPtr->nHoldTicks;
 					leverTaskPtr->circularBreak = leverTaskPtr->iPosition;
 				}else{
 					if (leverTaskPtr->iPosition ==  leverTaskPtr->nToGoal){
@@ -145,7 +147,7 @@ void lever_Hi (void * taskData){
 				}else{
 					// check for wraparound of circular buffer
 					if (leverTaskPtr->iPosition ==  leverTaskPtr->nCircular){
-						leverTaskPtr->iPosition = 1;
+						leverTaskPtr->iPosition = 0;
 					}
 				}
 			}
@@ -157,11 +159,10 @@ void lever_Hi (void * taskData){
 			}
 		}
 	}
-	// increment position and see if we are done
-	leverTaskPtr->iPosition +=1;
+	// check if we are done
 	if (leverTaskPtr->iPosition == leverTaskPtr->nToFinish){
 		leverTaskPtr->trialComplete =true;
-		
+		// set lever to constant force
 		int leverForce =leverTaskPtr->constForce;
 		wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
 		wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverForce  >> 8) & 0x0F, leverForce  & 0xFF);
@@ -178,40 +179,58 @@ void leverThread_delTask (void * taskData){
 
 
 /* ************************** zero Lever **********************************************
-Paramater for  zeroing encoder at ralied position, vs returning lever to existing set start position (if possible)
+mod data is int, 1 for  zeroing encoder at ralied position, vs 0 for returning lever to existing set start position (if possible)
  0 for taking the lever back to zero posiiton, 1 for  rezeroing the encoder as well as railing it,  */
 int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 	
 	leverThreadStructPtr leverTaskPtr = (leverThreadStructPtr) theTask->taskData;
 	int mode = *(int *) modData;
-	
-	int returnVal;
 	// configure a time spec to sleep for 0.05 seconds
 	struct timespec sleeper;
 	sleeper.tv_sec = 0;
 	sleeper.tv_nsec = 5e07;
 	
 	int dacBase = leverTaskPtr->constForce;
-	float dacIncr = (3500 - dacBase)/10;
+	float dacIncr = (3500 - dacBase)/20;
 	int dacOut;
 	uint8_t prevLeverPos;
 	uint8_t leverPos;
-	if (mode == 1){ // 1 for  rezeroing the encoder as well as railing it, 0 for taking the lever back to zero posiiton 
-		// clear counter
-		leverTaskPtr->spi_wpData[0] = kQD_CLEAR_COUNTER;
-		wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 1);
-		prevLeverPos = 255;
-	}else{
+	int ii;
+	if (mode == 0){ // 0 for just returning the lever to 0 position
 		leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
 		leverTaskPtr->spi_wpData[1] = 0;
 		wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
-		prevLeverPos = leverTaskPtr->spi_wpData[1];
+		leverPos = leverTaskPtr->spi_wpData[1];
+		for (ii=0; (ii < 20 && (leverPos > 2 && leverPos < 258)); ii +=1){
+			dacOut = (uint16_t) (dacBase + (ii * dacIncr));
+			wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
+			wiringPiI2CWriteReg8 (leverTaskPtr->i2c_fd, (dacOut  >> 8) & 0x0F, dacOut & 0xFF);
+			nanosleep (&sleeper, NULL) ;
+			leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
+			leverTaskPtr->spi_wpData[1] = 0;
+			wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
+			leverPos = leverTaskPtr->spi_wpData[1];
+		}
+		if (ii < 20){
+			// clear counter for good measure, if we have 1 or 2 units of slippage
+			leverTaskPtr->spi_wpData[0] = kQD_CLEAR_COUNTER;
+			wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 1);
+			// return DAC to constant force
+			wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
+			wiringPiI2CWriteReg8 (leverTaskPtr->i2c_fd, (dacBase  >> 8) & 0x0F, dacOut & 0xFF);
+			return 0;
+		} // if we didn't return lever to zero, progress to next section where we rail it
 	}
+	// This is where we rail it and zero it	
+	// clear counter
+	leverTaskPtr->spi_wpData[0] = kQD_CLEAR_COUNTER;
+	wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 1);
+	prevLeverPos = 250;
 	// set initial value as constant force
 	dacOut = (uint16_t) dacBase ;
 	wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
 	wiringPiI2CWriteReg8 (leverTaskPtr->i2c_fd, (dacOut  >> 8) & 0x0F, dacOut & 0xFF);
-	for (int ii =0; ii < 10; ii +=1, prevLeverPos =leverPos){
+	for (ii =0; ii < 20; ii +=1, prevLeverPos =leverPos){
 		nanosleep (&sleeper, NULL) ;
 		// check new position, see if we are moving
 		leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
@@ -225,33 +244,14 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 			wiringPiI2CWriteReg8 (leverTaskPtr->i2c_fd, (dacOut  >> 8) & 0x0F, dacOut & 0xFF);
 		}
 	}
-	prevLeverPos =leverPos;
-	// for just just putting lever back in position, check that lever is close to original 0
-	if ((mode ==0) && ((leverPos <  2) || (prevLeverPos > 253))){
-		returnVal =0;
-	}else{
-		int ii;
-		for (ii =0; ii < 5; ii +=1, prevLeverPos =leverPos){
-			nanosleep (&sleeper, NULL) ;
-			leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
-			leverTaskPtr->spi_wpData[1] = 0;
-			wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
-			leverPos = leverTaskPtr->spi_wpData[1];
-			if ((leverPos < prevLeverPos -2) || (leverPos > prevLeverPos +2)){
-				break;
-			}
-		}
-		// clear counter
-		leverTaskPtr->spi_wpData[0] = kQD_CLEAR_COUNTER;
-		wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 1);
-		if (ii < 10){
-			returnVal= 1;
-		}else{
-			returnVal= 0;
-		}
-	}
+	// clear counter
+	leverTaskPtr->spi_wpData[0] = kQD_CLEAR_COUNTER;
+	wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 1);
+	// return DAC to constant force
+	wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
+	wiringPiI2CWriteReg8 (leverTaskPtr->i2c_fd, (dacBase  >> 8) & 0x0F, dacOut & 0xFF);
 	delete (int *) modData;
-	return returnVal;
+	return 0;
 }
 
  /* ******************* ThreadMaker with Integer pulse duration, delay, and number of pulses timing description inputs ********************
