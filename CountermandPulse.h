@@ -20,11 +20,11 @@ typedef struct CountermandPulseStruct{
 
 class CountermandPulse : public SimpleGPIO_thread{
 	public:
-		CountermandPulse (int pinP, int polarityP, unsigned int delayUsecs, unsigned int durUsecs, void * initData, int accLevel , int &errCode) : SimpleGPIO_thread ((unsigned int) delayUsecs, (unsigned int) durUsecs, (unsigned int) 1, initData, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi_C, accLevel,errCode) {
+		CountermandPulse (int pinP, int polarityP, unsigned int delayUsecs, unsigned int durUsecs, void * initData, int accLevel , int &errCode) : SimpleGPIO_thread (pinP, polarityP, (unsigned int) delayUsecs, (unsigned int) durUsecs, (unsigned int) 1, initData, accLevel, errCode) {
 	pinNumber = pinP;
 	polarity = polarityP;
 	
-	static CountermandPulse * CountermandPulse_threadMaker (int pin, int polarity, unsigned int delayUsecs, unsigned int  durUsecs, int accuracyLevel);
+	static CountermandPulse * CountermandPulse_threadMaker (int pin, int polarity, unsigned int delayUsecs, unsigned int durUsecs, int accuracyLevel);
 	};
 	void countermand(void);
 protected:
