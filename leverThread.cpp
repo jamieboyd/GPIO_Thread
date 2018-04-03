@@ -10,11 +10,13 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	
 	// ensure wiringpi is setup for GPIO
 	wiringPiSetupGpio();
+	
 	// initialize the DAC - further calls to wiringPi DO use the file descriptor, so save i2c file descriptor
 	taskData->i2c_fd = wiringPiI2CSetup(kDAC_ADDRESS);
 	if (taskData->i2c_fd <= 0){
 		return 1;
 	}
+	wiringPiI2CWrite (taskData->i2c_fd, kDAC_WRITEDAC); // initialize in DAC mode, not EEPROM
 	
 	// initialize quad decoder - it returns spi file descriptor, but further calls to wiringPi don't use it
 	if (wiringPiSPISetup(kQD_CS_LINE, kQD_CLOCK_FREQ) == -1){
@@ -116,7 +118,7 @@ void lever_Hi (void * taskData){
 		if (leverTaskPtr->doForce){
 			// write the data
 			int leverForce =leverTaskPtr->forceData[leverTaskPtr->iForce] ;
-			wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
+			//wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
 			wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverForce  >> 8) & 0x0F, leverForce  & 0xFF);
 			leverTaskPtr->iForce +=1;
 			if (leverTaskPtr->iForce == leverTaskPtr->nForceData){ // all out of forces but leave force at final ramp pos until the end of the trial
@@ -164,7 +166,7 @@ void lever_Hi (void * taskData){
 		leverTaskPtr->trialComplete =true;
 		// set lever to constant force
 		int leverForce =leverTaskPtr->constForce;
-		wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
+		//wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
 		wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverForce  >> 8) & 0x0F, leverForce  & 0xFF);
 	}
 }
@@ -203,7 +205,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 		leverPos = leverTaskPtr->spi_wpData[1];
 		for (ii=0; (ii < 20 && (leverPos > 2 && leverPos < 258)); ii +=1){
 			dacOut = (uint16_t) (dacBase + (ii * dacIncr));
-			wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
+			//wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
 			wiringPiI2CWriteReg8 (leverTaskPtr->i2c_fd, (dacOut  >> 8) & 0x0F, dacOut & 0xFF);
 			nanosleep (&sleeper, NULL) ;
 			leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
@@ -216,7 +218,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 			leverTaskPtr->spi_wpData[0] = kQD_CLEAR_COUNTER;
 			wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 1);
 			// return DAC to constant force
-			wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
+			//wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
 			wiringPiI2CWriteReg8 (leverTaskPtr->i2c_fd, (dacBase  >> 8) & 0x0F, dacOut & 0xFF);
 			return 0;
 		} // if we didn't return lever to zero, progress to next section where we rail it
@@ -228,7 +230,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 	prevLeverPos = 250;
 	// set initial value as constant force
 	dacOut = (uint16_t) dacBase ;
-	wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
+	//wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
 	wiringPiI2CWriteReg8 (leverTaskPtr->i2c_fd, (dacOut  >> 8) & 0x0F, dacOut & 0xFF);
 	for (ii =0; ii < 20; ii +=1, prevLeverPos =leverPos){
 		nanosleep (&sleeper, NULL) ;
@@ -240,7 +242,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 		// if lever is not moving in right direction, up the power
 		if (leverPos >= prevLeverPos){
 			dacOut = (uint16_t) (dacBase + (ii * dacIncr));
-			wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
+			//wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
 			wiringPiI2CWriteReg8 (leverTaskPtr->i2c_fd, (dacOut  >> 8) & 0x0F, dacOut & 0xFF);
 		}
 	}
@@ -248,7 +250,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 	leverTaskPtr->spi_wpData[0] = kQD_CLEAR_COUNTER;
 	wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 1);
 	// return DAC to constant force
-	wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
+	//wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
 	wiringPiI2CWriteReg8 (leverTaskPtr->i2c_fd, (dacBase  >> 8) & 0x0F, dacOut & 0xFF);
 	delete (int *) modData;
 	return 0;
