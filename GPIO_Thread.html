@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<HTML>
+<head>
+<title>GPIO_Thread</title>
+<META NAME="AUTHOR" CONTENT="Jamie Boyd">
+</head>
+<H2>Documentation for GPIO Thread</H2>
+
+GPIO_Thread is a collection of different projects that subclass the pulsedThread class to control GPIO hardware on the Raspberry Pi.  SimpleGPIO_thread is a C++ class for threaded Pulses and Trains of Pulses. The relevant files are:
+
+SimpleGPIO_thread.cpp/h	- C++ class for a thread to do a pulse or a train of pulses on a GPIO pin
+SimpleGPIO_tester.cpp	- C++ application using SimpleGPIO_thread to do software pulse width modulation
+SimpleGPIO_Py.cpp	- C++ code for a Python module to make and use a SimpleGPIO_thread from Python
+SimpleGPIO_setup.py	- Python code to make and install the ptSimpleGPIO Python library
+PTSimpleGPIO.py	- Python code that wraps the ptSimpleGPIO module in a Python object interface
+PTSimpleGPIO_test.py	- Python code with tests for PTSimpleGPIO. May require oscilloscope, LED, or piezo
+int pin, int polarity, unsigned int delayUsecs, unsigned int durUsecs, unsigned int nPulses, int accuracyLevel
+For each project, XX there is:
+<ul>
+	<li>XX.cpp/XX.h pair describing a C++ class that subclasses pulsedThread</li>
+	<li>XX_tester.cpp, or XX_runner.cpp, that makes a small stand-alone application for testing purposes</li>
+	<li>XX_Py.cpp file that describes a Python/C module that wraps the C++ class methods with Python calls</li>
+	<li>XX_setup.py that builds and installs the Python/C module</li>
+	<li>often, XX.py that provides a "Pythonic" object interface to the Python/C module</li>
+</ul>
+	
+
+<ol>
+<li><a href = "./SimpleGPIO.html">Simple GPIO</a> -- ouputs digital pulses, trains, and infinite trains from a single GPIO pin</li>
+<li><a href= "./PWM_thread.html">PWM Thread</a> -- controls the Pi's PWM (Pulse Width Modulation) peripheral</li>
+<li><a href = "./HX711.html">HX711</a> -- controls an HX711 load cell amplifier, writing clock pulses on one GPIO pin and reading data on another</li>
+</ol>
+
+
+ 
+/* The 3 parts to running the lever pulling task  
+1) The program calling the leverThread object 
+	- may be in Python through a Python C++ module that provides an interface to a leverThread object
+	- makes an array of unsigned bytes to hold lever position data
+	- makes the leverThread object, passing it a pointer to the lever position data, plus some size info
+	- sets constant force, sets lever hold params, sets force params if doing force
+	-starts a trial 
+	- checks a trial to see if it is done. For an uncued trial, this could be while. 
+	- is responsible for saving the lever position data in the array before starting another trial
+	
+2) the leverThread object
+	- makes a leverThread struct 
+	- receives data from calling program
+	- writes to leverThreadStruct shared with the thread function to signal thread
+	- makes the array for leverForce data and passes a pointer to that data to the leverThread struct
+	
+3) the threaded function that works with leverThreadStruct
+	- timing controlled by pulsedThread superclass. Can be Trian or Infinite train with circular buffer
+	- does the hardware stuff, reading the encoder and outputting force
+	
+</body>
+</html>

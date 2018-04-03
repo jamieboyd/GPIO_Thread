@@ -1,10 +1,6 @@
 
-
-
-
-
 /* ***************** countermandable Hi Callback ******************************
-Task to do on High tick, sets GPIO line high or ow depending on polarity
+Task to do on High tick, sets GPIO line high or low depending on polarity
 unless countermanded
 last modified:
 2018/03/16 by Jamie Boyd - initial version */
@@ -13,7 +9,7 @@ void Countermand_Hi (void *  taskData){
 	if (gpioTaskPtr->countermand == true){
 		gpioTaskPtr->countermand = false;
 	}else{
-		*(gpioTaskPtr->GPIOperiHi) =gpioTaskPtr->pinBit;
+		*(gpioTaskPtr->GPIOperiHi) = gpioTaskPtr->pinBit;
 	}
 }
 
