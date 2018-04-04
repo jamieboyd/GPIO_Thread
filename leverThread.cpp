@@ -219,7 +219,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 			wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 1);
 			// return DAC to constant force
 			//wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
-			wiringPiI2CWriteReg8 (leverTaskPtr->i2c_fd, (dacBase  >> 8) & 0x0F, dacOut & 0xFF);
+			wiringPiI2CWriteReg8 (leverTaskPtr->i2c_fd, (dacBase  >> 8) & 0x0F, dacBase & 0xFF);
 			return 0;
 		} // if we didn't return lever to zero, progress to next section where we rail it
 	}
