@@ -28,7 +28,7 @@ int SimpleGPIO_Init (void * initDataP, void *  &taskDataP){
 	*(initDataPtr->GPIOperiAddr + ((initDataPtr->thePin)/10)) |=  (1<<(((initDataPtr->thePin)%10)*3));
 	// put pin in selected start state
 	*(taskData->GPIOperiLo ) = taskData->pinBit ;
-	delete (initDataPtr);
+	delete initDataPtr;
 	return 0; // 
 }
 

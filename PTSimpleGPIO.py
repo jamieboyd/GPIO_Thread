@@ -188,7 +188,7 @@ class Pulse (PTSimpleGPIO):
    
     def __init__ (self, gpio_pin, polarity, delay, duration, accuracy_level):
         self.task_ptr = ptSimpleGPIO.newDelayDur(gpio_pin, polarity, delay, duration, 1, accuracy_level)
-        self.respectTheGIL = false
+        self.respectTheGIL = False
     """
     does a single pulse, as previously configured. GPIO pin is held in starting state (high or low,
     depending on direction when initied) for delay, then toggled and held for duration,
