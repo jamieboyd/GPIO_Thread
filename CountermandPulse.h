@@ -25,7 +25,8 @@ class CountermandPulse : public SimpleGPIO_thread{
 public:
 	CountermandPulse (int pinP, int polarityP, unsigned int delayUsecs, unsigned int durUsecs, void * initData, int accLevel , int &errCode) : SimpleGPIO_thread (pinP, polarityP, (unsigned int) delayUsecs, (unsigned int) durUsecs, (unsigned int) 1, initData, accLevel, errCode) {};	
 	static CountermandPulse * CountermandPulse_threadMaker (int pin, int polarity, unsigned int delayUsecs, unsigned int durUsecs, int accuracyLevel);
-	void countermand(void);
+    bool doCountermandPulse (void);
+	bool countermand(void);
 	bool wasCountermanded (void);
 protected:
 	int pinNumber;

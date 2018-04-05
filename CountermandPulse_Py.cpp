@@ -87,11 +87,23 @@ static PyObject* cmp_setLevel (PyObject *self, PyObject *args){
 	return  Py_BuildValue("i", returnVal);
 }
 
+/* ********************************** Requests a countermanable pulse to be initiated **************************
+ Returns true if the pulse was started (no pulse currently in progress), else false
+ Last Modified:
+ 2018/04/04 by Jamie Boyd - initial version */
+static PyObject* cmp_doCountermandPulse (PyObject *self, PyObject *PyPtr) {
+    CountermandPulse* threadPtr = static_cast<CountermandPulse* > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+    if (threadPtr -> doCountermandPulse()){
+        Py_RETURN_TRUE;
+    }else{
+        Py_RETURN_FALSE;
+    }
+}
 
 /* ********************************** Function for actually Conutermanding a pulse ****************************************
 Last Modified:
 2018/04/04 by Jamie Boyd - initial version */
-static PyObject* cmp_countermand  (PyObject *self, PyObject *PyPtr) {
+static PyObject* cmp_countermand (PyObject *self, PyObject *PyPtr) {
 	CountermandPulse* threadPtr = static_cast<CountermandPulse* > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
 	threadPtr -> countermand();
 	Py_RETURN_NONE;
@@ -132,7 +144,8 @@ static PyMethodDef ptCountermandPulseMethods[] = {
 	{"setPin", cmp_setPin, METH_VARARGS, "(PyCapsule, int pin, int isLocking) Sets the GPIO pin used by the CountermandPulse task"},
 	{"getPin", cmp_getPin, METH_O, "(PyCapsule) returns GPIO pin used by a CountermandPulse, in Brodcomm numbering"},
 	{"getPolarity", cmp_getPolarity, METH_O, "(PyCapsule) returns pulse polarity (0 = low-to-high, 1 = high-to-low) of a CountermandPulse"},
-	{"countermand", cmp_countermand, METH_O, "(PyCapsule) tells a CountermandPulse to rescind just requested pulse"},
+    {"doCountermandPulse", cmp_doCountermandPulse, METH_O, "(PyCapsule) starts a pulse that can be countermanded before the delay is finished"},
+    {"countermand", cmp_countermand, METH_O, "(PyCapsule) tells a CountermandPulse to rescind just requested pulse"},
 	{"wasCountermanded", cmp_wasCountermanded, METH_O, "(PyCapsule) returns truth that last requested pulse was stopped beforeit started"},
 	{ NULL, NULL, 0, NULL}
   };
