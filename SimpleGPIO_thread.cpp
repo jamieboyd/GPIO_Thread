@@ -120,7 +120,6 @@ SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int pola
 	}
 	// set custom task delete function
 	newGPIO_thread->setTaskDataDelFunc (&SimpleGPIO_delTask);
-	printf ("SimpleGPIO_threadMaker made the SimpleGPIO_thread.\n");
 	return newGPIO_thread;
 }
 

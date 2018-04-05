@@ -10,8 +10,11 @@ class CountermandPulse (PTSimpleGPIO.Pulse):
         self.task_ptr = ptCountermandPulse.newDelayDur(gpio_pin, polarity, delay, duration, accuracy_level)
         self.respectTheGIL = False
 
+    def do_pulse_countermandable (self):
+        return ptCountermandPulse.doCountermandPulse(self.task_ptr)
+    
     def countermand_pulse (self):
-        ptCountermandPulse.countermand(self.task_ptr)
+        return ptCountermandPulse.countermand(self.task_ptr)
 
     def was_countermanded (self):
-        return  ptCountermandPulse.wasCountermanded(self.task_ptr)
+        return ptCountermandPulse.wasCountermanded(self.task_ptr)

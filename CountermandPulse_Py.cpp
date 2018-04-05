@@ -105,8 +105,11 @@ Last Modified:
 2018/04/04 by Jamie Boyd - initial version */
 static PyObject* cmp_countermand (PyObject *self, PyObject *PyPtr) {
 	CountermandPulse* threadPtr = static_cast<CountermandPulse* > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
-	threadPtr -> countermand();
-	Py_RETURN_NONE;
+	if (threadPtr -> countermand()){
+		Py_RETURN_TRUE;
+	}else{
+		Py_RETURN_FALSE;
+	}
 }
 
 /* ********************************** Function for seeing if previous pulse was countermanded ****************************************
