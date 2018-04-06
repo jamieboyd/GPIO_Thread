@@ -8,13 +8,6 @@ Last Modifed:
 2018/03/05 by Jamie Boyd - updates for pulsedThread class/HX711subclass
 
 
-******************** Function called automatically when PyCapsule object is deleted in Python *****************************************
-Last Modified:#include <Python.h>
-#include "leverThread.h"
-
-/* *** Makes and returns a new lever thread object. 
-
-
 ******************* Function called automatically when PyCapsule object is deleted in Python *****************************************
 Last Modified:
 2018/02/20 by Jamie Boyd - initial version */
