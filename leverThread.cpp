@@ -40,10 +40,10 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	// make a cuer
 	if (initDataPtr->goalCuerPin > 0){
 		if (initDataPtr->cuerFreq ==0){
-			taskData->goalCuer = SimpleGPIO_thread::SimpleGPIO_threadMaker (initDataPtr->goalCuerPin, 1, (float) 100, (float) 0.5, (float) 0.1, 1);
+			taskData->goalCuer = SimpleGPIO_thread::SimpleGPIO_threadMaker (initDataPtr->goalCuerPin, 0, (unsigned int) 1000,  (unsigned int) 1000,  (unsigned int) 1, 1);
 			taskData->goalMode = kGOALMODE_HILO;
 		}else{
-			taskData->goalCuer = SimpleGPIO_thread::SimpleGPIO_threadMaker (initDataPtr->goalCuerPin, 1, (float) initDataPtr->cuerFreq , (float) 0.5, (float) 0, 1);
+			taskData->goalCuer = SimpleGPIO_thread::SimpleGPIO_threadMaker (initDataPtr->goalCuerPin, 0, (float) initDataPtr->cuerFreq , (float) 0.5, (float) 0, 1);
 			taskData->goalMode = kGOALMODE_TRAIN;
 		}
 	}else{
@@ -93,9 +93,7 @@ void lever_Hi (void * taskData){
 	}
 	leverTaskPtr->leverPosition= leverPosition;
 	//printf ("Lever position = %d.\n", leverTaskPtr->leverPosition);
-	if (!(leverTaskPtr->trialComplete)){
-		leverTaskPtr->positionData [leverTaskPtr->iPosition] = leverPosition;
-		// light the lamp, or sound the horn
+	// light the lamp, or sound the horn
 		if (leverTaskPtr->goalCuer != nullptr){
 			if ((leverTaskPtr->inGoal== false)&&((leverPosition > leverTaskPtr->goalBottom)&&(leverPosition < leverTaskPtr->goalTop))){
 				leverTaskPtr->inGoal = true;
@@ -115,6 +113,9 @@ void lever_Hi (void * taskData){
 				}
 			}
 		}
+	if (!(leverTaskPtr->trialComplete)){
+		leverTaskPtr->positionData [leverTaskPtr->iPosition] = leverPosition;
+		
 		// check for seting force, and maybe do the force
 		if (leverTaskPtr->iPosition == leverTaskPtr->forceStartPos){
 			leverTaskPtr->doForce = true;
