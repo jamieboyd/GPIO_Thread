@@ -4,9 +4,9 @@ from distutils.core import setup, Extension
 setup(name='leverThread',
 	author = 'Jamie Boyd',
 	author_email = 'jadobo@gmail.com',
-	#py_modules=[''],
+	#py_modules=['PTLeverThread'],
 	ext_modules=[
-	Extension('leverThread',
+	Extension('ptLeverThread',
 	['leverThread.cpp', 'GPIOlowlevel.cpp', 'SimpleGPIO_thread.cpp', 'leverThread_Py.cpp'],
 		include_dirs = ['./', '/usr/include'],
 		library_dirs = ['./', '/usr/local/lib'],

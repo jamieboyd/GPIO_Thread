@@ -61,7 +61,7 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	// initialize iPosition to 0 - other initialization?
 	taskData->iPosition=0;
 	taskData->forceStartPos = initDataPtr->nPositionData; // no force will be applied cause we never get to here
-	
+	taskData->isReversed = initDataPtr->isReversed;
 	// initialize values for testing, remember to reset
 	taskData->goalBottom =20;
 	taskData->goalTop = 250;
@@ -85,7 +85,12 @@ void lever_Hi (void * taskData){
 	leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
 	leverTaskPtr->spi_wpData[1] = 0;
 	wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
-	uint8_t leverPosition = leverTaskPtr->spi_wpData[1];
+	uint8_t leverPosition;
+	if (leverTaskPtr -> isReversed){
+		leverPosition = 255 - leverTaskPtr->spi_wpData[1];
+	}else{
+		leverPosition = leverTaskPtr->spi_wpData[1];
+	}
 	leverTaskPtr->leverPosition= leverPosition;
 	//printf ("Lever position = %d.\n", leverTaskPtr->leverPosition);
 	if (!(leverTaskPtr->trialComplete)){
@@ -202,7 +207,14 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 		leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
 		leverTaskPtr->spi_wpData[1] = 0;
 		wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
-		leverPos = leverTaskPtr->spi_wpData[1];
+		
+		if (leverTaskPtr -> isReversed){
+			leverPos = 255 - leverTaskPtr->spi_wpData[1];
+		}else{
+			leverPos = leverTaskPtr->spi_wpData[1];
+		}
+		
+		
 		for (ii=0; (ii < 20 && (leverPos > 2 && leverPos < 258)); ii +=1){
 			dacOut = (uint16_t) (dacBase + (ii * dacIncr));
 			//wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
@@ -211,7 +223,11 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 			leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
 			leverTaskPtr->spi_wpData[1] = 0;
 			wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
-			leverPos = leverTaskPtr->spi_wpData[1];
+			if (leverTaskPtr -> isReversed){
+				leverPos = 255 - leverTaskPtr->spi_wpData[1];
+			}else{
+				leverPos = leverTaskPtr->spi_wpData[1];
+			}
 		}
 		if (ii < 20){
 			// clear counter for good measure, if we have 1 or 2 units of slippage
@@ -238,7 +254,11 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 		leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
 		leverTaskPtr->spi_wpData[1] = 0;
 		wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
-		leverPos = leverTaskPtr->spi_wpData[1];
+		if (leverTaskPtr -> isReversed){
+			leverPos = 255 - leverTaskPtr->spi_wpData[1];
+		}else{
+			leverPos = leverTaskPtr->spi_wpData[1];
+		}
 		// if lever is not moving in right direction, up the power
 		if (leverPos >= prevLeverPos){
 			dacOut = (uint16_t) (dacBase + (ii * dacIncr));
@@ -259,7 +279,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
  /* ******************* ThreadMaker with Integer pulse duration, delay, and number of pulses timing description inputs ********************
  Last Modified:
  2018/02/08 by Jamie Boyd - Initial Version */
-leverThread * leverThread::leverThreadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircularOrZero,  int goalCuerPinOrZero, float cuerFreqOrZero) {
+leverThread * leverThread::leverThreadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircularOrZero,  int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero) {
 	
 	int errCode;
 	leverThread * newLever ;
@@ -267,6 +287,7 @@ leverThread * leverThread::leverThreadMaker (uint8_t * positionData, unsigned in
 	leverThreadInitStructPtr initStruct = new leverThreadInitStruct;
 	initStruct->positionData = positionData;
 	initStruct->nPositionData = nPositionData;
+	initStruct->isReversed = isReversed;
 	initStruct->goalCuerPin = goalCuerPinOrZero; // zero if we don't have in-goal cue
 	initStruct->cuerFreq = cuerFreqOrZero;		// freq is zero for a DC on or off task
 	if (nCircularOrZero == 0){				// if nCircular is 0, trials are cued

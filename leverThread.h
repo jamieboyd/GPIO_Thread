@@ -43,6 +43,7 @@ typedef struct leverThreadInitStruct{
 	uint8_t * positionData;			// array for inputs from quadrature decoder. 
 	unsigned int nPositionData; 	// number of points in array,
 	unsigned int nCircular;			// number of points at start to reserve for circular buffer at start, use nCircular for finite length trials
+	bool isReversed;				// true if polarity of quadrature decoder is reversed. Constant force at rest position is larger than pulled posiiton
 	int goalCuerPin;				// number of a GPIO pin to use for a cue that lever is in rewarded position, else 0 for no cue
 	float cuerFreq;				// if a tone, frequency of tone to play. duty cycle is assumed to 0.5. If a simple on/off, pass 0
 	unsigned int nForceData;		// size of force data array - sets time it takes to switch on perturbation
@@ -55,6 +56,7 @@ typedef struct leverThreadStruct{
 	uint8_t * positionData;		// array for inputs from quadrature decoder, array passed in from calling function
 	unsigned int nPositionData; // number of points in lever position array, this limits maximum amount of time we can set nHoldTicks
 	unsigned int iPosition; 		// current place in position array
+	bool isReversed;			// true if polarity of quadrature decoder is reversed. Constant force at rest position is larger than pulled posiiton
 	uint8_t leverPosition; 		// current lever position in ticks of the lever, 0 -255
 	// Task control
 	bool isCued;				// true if we are running in cued mode, false for uncued mode
@@ -136,7 +138,7 @@ class leverThread : public pulsedThread{
 	/* integer param constructor: delay =0, duration = 5000 (200 hz), nThreadPulseOrZero = 0 for infinite train for uncued, with circular buffer, or the size of the array, for cued trials */
 	leverThread (void * initData, unsigned int nThreadPulsesOrZero, int &errCode) : pulsedThread ((unsigned int) 0, (unsigned int)(1E06/kLEVER_FREQ), (unsigned int) nThreadPulsesOrZero, initData, &lever_init, nullptr, &lever_Hi, 1, errCode) {
 	};
-	static leverThread * leverThreadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircularOrZero,  int goalCuerPinOrZero, float cuerFreqOrZero) ;
+	static leverThread * leverThreadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircularOrZero,  int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero) ;
 	// constant force, setting, geting, applying a force
 	void setConstForce (int theForce);
 	int getConstForce (void);
