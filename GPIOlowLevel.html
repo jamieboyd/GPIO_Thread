@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<HTML>
+<head>
+<title>GPIO_Thread</title>
+<META NAME="AUTHOR" CONTENT="Jamie Boyd">
+</head>
+<H2>Low Level Hardware Control</H2>
+
+Low Level Hardware Control functionality is contained in two files:
+<ul><li>GPIOlowLevel.h -- address offsets, plus macros and functions for low level access to Raspberry Pi GPIO peripherals</li>
+<li>GPIOlowLevel.cpp -- functions for memory mapping of peripherals and global variables for tracking those mappings</li></ul>
+
+<p>The CPU of Raspberry Pi 1 is Broadcom BCM2835, and the peripheral addresses start from 0x20000000. The CPU of Raspberry Pi 2 is Broadcom BCM2836, and the peripheral 
+addresses starts from 0x3F000000. A constant in GPIOlowLevel.h defines which Raspberry Pi board to use. On line 23, you will find instruction to comment out exactly one of the following 2 lines:<br>
+//#define RPI<br>
+#define RPI2<br>
+The Raspberry Pi 3 is Broadcom BCM2837 but has the same peripheral address start as the Raspberry Pi 2. Define RPI2 if using a Raspberry Pi 3. It is expected that very few people will still be using a Raspberry Pi 1.</p>
+
+<p>Low level memory for GPIO can be accessed through the newer /dev/gpiomem interface which does not require root access. Unfortunately, the PWM and clock hardware are NOT accessible through /dev/gpiomem, and must be accessed through /dev/mem, which requires running your programs with sudo or gksudo to get root access. A constant is defined for each interface:<br>
+#define IFACE_DEV_GPIOMEM	1	// use this only for GPIO<br>
+#define IFACE_DEV_MEM	0	// use this for GPIO or PWM and/or clock access<br>
+As a user of the GPIOI_Thread classes, all you need to know is to use sudo or gksudo when accessing anything other than the GPIO peripheral, and the class (e.g. SimpleGPIO_thread) will use the appropriate interface.</p>
+
+<p>GPIOlowLevel.cpp contains utility functions for peripheral mapping and global variables for the mappings. With the memory mappings available globally, only one instance is needed. The number of threads using each peripheral is also tracked, so the memory mapping can be deleted when it is no longer needed. bcm_peripheralPtr GPIOperi = nullptr; // memory mapping for GPIO peripheral int GPIOperi_users=0; // number of threads using the GPIO peripheral mapping</p>
+
+<hr>
+<a href = "./GPIO_Thread.html">Back to GPIO Thread index</a>
+</body>
+</html>

@@ -1,13 +1,51 @@
 <!DOCTYPE html>
 <HTML>
 <head>
-<title>GPIO_Thread</title>
+<title>GPIO_Thread:Simple GPIO</title>
 <META NAME="AUTHOR" CONTENT="Jamie Boyd">
 </head>
 <H2>Simple GPIO</H2>
 
 Simple GPIO controls the simplest GPIO task, outputting digital pulses from a single GPIO pin. 
+
+
+
+SimpleGPIO_thread is a C++ class for simple pulse or train output on a single GPIO pin using pulsedThread library. 
+
+
+
+
+A Python wrapper is provided for creating and controlling a SimpleGPIO_thread object from Python.
+HX711 is a C++ class using pulsedThread library to control an HX711 Load Cell Amplifier.
+
+SimpleGPIO_thread is a C++ class for threaded Pulses and Trains of Pulses. The relevant files are:
+
+SimpleGPIO_thread.cpp/h	- C++ class for a thread to do a pulse or a train of pulses on a GPIO pin
+SimpleGPIO_tester.cpp	- C++ application using SimpleGPIO_thread to do software pulse width modulation
+SimpleGPIO_Py.cpp	- C++ code for a Python module to make and use a SimpleGPIO_thread from Python
+SimpleGPIO_setup.py	- Python code to make and install the ptSimpleGPIO Python library
+PTSimpleGPIO.py	- Python code that wraps the ptSimpleGPIO module in a Python object interface
+PTSimpleGPIO_test.py	- Python code with tests for PTSimpleGPIO. May require oscilloscope, LED, or piezo
+int pin, int polarity, unsigned int delayUsecs, unsigned int durUsecs, unsigned int nPulses, int accuracyLevel
+
+
+
+
+
+SimpleGPIO_thread is a C++ class for threaded Pulses and Trains of Pulses. The relevant files are:
+
+SimpleGPIO_thread.cpp/h	- C++ class for a thread to do a pulse or a train of pulses on a GPIO pin
+SimpleGPIO_tester.cpp	- C++ application using SimpleGPIO_thread to do software pulse width modulation
+SimpleGPIO_Py.cpp	- C++ code for a Python module to make and use a SimpleGPIO_thread from Python
+SimpleGPIO_setup.py	- Python code to make and install the ptSimpleGPIO Python library
+PTSimpleGPIO.py	- Python code that wraps the ptSimpleGPIO module in a Python object interface
+PTSimpleGPIO_test.py	- Python code with tests for PTSimpleGPIO. May require oscilloscope, LED, or piezo
+int pin, int polarity, unsigned int delayUsecs, unsigned int durUsecs, unsigned int nPulses, int accuracyLevel
+
+
 <hr>
-<a href = "./GPIO_Thread.html">Back to GPIO Thread</a>
+<a href = "./GPIO_Thread.html">Back to GPIO Thread index</a>
 </body>
 </html>
+
+
