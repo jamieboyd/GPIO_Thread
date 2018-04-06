@@ -17,7 +17,7 @@ static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 	int isReversed;
 	int goalCuerPin;
 	float cuerFreq;
-	if (!PyArg_ParseTuple(args,"OIif", &bufferObj, &nCircular, &isReversed, &goalCuerPin, &cuerFreq)) {
+	if (!PyArg_ParseTuple(args,"OIiif", &bufferObj, &nCircular, &isReversed, &goalCuerPin, &cuerFreq)) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for lever position buffer, number for circular buffer, isReversed, goal cuer pin, and cuer frequency.");
 		return NULL;
 	}
