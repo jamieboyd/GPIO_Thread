@@ -46,7 +46,7 @@ from random import random
 
 import leverThread
 
-class AHF_Stimulator_LickNoLickSpeaker (AHF_Stimulator_LickNoLick):
+class AHF_Stimulator_LickNoLickSpeakerLever (AHF_Stimulator_LickNoLick):
     speakerPin_def = 17
     speakerFreq_def = 300
     speakerDuty_def = 0.8
@@ -76,9 +76,9 @@ class AHF_Stimulator_LickNoLickSpeaker (AHF_Stimulator_LickNoLick):
         filename = '/home/pi/Documents/Lever_' + str (startDay.year) + '_' + '{:02}'.format(startDay.month)+ '_' + '{:02}'.format (startDay.day)
         self.outFile=open (filename, 'ab')
         self.lever = leverThread.new(self.posArray, 25, 0,0)
-        leverThread.zeroLever(self.lever, 1, 1)
-        leverThread.setConstForce (self.lever, 1000)
-        leverThread.applyForce (self.lever, -1)
+        #leverThread.zeroLever(self.lever, 0, 1)
+        #leverThread.setConstForce (self.lever, 1000)
+        #leverThread.applyForce (self.lever, -1)
         leverThread.setHoldParams (self.lever, 10, 250, 50)
 
     @staticmethod
@@ -116,9 +116,9 @@ class AHF_Stimulator_LickNoLickSpeaker (AHF_Stimulator_LickNoLick):
             lickWitholdEnd = time() + lickWitholdRandom
             if leverOn:
                 resultuple = leverThread.checkTrial (self.lever)
-                if resultuple [0]= True:
+                if resultuple [0] == True:
                     leverOn = False
-                    if resultuple [1] =2:
+                    if resultuple [1] == 2:
                         self.rewarder.giveReward('task')
                     self.posArray[0:75].tofile(outFile)
             else:
