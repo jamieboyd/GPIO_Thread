@@ -87,7 +87,7 @@ void lever_Hi (void * taskData){
 	wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
 	uint8_t leverPosition;
 	if (leverTaskPtr -> isReversed){
-		leverPosition = 255 - leverTaskPtr->spi_wpData[1];
+		leverPosition = 256 - leverTaskPtr->spi_wpData[1];
 	}else{
 		leverPosition = leverTaskPtr->spi_wpData[1];
 	}
