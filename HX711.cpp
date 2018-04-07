@@ -69,6 +69,7 @@ int HX711_Init (void * initDataP, void *  &taskDataP){
 untill data pin goes high (HX711 holds data pin low untill a weight measurement is ready to send
 
  last modified:
+2018/04/06 by Jamie Boyd - can't trust polling. so need to check register bit as well
 2018/03/18 by Jamie Boyd -trying polling
 2018/03/13 by Jamie Boyd - took out sleep for fastest performance - will try sys/poll
 2018/03/05 by Jamie Boyd - added sleep if data pin is low, as max speed is only 10Hz to begin with
@@ -80,11 +81,18 @@ void HX711_Hi (void *  taskData){
 		// zero this weight position
 		taskPtr->weightData [taskPtr->iWeight] = 0;
 		// wait for data pin to go low before first bit. When output data is not ready for retrieval, digital output pin DOUT is held high.
-		/* consume any prior value */
+		while (true){
+			poll(&taskPtr->dataPolls, 1, -1);	// Block 
+			if (!(*taskPtr->GPIOperiData & taskPtr->dataPinBit)){ // but don't trust
+				break;
+			}
+		}
+		/*
 		static char buf[32];
+		poll(&taskPtr->dataPolls, 1, -1);
 		lseek(taskPtr->dataPolls.fd , 0, SEEK_SET);
-		read(taskPtr->dataPolls.fd, buf, 32);
-		poll(&taskPtr->dataPolls, 1, -1);	/* Block */
+		int pollValue = read(taskPtr->dataPolls.fd, buf, 32);
+		printf ("Poll value = %d GPIOVal = %d\n", pollValue, (*taskPtr->GPIOperiData) & taskPtr->dataPinBit);*/
 	}
 	// set clock pin high to shift out next bit of data
 	*(taskPtr->GPIOperiHi) = taskPtr->clockPinBit;
@@ -115,7 +123,6 @@ void HX711_Lo (void *  taskData){
 	// set clock pin low
 	*(taskPtr->GPIOperiLo) = taskPtr->clockPinBit;
 }
-
 
 /* ************* Custom task data delete function *********************/
 void HX711_delTask (void * taskData){
@@ -242,7 +249,11 @@ float HX711::readSynchronous (unsigned int nAvg, bool printVals, int weighMode){
 		for (unsigned int iAvg =0; iAvg < nAvg; iAvg +=1){
 			resultVal += HX711TaskPtr->weightData[iAvg];
 			if (printVals){
+				if (weighMode == kCTRL_TARE){
+					printf ("%d, ", (int) HX711TaskPtr->weightData[iAvg]);
+				}else{
 				printf ("%.3f, ", HX711TaskPtr->weightData[iAvg]);
+				}
 			}
 		}
 		resultVal /= nAvg;
