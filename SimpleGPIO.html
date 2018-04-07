@@ -6,41 +6,18 @@
 </head>
 <H2>Simple GPIO</H2>
 
-Simple GPIO controls the simplest GPIO task, outputting digital pulses from a single GPIO pin. 
+<p>Simple GPIO controls the simplest GPIO task, outputting digital pulses or trains of pulses from a single GPIO pin. The relevant files are:
+<ul><li>SimpleGPIO_thread.cpp/h -- C++ class subclassed from pulsedThread to do a pulse or a train of pulses on a GPIO pin</li>
+<li>SimpleGPIO_tester.cpp -- C++ application using SimpleGPIO_thread to do software pulse width modulation</li>
+<li>SimpleGPIO_Py.cpp -- C++ code for a Python module to make and use a SimpleGPIO_thread from Python</li>
+<li>SimpleGPIO_setup.py -- Python code to make and install the ptSimpleGPIO Python library</li>
+<li>PTSimpleGPIO.py -- Python code that wraps the ptSimpleGPIO module in a Python object interface</li>
+<li>PTSimpleGPIO_test.py -- Python code with tests for PTSimpleGPIO. May require oscilloscope, LED</li></ul>
 
 
-
-SimpleGPIO_thread is a C++ class for simple pulse or train output on a single GPIO pin using pulsedThread library. 
-
-
-
-
-A Python wrapper is provided for creating and controlling a SimpleGPIO_thread object from Python.
-HX711 is a C++ class using pulsedThread library to control an HX711 Load Cell Amplifier.
-
-SimpleGPIO_thread is a C++ class for threaded Pulses and Trains of Pulses. The relevant files are:
-
-SimpleGPIO_thread.cpp/h	- C++ class for a thread to do a pulse or a train of pulses on a GPIO pin
-SimpleGPIO_tester.cpp	- C++ application using SimpleGPIO_thread to do software pulse width modulation
-SimpleGPIO_Py.cpp	- C++ code for a Python module to make and use a SimpleGPIO_thread from Python
-SimpleGPIO_setup.py	- Python code to make and install the ptSimpleGPIO Python library
-PTSimpleGPIO.py	- Python code that wraps the ptSimpleGPIO module in a Python object interface
-PTSimpleGPIO_test.py	- Python code with tests for PTSimpleGPIO. May require oscilloscope, LED, or piezo
 int pin, int polarity, unsigned int delayUsecs, unsigned int durUsecs, unsigned int nPulses, int accuracyLevel
 
 
-
-
-
-SimpleGPIO_thread is a C++ class for threaded Pulses and Trains of Pulses. The relevant files are:
-
-SimpleGPIO_thread.cpp/h	- C++ class for a thread to do a pulse or a train of pulses on a GPIO pin
-SimpleGPIO_tester.cpp	- C++ application using SimpleGPIO_thread to do software pulse width modulation
-SimpleGPIO_Py.cpp	- C++ code for a Python module to make and use a SimpleGPIO_thread from Python
-SimpleGPIO_setup.py	- Python code to make and install the ptSimpleGPIO Python library
-PTSimpleGPIO.py	- Python code that wraps the ptSimpleGPIO module in a Python object interface
-PTSimpleGPIO_test.py	- Python code with tests for PTSimpleGPIO. May require oscilloscope, LED, or piezo
-int pin, int polarity, unsigned int delayUsecs, unsigned int durUsecs, unsigned int nPulses, int accuracyLevel
 
 
 <hr>
