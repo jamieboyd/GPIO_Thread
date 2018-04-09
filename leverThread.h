@@ -157,7 +157,6 @@ class leverThread : public pulsedThread{
 	uint8_t getLeverPos (void);
 	protected:
 	leverThreadStructPtr taskPtr;
-	int cueMode;
 };
 
 #endif

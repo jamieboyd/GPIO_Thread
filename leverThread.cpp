@@ -210,7 +210,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 		wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
 		
 		if (leverTaskPtr -> isReversed){
-			leverPos = 255 - leverTaskPtr->spi_wpData[1];
+			leverPos = 256 - leverTaskPtr->spi_wpData[1];
 		}else{
 			leverPos = leverTaskPtr->spi_wpData[1];
 		}
@@ -225,7 +225,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 			leverTaskPtr->spi_wpData[1] = 0;
 			wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
 			if (leverTaskPtr -> isReversed){
-				leverPos = 255 - leverTaskPtr->spi_wpData[1];
+				leverPos = 256 - leverTaskPtr->spi_wpData[1];
 			}else{
 				leverPos = leverTaskPtr->spi_wpData[1];
 			}
@@ -256,7 +256,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 		leverTaskPtr->spi_wpData[1] = 0;
 		wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
 		if (leverTaskPtr -> isReversed){
-			leverPos = 255 - leverTaskPtr->spi_wpData[1];
+			leverPos = 256 - leverTaskPtr->spi_wpData[1];
 		}else{
 			leverPos = leverTaskPtr->spi_wpData[1];
 		}
@@ -308,11 +308,6 @@ leverThread * leverThread::leverThreadMaker (uint8_t * positionData, unsigned in
 	newLever->setTaskDataDelFunc (&leverThread_delTask);
 	// make a leverThread pointer for easy direct access to thread task data 
 	newLever->taskPtr = (leverThreadStructPtr)newLever->getTaskData ();
-	if (nCircularOrZero == 0){
-		newLever->cueMode = kUN_CUED;
-	}else{
-		newLever->cueMode = kCUED;
-	}
 	return newLever;
 }
 
@@ -395,6 +390,12 @@ void leverThread::startTrial (void){
 	taskPtr->inGoal=false;
 	taskPtr->doForce = false;
 	taskPtr->circularBreak=0;
+	if (taskPtr->nCircular <  taskPtr->nPositionData){
+		for (unsigned int iPosition =0;iPosition < taskPtr->nCircular; iPosition +=1){
+			taskPtr->positionData [iPosition] = 0;
+		}
+	}
+	
 	DoTask ();
 }
 
