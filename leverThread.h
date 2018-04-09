@@ -42,7 +42,8 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask);
 typedef struct leverThreadInitStruct{
 	uint8_t * positionData;			// array for inputs from quadrature decoder. 
 	unsigned int nPositionData; 	// number of points in array,
-	unsigned int nCircular;			// number of points at start to reserve for circular buffer at start, use nCircular for finite length trials
+	bool isCued;
+	unsigned int nCircularOrToGoal;	// number of points at start to reserve for circular buffer at start, use nCircular for finite length trials
 	bool isReversed;				// true if polarity of quadrature decoder is reversed. Constant force at rest position is larger than pulled posiiton
 	int goalCuerPin;				// number of a GPIO pin to use for a cue that lever is in rewarded position, else 0 for no cue
 	float cuerFreq;				// if a tone, frequency of tone to play. duty cycle is assumed to 0.5. If a simple on/off, pass 0
@@ -60,12 +61,12 @@ typedef struct leverThreadStruct{
 	uint8_t leverPosition; 		// current lever position in ticks of the lever, 0 -255
 	// Task control
 	bool isCued;				// true if we are running in cued mode, false for uncued mode
-	unsigned int nToFinish;		// tick position where trial is finished, set by pulsedThread according to nCircular (uncued) or nToGoal (cued) plus nHoldTicks
+	unsigned int nToFinish;		// tick position where trial is finished, set by pulsedThread according to nCircularOrToGoal  and nHoldTicks
 	// fields used for un-cued trials, i.e., inifinite train with circular buffer 
+	bool isCued;				// true if trial starts at once, false if trial starts when lever crosses threshold, with circular buffer 
 	unsigned int nCircular;		// number of points at start of position array to use for a circular buffer for uncued trials set to nPosition data for no circular buffer
-	unsigned int circularBreak;	// thread sets this where we broke out of circular buffer and started a trial.
-	// for cued trials
-	unsigned int nToGoal;		// max number of ticks mouse has to get lever into goal position to be considered a good trial
+	unsigned int circularBreak;	// thread sets this where we broke out of circular buffer and started a trial, or we got .
+	unsigned int nToGoal;
 	// fields for task difficulty, lever position and time
 	uint8_t goalBottom;			// bottom of Goal area
 	uint8_t goalTop;			// top of Goal area
@@ -79,10 +80,10 @@ typedef struct leverThreadStruct{
 	bool trialComplete;			// set to false when trial begins, thread sets this to true when trial is complete.
 	// fields for force data
 	int constForce;			// value for constant force applied to lever when no force prturbation is happening
+	int perturbForce;			// additional force used for perturbing
 	int * forceData;			// array for output to DAC for force output
 	unsigned int nForceData;	// number of points in force data array, we always use all of them, so transition time is constant
 	unsigned int iForce;		// current position in force array
-	bool doForce;				// thread sets this to true when outputting force from the array
 	unsigned int forceStartPos;	// position in decoder input array to start force output - set forceStartPos to end of decoder array for no force output and we never reach it
 	// hardware access
 	int i2c_fd; 				// file descriptor for i2c used by mcp4725 DAC
@@ -119,26 +120,25 @@ const int kDAC_ADDRESS = 0x62; 	// i2c address to use
 
 
 /* Lever recording frequency, we use this to calculate length of array needed for however long we want to record*/
-const float kLEVER_FREQ = 200;
+const float kLEVER_FREQ = 400;
+const unsigned int kFORCE_ARRAY_SIZE = 100;
 
 /* ************************************************constants for settings **********************************/
-const int kUN_CUED =0;		// uncued  trials with infinite trains and circular buffer
-const int kCUED =1;			// cued trials with finite train
-const int kGOALMODE_NONE =0;		// no goal cuer
+const int kGOALMODE_NONE =0;	// no goal cuer
 const int kGOALMODE_HILO =1;	// goal cuer  that sets hi and lo, as for an LED
 const int kGOALMODE_TRAIN =2;	// goal cuer that turns an infinite train ON and OFF, as for a tone
 
 /* ********************* leverThread class extends pulsedThread ****************
 Works the motorized lever for the leverPulling task 
 last modified:
-2018/03/28 by Jamie Boyd - clening things up, adding comments, testing
+2018/03/28 by Jamie Boyd - cleaning things up, adding comments, testing
 2018/02/08 by Jamie Boyd - initial verison */
 class leverThread : public pulsedThread{
 	public:
 	/* integer param constructor: delay =0, duration = 5000 (200 hz), nThreadPulseOrZero = 0 for infinite train for uncued, with circular buffer, or the size of the array, for cued trials */
-	leverThread (void * initData, unsigned int nThreadPulsesOrZero, int &errCode) : pulsedThread ((unsigned int) 0, (unsigned int)(1E06/kLEVER_FREQ), (unsigned int) nThreadPulsesOrZero, initData, &lever_init, nullptr, &lever_Hi, 1, errCode) {
+	leverThread (void * initData, unsigned int nThreadPulsesOrZero, int &errCode) : pulsedThread ((unsigned int) 0, (unsigned int)(1E06/kLEVER_FREQ), (unsigned int) nThreadPulsesOrZero, initData, &lever_init, nullptr, &lever_Hi, 2, errCode) {
 	};
-	static leverThread * leverThreadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircularOrZero,  int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero) ;
+	static leverThread * leverThreadMaker (uint8_t * positionData, unsigned int nPositionData, bool isCued, unsigned int nCircularOrToGoal,  int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero) ;
 	// constant force, setting, geting, applying a force
 	void setConstForce (int theForce);
 	int getConstForce (void);

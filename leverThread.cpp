@@ -50,25 +50,29 @@ int lever_init (void * initDataP, void *  &taskDataP){
 		taskData->goalCuer  = nullptr;
 		taskData->goalMode = kGOALMODE_NONE;
 	}
-
+	// task cuing details
+	taskData->isCued = initDataPtr->isCued;
+	if (initDataPtr->isCued){
+		taskData-> nToGoal = initDataPtr->nCircularOrToGoal;
+	}else{
+		taskData->nCircular= initDataPtr->nCircularOrToGoal;
+	}
 	// copy pointer to lever position buffer
 	taskData->positionData = initDataPtr->positionData;
 	taskData->nPositionData = initDataPtr->nPositionData;
-	taskData->nCircular = initDataPtr->nCircular;
 	// init force data
 	taskData->nForceData = initDataPtr->nForceData;
 	taskData->forceData = new int [initDataPtr->nForceData];
+	taskData->iForce =taskData->nForceData + 1; // force turned off
 	// initialize iPosition to 0 - other initialization?
 	taskData->iPosition=0;
 	taskData->forceStartPos = initDataPtr->nPositionData; // no force will be applied cause we never get to here
 	taskData->isReversed = initDataPtr->isReversed;
-	// initialize values for testing, remember to reset
-	taskData->goalBottom =20;
+	// initialize reasonable values for testing, remember to reset
+	taskData->goalBottom =10;
 	taskData->goalTop = 250;
 	taskData->nHoldTicks = 100;
 	taskData->constForce=1000;
-	printf ("Initing lever pos data\n");
-
 	return 0;
 }
 
@@ -92,7 +96,6 @@ void lever_Hi (void * taskData){
 		leverPosition = leverTaskPtr->spi_wpData[1];
 	}
 	leverTaskPtr->leverPosition= leverPosition;
-	//printf ("Lever position = %d.\n", leverTaskPtr->leverPosition);
 	// light the lamp, or sound the horn
 		if (leverTaskPtr->goalCuer != nullptr){
 			if ((leverTaskPtr->inGoal== false)&&((leverPosition > leverTaskPtr->goalBottom)&&(leverPosition < leverTaskPtr->goalTop))){
@@ -115,21 +118,16 @@ void lever_Hi (void * taskData){
 		}
 	if (!(leverTaskPtr->trialComplete)){
 		leverTaskPtr->positionData [leverTaskPtr->iPosition] = leverPosition;
-		
 		// check for seting force, and maybe do the force
-		if (leverTaskPtr->iPosition == leverTaskPtr->forceStartPos){
-			leverTaskPtr->doForce = true;
+		if (leverTaskPtr->iPosition  == leverTaskPtr->forceStartPos){
+			//taskPtr->doForce=true;
 			leverTaskPtr->iForce =0;
 		}
-		if (leverTaskPtr->doForce){
-			// write the data
-			int leverForce =leverTaskPtr->forceData[leverTaskPtr->iForce] ;
+		if (leverTaskPtr->iForce < leverTaskPtr->nForceData){ 
+			leverForce =leverTaskPtr->forceData[leverTaskPtr->iForce] ;
 			//wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
 			wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverForce  >> 8) & 0x0F, leverForce  & 0xFF);
 			leverTaskPtr->iForce +=1;
-			if (leverTaskPtr->iForce == leverTaskPtr->nForceData){ // all out of forces but leave force at final ramp pos until the end of the trial
-				leverTaskPtr->doForce = false;
-			}
 		}
 		// increment position in lever position array
 		leverTaskPtr->iPosition +=1;
@@ -280,7 +278,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
  /* ******************* ThreadMaker with Integer pulse duration, delay, and number of pulses timing description inputs ********************
  Last Modified:
  2018/02/08 by Jamie Boyd - Initial Version */
-leverThread * leverThread::leverThreadMaker (uint8_t * positionData, unsigned int nPositionData, unsigned int nCircularOrZero,  int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero) {
+leverThread * leverThread::leverThreadMaker (uint8_t * positionData, unsigned int nPositionData, bool isCued, unsigned int nCircularOrToGoalP,   int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero) {
 	
 	int errCode;
 	leverThread * newLever ;
@@ -291,12 +289,12 @@ leverThread * leverThread::leverThreadMaker (uint8_t * positionData, unsigned in
 	initStruct->isReversed = isReversed;
 	initStruct->goalCuerPin = goalCuerPinOrZero; // zero if we don't have in-goal cue
 	initStruct->cuerFreq = cuerFreqOrZero;		// freq is zero for a DC on or off task
-	if (nCircularOrZero == 0){				// if nCircular is 0, trials are cued
-		initStruct->nCircular = nPositionData;	// make sure nCircular never happens
-		newLever = new leverThread ((void *) initStruct, nPositionData, errCode); // initialize thread with pulses in a train equal to posiiton array size
-	}else{
-		initStruct->nCircular = nCircularOrZero;
-		newLever = new leverThread ((void *) initStruct, (unsigned int) 0, errCode);	// initialize thread with 0 pulses, AKA infinite train
+	initStruct->nForceData=kFORCE_ARRAY_SIZE;
+	initStruct->nCircularOrToGoal = nCircularOrToGoalP;
+	if (isCued){				// if isCued trials , initialize thread with pulses in a train equal to posiiton array size
+		newLever = new leverThread ((void *) initStruct, nPositionData, errCode);
+	}else{	// ifor uncued trials, initialize thread with 0 pulses, AKA infinite train
+		newLever = new leverThread ((void *) initStruct, (unsigned int) 0, errCode);	
 	}
 	if (errCode){
 #if beVerbose
@@ -324,8 +322,23 @@ int leverThread::getConstForce (void){
 	return taskPtr->constForce;
 }
 
-
+/* ***************************************Gets current lever position from thread data, if trial is running*********************
+else , reads the lever position directly and sets the value in the thread data
+last modified:
+2018/04/09 by Jamie Boyd - added code to check directly if no task in progress */
 uint8_t leverThread::getLeverPos (void){
+	if ( taskPtr->trialComplete){
+		taskPtr->spi_wpData[0] = kQD_READ_COUNTER;
+		taskPtr->spi_wpData[1] = 0;
+		wiringPiSPIDataRW(kQD_CS_LINE, taskPtr->spi_wpData, 2);
+		uint8_t leverPosition;
+	if (taskPtr -> isReversed){
+		leverPosition = 256 - taskPtr->spi_wpData[1];
+	}else{
+		leverPosition = taskPtr->spi_wpData[1];
+	}
+	taskPtr->leverPosition= leverPosition;
+	}
 	return taskPtr->leverPosition;
 }
 
@@ -357,20 +370,35 @@ int leverThread::zeroLever (int mode, int isLocking){
 
 /* *********************************** Setting perturbation ***********************************
 fills the array with force data 
+last modified 2018/04/09 by jamie Boyd - corrected for negative forces
 last modified 2018/03/26 by Jamie Boyd - initial version */
-void leverThread::setPerturbForce (int perturbForce){
-	if (perturbForce < 0){
-		perturbForce = 0;
+void leverThread::setPerturbForce (int perturbForceP){
+	if (taskPtr->constForce + perturbForceP < 0){
+		taskPtr->perturbForce  = - (taskPtr->constForce);
+	}else{
+		if (taskPtr->constForce + perturbForceP > 4095){
+			taskPtr->perturbForce = 4095 - taskPtr->constForce;
+		}else{
+			taskPtr->perturbForce = perturbForceP;
+		}
 	}
-	if (perturbForce > 4095){
-		perturbForce = 4095;
-	}
-	float halfWay = taskPtr->nForceData/2;
-	float rate = taskPtr->nForceData/10;
+	int nForceDataM1 = taskPtr->nForceData -1;
+	float halfWay = nForceDataM1/2;
+	float rate = nForceDataM1/10;
 	float base = taskPtr->constForce;
-	for (unsigned int iPt =0; iPt <  taskPtr->nForceData; iPt +=1){
-		taskPtr->forceData [iPt] = (int) (base + perturbForce/(1 + exp (-(iPt - halfWay)/rate)));
+ //#if beVerbose	
+	printf ("force array:");
+//#endif
+	for (unsigned int iPt =0; iPt <  nForceDataM1; iPt +=1){
+		taskPtr->forceData [iPt] = (int) (base + taskPtr->perturbForce/(1 + exp (-(iPt - halfWay)/rate)));
+ //#if beVerbose		
+		printf ("%d, ", taskPtr->forceData [iPt]);
+//#endif		
 	}
+	taskPtr->forceData[ipt] = leverTaskPtr->constForce + leverTaskPtr->perturbForce ;
+ //#if beVerbose	
+	printf ("\n");
+//#endif
 }
 
 /* ************************ Sets posiiton where perturb force is applied *****************
@@ -388,9 +416,8 @@ void leverThread::startTrial (void){
 	taskPtr->trialPos =1;
 	taskPtr->trialComplete =false;
 	taskPtr->inGoal=false;
-	taskPtr->doForce = false;
 	taskPtr->circularBreak=0;
-	if (taskPtr->nCircular <  taskPtr->nPositionData){
+	if (!(taskPtr->isCued)){
 		for (unsigned int iPosition =0;iPosition < taskPtr->nCircular; iPosition +=1){
 			taskPtr->positionData [iPosition] = 0;
 		}
