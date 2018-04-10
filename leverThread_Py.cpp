@@ -13,12 +13,13 @@ void  py_Lever_del(PyObject * PyPtr){
 
 static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 	PyObject * bufferObj;
-	unsigned int nCircular;
+	int isCued;
+	unsigned int nCircularOrToGoal;
 	int isReversed;
 	int goalCuerPin;
 	float cuerFreq;
-	if (!PyArg_ParseTuple(args,"OIiif", &bufferObj, &nCircular, &isReversed, &goalCuerPin, &cuerFreq)) {
-		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for lever position buffer, number for circular buffer, isReversed, goal cuer pin, and cuer frequency.");
+	if (!PyArg_ParseTuple(args,"OiIiif", &bufferObj, &isCued,&nCircularOrToGoal, &isReversed, &goalCuerPin, &cuerFreq)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for lever position buffer, isCued, number for circular buffer or goal pos, isReversed, goal cuer pin, and cuer frequency.");
 		return NULL;
 	}
 	// check that buffer is valid and that it is writable floating point buffer
@@ -36,7 +37,7 @@ static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	// make a leverThread object
-	leverThread * leverThreadPtr = leverThread::leverThreadMaker (static_cast <uint8_t *>(buffer.buf), (unsigned int) (buffer.len/buffer.itemsize), nCircular, isReversed, goalCuerPin,cuerFreq );
+	leverThread * leverThreadPtr = leverThread::leverThreadMaker (static_cast <uint8_t *>(buffer.buf), (unsigned int) (buffer.len/buffer.itemsize), isCued,nCircularOrToGoal, isReversed, goalCuerPin,cuerFreq );
 	
 	if (leverThreadPtr == nullptr){
 		PyErr_SetString (PyExc_RuntimeError, "leverThreadMaker was not able to make a leverThread object");

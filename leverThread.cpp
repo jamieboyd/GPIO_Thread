@@ -124,7 +124,7 @@ void lever_Hi (void * taskData){
 			leverTaskPtr->iForce =0;
 		}
 		if (leverTaskPtr->iForce < leverTaskPtr->nForceData){ 
-			leverForce =leverTaskPtr->forceData[leverTaskPtr->iForce] ;
+			int leverForce =leverTaskPtr->forceData[leverTaskPtr->iForce] ;
 			//wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
 			wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverForce  >> 8) & 0x0F, leverForce  & 0xFF);
 			leverTaskPtr->iForce +=1;
@@ -164,14 +164,14 @@ void lever_Hi (void * taskData){
 				}
 			}
 		}
-	}
-	// check if we are done
-	if (leverTaskPtr->iPosition == leverTaskPtr->nToFinish){
-		leverTaskPtr->trialComplete =true;
-		// set lever to constant force
-		int leverForce =leverTaskPtr->constForce;
-		//wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
-		wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverForce  >> 8) & 0x0F, leverForce  & 0xFF);
+		// check if we are done
+		if (leverTaskPtr->iPosition == leverTaskPtr->nToFinish){
+			leverTaskPtr->trialComplete =true;
+			// set lever to constant force
+			int leverForce =leverTaskPtr->constForce;
+			//wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
+			wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverForce  >> 8) & 0x0F, leverForce  & 0xFF);
+		}
 	}
 }
 
@@ -382,22 +382,23 @@ void leverThread::setPerturbForce (int perturbForceP){
 			taskPtr->perturbForce = perturbForceP;
 		}
 	}
-	int nForceDataM1 = taskPtr->nForceData -1;
+	unsigned int nForceDataM1 = taskPtr->nForceData -1;
+	unsigned int iPt;
 	float halfWay = nForceDataM1/2;
 	float rate = nForceDataM1/10;
 	float base = taskPtr->constForce;
  //#if beVerbose	
 	printf ("force array:");
 //#endif
-	for (unsigned int iPt =0; iPt <  nForceDataM1; iPt +=1){
+	for (iPt =0; iPt <  nForceDataM1; iPt +=1){
 		taskPtr->forceData [iPt] = (int) (base + taskPtr->perturbForce/(1 + exp (-(iPt - halfWay)/rate)));
  //#if beVerbose		
 		printf ("%d, ", taskPtr->forceData [iPt]);
 //#endif		
 	}
-	taskPtr->forceData[ipt] = leverTaskPtr->constForce + leverTaskPtr->perturbForce ;
+	taskPtr->forceData[iPt] = taskPtr->constForce + taskPtr->perturbForce ;
  //#if beVerbose	
-	printf ("\n");
+	printf ("%d\n", taskPtr->forceData [iPt]);
 //#endif
 }
 

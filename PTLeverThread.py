@@ -9,11 +9,14 @@ class PTLeverThread (object):
     """
     PTLeverThread controls a lever used for the AutoHeadFix program
     """
-    def __init__ (self, posBufSizeP, circBuffSizeP, isReversedP, goalCuerPinP, cuerFreqP):
+    def __init__ (self, posBufSizeP, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP):
         self.posBuffer = array.array('B', [0]*posBufSizeP)
-        self.leverThread = ptLeverThread.new (self.posBuffer, circBuffSizeP, isReversedP, goalCuerPinP, cuerFreqP)
+        self.leverThread = ptLeverThread.new (self.posBuffer, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP)
         self.posBufSize = posBufSizeP
-        self.circBuffSize = circBuffSizeP
+	if isCuedP:
+		self.nToGoal = nCircOrToGoalP
+	else:
+		self.nCirc = nCircOrToGoalP
         self.goalCuerPin= goalCuerPinP
         self.cuerFreq = cuerFreqP
 
@@ -56,7 +59,7 @@ class PTLeverThread (object):
     def turnOffGoalCue (self):
         ptLeverThread.doGoalCue(self.leverThread, 0)
 
-    
+
     def setHoldParams(self, goalBottom, goalTop, nHoldTicks):
         ptLeverThread.setHoldParams (self.leverThread, goalBottom, goalTop, nHoldTicks)
 

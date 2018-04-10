@@ -63,7 +63,6 @@ typedef struct leverThreadStruct{
 	bool isCued;				// true if we are running in cued mode, false for uncued mode
 	unsigned int nToFinish;		// tick position where trial is finished, set by pulsedThread according to nCircularOrToGoal  and nHoldTicks
 	// fields used for un-cued trials, i.e., inifinite train with circular buffer 
-	bool isCued;				// true if trial starts at once, false if trial starts when lever crosses threshold, with circular buffer 
 	unsigned int nCircular;		// number of points at start of position array to use for a circular buffer for uncued trials set to nPosition data for no circular buffer
 	unsigned int circularBreak;	// thread sets this where we broke out of circular buffer and started a trial, or we got .
 	unsigned int nToGoal;
