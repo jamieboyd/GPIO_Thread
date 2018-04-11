@@ -5,7 +5,7 @@ import ptLeverThread
 import PTSimpleGPIO
 import array
 
-class PTLeverThread (object):
+class PTLeverThread (PTSimpleGPIO):
     """
     PTLeverThread controls a lever used for the AutoHeadFix program
     """
@@ -13,10 +13,10 @@ class PTLeverThread (object):
         self.posBuffer = array.array('B', [0]*posBufSizeP)
         self.leverThread = ptLeverThread.new (self.posBuffer, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP)
         self.posBufSize = posBufSizeP
-	if isCuedP:
-		self.nToGoal = nCircOrToGoalP
-	else:
-		self.nCirc = nCircOrToGoalP
+        if isCuedP:
+            self.nToGoal = nCircOrToGoalP
+        else:
+            self.nCirc = nCircOrToGoalP
         self.goalCuerPin= goalCuerPinP
         self.cuerFreq = cuerFreqP
 

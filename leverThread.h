@@ -43,7 +43,7 @@ typedef struct leverThreadInitStruct{
 	uint8_t * positionData;			// array for inputs from quadrature decoder. 
 	unsigned int nPositionData; 	// number of points in array,
 	bool isCued;
-	unsigned int nCircularOrToGoal;	// number of points at start to reserve for circular buffer at start, use nCircular for finite length trials
+	unsigned int nToGoalOrCircular;	// number of points at start to reserve for circular buffer at start, use nCircular for finite length trials
 	bool isReversed;				// true if polarity of quadrature decoder is reversed. Constant force at rest position is larger than pulled posiiton
 	int goalCuerPin;				// number of a GPIO pin to use for a cue that lever is in rewarded position, else 0 for no cue
 	float cuerFreq;				// if a tone, frequency of tone to play. duty cycle is assumed to 0.5. If a simple on/off, pass 0
@@ -61,11 +61,9 @@ typedef struct leverThreadStruct{
 	uint8_t leverPosition; 		// current lever position in ticks of the lever, 0 -255
 	// Task control
 	bool isCued;				// true if we are running in cued mode, false for uncued mode
+	unsigned int breakPos;
 	unsigned int nToFinish;		// tick position where trial is finished, set by pulsedThread according to nCircularOrToGoal  and nHoldTicks
-	// fields used for un-cued trials, i.e., inifinite train with circular buffer 
-	unsigned int nCircular;		// number of points at start of position array to use for a circular buffer for uncued trials set to nPosition data for no circular buffer
-	unsigned int circularBreak;	// thread sets this where we broke out of circular buffer and started a trial, or we got .
-	unsigned int nToGoal;
+	unsigned int nToGoalOrCircular;		// number of points at start of position array to use for a circular buffer for uncued trials set to nPosition data for no circular buffer
 	// fields for task difficulty, lever position and time
 	uint8_t goalBottom;			// bottom of Goal area
 	uint8_t goalTop;			// top of Goal area
@@ -119,7 +117,7 @@ const int kDAC_ADDRESS = 0x62; 	// i2c address to use
 
 
 /* Lever recording frequency, we use this to calculate length of array needed for however long we want to record*/
-const float kLEVER_FREQ = 400;
+const float kLEVER_FREQ = 250;
 const unsigned int kFORCE_ARRAY_SIZE = 100;
 
 /* ************************************************constants for settings **********************************/
@@ -142,10 +140,11 @@ class leverThread : public pulsedThread{
 	void setConstForce (int theForce);
 	int getConstForce (void);
 	void applyForce (int theForce);
+	void applyConstForce (void);
 	// setting perturb force and start positon
 	void setPerturbForce(int perturbForce);
 	void setPerturbStartPos(unsigned int perturbStartPos);
-	
+	void setPerturbOff (void);
 	void setHoldParams (uint8_t goalBottomP, uint8_t goalTopP, unsigned int nHoldTicksP);
 	int zeroLever (int mode, int isLocking);
 	

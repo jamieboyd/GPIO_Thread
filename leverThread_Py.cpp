@@ -77,6 +77,13 @@ static PyObject* py_leverThread_applyForce (PyObject *self, PyObject *args){
 	leverThreadPtr->applyForce (newForce);
 	Py_RETURN_NONE;
 }
+
+static PyObject* py_leverThread_applyConstForce (PyObject *self, PyObject *PyPtr) {
+	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	leverThreadPtr->applyConstForce();
+	Py_RETURN_NONE;
+}
+
 static PyObject* py_leverThread_zeroLever (PyObject *self, PyObject *args){
 	  PyObject *PyPtr;
 	  int zeroMode;
@@ -177,6 +184,7 @@ static PyMethodDef leverThreadMethods[] = {
   {"setConstForce", py_leverThread_setConstForce, METH_VARARGS, "(PyPtr, newForce) Sets constant force to be used for leverThread"},
   {"getConstForce", py_leverThread_getConstForce, METH_O, "(PyPtr) Returns constant force used for leverThread"},
   {"applyForce", py_leverThread_applyForce, METH_VARARGS, "(PyPtr, force) Sets physical force on lever for leverThread"},
+  {"applyConstForce", py_leverThread_applyConstForce, METH_O, "(PyPtr) applies the constant force as set for leverThread"},
   {"zeroLever", py_leverThread_zeroLever, METH_VARARGS, "(PyPtr, zeroMode, isLocking) Returns lever to front rail, optionally zeroing encoder"},
   {"setPerturbForce", py_leverThread_setPerturbForce, METH_VARARGS, "(PyPtr, perturbForce) Fills perturbation force array with sigmoid ramp"},
   {"setPerturbStartPos", py_leverThread_setPerturbStartPos, METH_VARARGS, " (PyPtr, perturbPos) sets start position of perturb force"},
