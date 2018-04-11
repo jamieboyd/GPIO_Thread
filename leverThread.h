@@ -155,6 +155,9 @@ class leverThread : public pulsedThread{
 	bool checkTrial(int &trialCode, unsigned int &goalEntryPos);
 	void doGoalCue (int offOn);
 	void abortUncuedTrial(void);
+	bool isCued (void);
+	void setCue (bool isCuedP);
+
 	uint8_t getLeverPos (void);
 	protected:
 	leverThreadStructPtr taskPtr;

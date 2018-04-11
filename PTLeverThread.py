@@ -2,10 +2,9 @@
 #-*-coding: utf-8 -*-
 
 import ptLeverThread
-import PTSimpleGPIO
 import array
 
-class PTLeverThread (PTSimpleGPIO):
+class PTLeverThread ():
     """
     PTLeverThread controls a lever used for the AutoHeadFix program
     """
@@ -32,7 +31,7 @@ class PTLeverThread (PTSimpleGPIO):
         ptLeverThread.applyForce(self.leverThread, theForce)
 
     def applyConstForce(self):
-        ptLeverThread.applyForce (-1)
+        ptLeverThread.applyConstForce (self.leverThread)
 
     def zeroLever (self, zeroMode, isLocking):
         return ptLeverThread.zeroLever(self.leverThread, zeroMode, isLocking)
@@ -68,4 +67,12 @@ class PTLeverThread (PTSimpleGPIO):
 
     def abortUnCuedTrial(self):
         ptLeverThread.abortUncuedTrial(self.leverThread)
+
+    def isCued (self):
+        return ptLeverThread.isCued (self.leverThread)
+
+    def setCued (self, isCued):
+        return ptLeverThread.setCued (self.leverThread, isCued):
+        
+    
     

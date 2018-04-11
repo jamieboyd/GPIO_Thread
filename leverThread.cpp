@@ -37,7 +37,7 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	taskData->spi_wpData [1] =kQD_ONEBYTE_COUNTER;
 	wiringPiSPIDataRW (kQD_CS_LINE, taskData->spi_wpData, 2);
 	
-	// make a cuer
+	// make a goal cuer
 	if (initDataPtr->goalCuerPin > 0){
 		if (initDataPtr->cuerFreq ==0){
 			taskData->goalCuer = SimpleGPIO_thread::SimpleGPIO_threadMaker (initDataPtr->goalCuerPin, 0, (unsigned int) 1000,  (unsigned int) 1000,  (unsigned int) 1, 1);
@@ -65,7 +65,7 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	// initialize iPosition to 0 - other initialization?
 	taskData->iPosition=0;
 	taskData->forceStartPos = initDataPtr->nPositionData; // no force will be applied cause we never get to here
-	taskPtr->trialComplete = true;
+	taskData->trialComplete = true;
 	// initialize reasonable values
 	taskData->goalBottom =10;
 	taskData->goalTop = 100;
@@ -130,7 +130,7 @@ void lever_Hi (void * taskData){
 			if (leverPosition >  leverTaskPtr -> goalBottom){
 				leverTaskPtr -> trialPos = 2; // lever moved into goal area (for a cued trial, it happened before time ran out)
 				leverTaskPtr->breakPos = leverTaskPtr->iPosition; // record where we entered goal area
-				if (leverTaskPtr->isCued == false){
+				if (!(leverTaskPtr->isCued)){
 					// for uncued trial, jump to end of circular buffer
 					leverTaskPtr->iPosition =  leverTaskPtr->nToGoalOrCircular; 
 				}
@@ -196,6 +196,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 	uint8_t prevLeverPos;
 	uint8_t leverPos;
 	int ii;
+	int returnVal =0;
 	if (mode == 0){ // 0 for just returning the lever to 0 position
 		leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
 		leverTaskPtr->spi_wpData[1] = 0;
@@ -226,12 +227,12 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 			// return DAC to constant force
 			//wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
 			wiringPiI2CWriteReg8 (leverTaskPtr->i2c_fd, (dacBase  >> 8) & 0x0F, dacBase & 0xFF);
-			return 0;
+			returnVal = 0;
 		} else{
-			return 1;
+			returnVal = 1;
 		}// if we didn't return lever to zero, progress to next section where we rail it
 	}else{
-		// This is where we rail it and zero it	
+		//  for mode 1, we rail it and zero it	
 		// clear counter
 		leverTaskPtr->spi_wpData[0] = kQD_CLEAR_COUNTER;
 		wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 1);
@@ -259,11 +260,11 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 		// clear counter
 		leverTaskPtr->spi_wpData[0] = kQD_CLEAR_COUNTER;
 		wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 1);
-		// return DAC to constant force
-		wiringPiI2CWriteReg8 (leverTaskPtr->i2c_fd, (dacBase  >> 8) & 0x0F, dacOut & 0xFF);
-		delete (int *) modData;
-		return 0;
 	}
+	// return DAC to constant force
+	wiringPiI2CWriteReg8 (leverTaskPtr->i2c_fd, (dacBase  >> 8) & 0x0F, dacBase & 0xFF);
+	delete (int *) modData;
+	return returnVal;
 }
 
  /* ******************* ThreadMaker with Integer pulse duration, delay, and number of pulses timing description inputs ********************
@@ -320,6 +321,19 @@ void leverThread::setConstForce (int theForce){
 Last Modified 2018/03/26 by Jamie Boyd - initial version */
 int leverThread::getConstForce (void){
 	return taskPtr->constForce;
+}
+
+
+bool leverThread::isCued (void){
+	return taskPtr->isCued;
+}
+
+
+void leverThread::setCue (bool isCuedP){
+	taskPtr->isCued =isCuedP ;
+	if (isCuedP){
+		modTrainLength (0);
+	}
 }
 
 /* ***************************************Gets current lever position from thread data, if trial is running*********************
@@ -425,19 +439,21 @@ Starts a trial, either cued or un-cued
 last modified 2018/03/26 by Jamie Boyd - initial version */
 void leverThread::startTrial (void){
 	taskPtr->iPosition =0;
-	taskPtr->iForce =0;
+	taskPtr->iForce = 0;
 	taskPtr->trialPos =1;
 	taskPtr->trialComplete =false;
 	taskPtr->inGoal=false;
 	taskPtr->nToFinish = taskPtr->nToGoalOrCircular + taskPtr->nHoldTicks;
 	if (taskPtr->isCued){
 		modTrainLength (taskPtr->nToFinish);
+		DoTask ();
 	}else{
 		for (unsigned int iPosition =0;iPosition < taskPtr->nToGoalOrCircular; iPosition +=1){
 			taskPtr->positionData [iPosition] = 0;
+			startInfiniteTrain();
 		}
 	}
-	DoTask ();
+	
 }
 
 /* *********************************Checks if trial is complete or what stage it is at *********************************************
