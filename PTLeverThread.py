@@ -72,7 +72,7 @@ class PTLeverThread ():
         return ptLeverThread.isCued (self.leverThread)
 
     def setCued (self, isCued):
-        return ptLeverThread.setCued (self.leverThread, isCued):
+        return ptLeverThread.setCued (self.leverThread, isCued)
         
     
     

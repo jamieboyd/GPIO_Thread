@@ -2,7 +2,7 @@
 #-*-coding: utf-8 -*-
 
 import PTSimpleGPIO
-from PTSimpleGPIO import PTSimpleGPIO, Pulse, PulseStretch, Train, Infinite_train, MajorScale
+from PTSimpleGPIO import PTSimpleGPIO, Pulse, Train, Infinite_train
 from array import array
 from math import pi, cos
 from abc import ABCMeta, abstractmethod
@@ -94,9 +94,9 @@ class Pulser (object):
 
 
 t1Pin=23
-t1=Train (PTSimpleGPIO.INIT_FREQ, 110, 0.5, 0.5, t1Pin, PTSimpleGPIO.ACC_MODE_SLEEPS_AND_OR_SPINS)
-#scaler = MajorScale ()
-#t1.add_endFunc (scaler)
+t1=Train (PTSimpleGPIO.MODE_FREQ, 0, 110, 0.5, 0.5, t1Pin, PTSimpleGPIO.ACC_MODE_SLEEPS_AND_OR_SPINS)
+scaler = MajorScale ()
+t1.set_endFunc_obj (PTSimpleGPIO.MODE_FREQ, 0, scaler)
 t1.do_trains (21)
 
 """

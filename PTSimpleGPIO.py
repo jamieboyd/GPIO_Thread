@@ -150,12 +150,16 @@ class PTSimpleGPIO (object, metaclass = ABCMeta):
     in microseconds, args [2] = number of pulses, args [3] = number of tasks left to do)
     """
     def set_endFunc_obj (self, dataMode, is_locking, addObj = None):
+        
         if addObj is None and hasattr(self, "endFunc"):
-            ptSimpleGPIO.setEndFunc (self.task_ptr, self)
+            ptSimpleGPIO.setEndFunc (self.task_ptr, self, dataMode, is_locking)
         elif (hasattr(addObj, "endFunc")):
             ptSimpleGPIO.setEndFuncObj (self.task_ptr, addObj, dataMode, is_locking)
             addObj.task_ptr = self.task_ptr
+        else:
+            return False
         self.respectTheGIL = True
+        return True
         
     """
     Unsets the endFunc for the thread so it is no longer run at the end of each task.
