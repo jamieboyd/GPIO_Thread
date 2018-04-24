@@ -24,17 +24,17 @@
 	
 	
 	When output data are not ready for retrieval, digital output pin DOUT is high.
-	     _                                  _
-	____| |________________________________| |_________________________
+	       _                                                         _
+	____| |_____________________________________| |_________________________
 	with clock pin held low, (not reading any data) data pin pulses are 100 usec, frequency is 11.2 Hz (90 msec spacing)
 	each high-to-low transution indicates a new value is available from the HX711
 	
 	The data pin goes high when data has been read, and only goes low when new data is available
-	___      _   _       _    ______________________
-	   |____| |_| |_____| |__|                      |__Data Pin
+	___      _   _         _     ______________________
+	   |____| |_| |_____| |__|                                 |__Data Pin
 	
 	
-	___|||||||||||||||||||||||||____________________|| Clock Pin
+	___|||||||||||||||||||||||||________________________|| Clock Pin
 	
 	
 	By applying 25~27 positive clock pulses at the clock pin, data is shifted out from the data output pin.
