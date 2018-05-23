@@ -14,7 +14,7 @@
  currently in progress. It returns a boolean, true if a pulse was actually started as requested else false.
  You can start a CountermandPulse with DoTask or DoTasks, but then the pulse or pulses won't be countermandable. */
 
- /***************** countermandable Hi Callback ******************************
+ /* **************** countermandable Hi Callback ******************************
 Task to do on High tick, sets GPIO line high or low depending on polarity, unless countermanded
 Sets cmpTaskPtr->wasCountermanded as appropriate
 last modified:

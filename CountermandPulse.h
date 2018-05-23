@@ -15,7 +15,7 @@ typedef struct CountermandPulseStruct{
 	unsigned int * GPIOperiHi; // address of register to write pin bit to on Hi
 	unsigned int * GPIOperiLo; // address of register to write pin bit to on Lo
 	unsigned int pinBit;	// pin number translated to bit position in register
-	int countermand;		 // 0 for regular pulse, 1 to request countermand, 2 if in middle of a countermand
+	volatile int countermand;		 // 0 for regular pulse, 1 to request countermand, 2 if in middle of a countermand
 	bool wasCountermanded; // true if last pulse was countermanded
 }CountermandPulseStruct, *CountermandPulseStructPtr;
 
