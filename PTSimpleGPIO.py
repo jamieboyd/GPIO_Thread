@@ -165,7 +165,7 @@ class PTSimpleGPIO (object, metaclass = ABCMeta):
     Unsets the endFunc for the thread so it is no longer run at the end of each task.
     """
     def clear_endFunc (self):
-         ptSimpleGPIO.unSetEndFunc (self.task_ptr)
+         ptSimpleGPIO.unsetEndFunc (self.task_ptr)
          self.respectTheGIL = False
 
     """
@@ -175,7 +175,7 @@ class PTSimpleGPIO (object, metaclass = ABCMeta):
         return ptSimpleGPIO.hasEndFunc (self.task_ptr)
 
     """
-    sets a C++ endFunction that updates either frequency (freq_or_duty =0) or duty cycle
+    sets a C++ endFunction that updates either duty cycle (freq_or_duty =0) or frequency
     (freq_or_duty = nonzero from a passed-in Python floating point array (flt_array) 
     """
     def set_array_endFunc (self, flt_array, freq_or_duty, is_locking):
@@ -285,7 +285,7 @@ class Infinite_train (PTSimpleGPIO):
 The Simple_Output class directly sets a gpio pin hi or low with no thread involvement. It is inited
 with the pin number you want to use, and the level (0 =low, 1 =high) you want at start.
 """
-class Simple_output (PTSimpleGPIO):
+class Simple_output (object):
     """Class does simple set hi/set low with no thread
     """
     def __init__(self, pin_number, level):

@@ -1,7 +1,7 @@
 #! /usr/bin/python
 #-*-coding: utf-8 -*-
 
-import PTSimpleGPIO
+#import PTSimpleGPIO
 from PTSimpleGPIO import PTSimpleGPIO, Pulse, Train, Infinite_train
 from array import array
 from math import pi, cos
@@ -11,7 +11,7 @@ from array import array as array
 
 class PulseStretch (Pulse):
     def __init__ (self, delay, duration, polarity, gpio_pin, accuracy_level):
-        super.__init__ (self, delay, duration, polarity, gpio_pin, accuracy_level)
+        super().__init__ (self, delay, duration, polarity, gpio_pin, accuracy_level)
         set_endFunc_obj (self, 1, 0)
     
     def endFunc (self, *args):
@@ -28,24 +28,23 @@ ascending major scale for as many trains as you configure. Start at
 220 Hz and run 22 trains to play 3 octaves in A major. Make the train duty cycle
 0.5 and the train duration 0.5 seconds or so.
 """
-class MajorScale (object):
-
-    def __init__(self):
+class MajorScale (Train):
+    def __init__ (self, mode, gpio_pin, polarity, pulseDelayOrTrainFreq, pulseDurationOrTrainDutyCycle, nPulsesOrTrainDuration, accuracy_level):
+        super().__init__ (mode, gpio_pin, polarity, pulseDelayOrTrainFreq, pulseDurationOrTrainDutyCycle, nPulsesOrTrainDuration, accuracy_level)
         self.iTone =0
         
-    def endFunc (self, *args):
+    def EndFunc (self, trainFreq, trainDutyCycle, trainLength, doTask):
         #trainFrequency=args[0]
         #trainDutyCycle=args[1]
         #trainDuration=args[2]
-        #pulseDelay = args[3]
-        #pulseDur=args[4]
-        #nPulses = args[5]
         # major scale:
         #       do          re          me          fa          so          la          ti          do
         #  	    tone        tone        semitone    tone        tone        tone        semitone
 	#	    0           1           2           3	    4	        5	    6
 	#	    7           8	    9	        10	    11	        12          13
 	#	    14          15	    16          17	    18          19          20
+        print ('I am an end Function')
+        """
         if self.iTone % 7 == 2 or self.iTone % 7 == 6:
             newFrequency = args[0] * 1.05946  # semitone
             if self.iTone % 7 == 6:
@@ -56,7 +55,9 @@ class MajorScale (object):
             #print ('Tone')
  
         self.iTone +=1
-        ptSimpleGPIO.modTrainFreq (self.task_ptr, newFrequency)
+        print (newFrequency)
+        #ptSimpleGPIO.modTrainFreq (self.task_ptr, newFrequency)
+        """
 
 """
 Pulser is class with an endFunc designed to be used with a Train
@@ -93,11 +94,21 @@ class Pulser (object):
         self.iArray += 1
 
 
-t1Pin=23
-t1=Train (PTSimpleGPIO.MODE_FREQ, 0, 110, 0.5, 0.5, t1Pin, PTSimpleGPIO.ACC_MODE_SLEEPS_AND_OR_SPINS)
-scaler = MajorScale ()
-t1.set_endFunc_obj (PTSimpleGPIO.MODE_FREQ, 0, scaler)
-t1.do_trains (21)
+if __name__ == '__main__':
+    import ptSimpleGPIO
+    t1Pin=23
+    t1=Train (PTSimpleGPIO.MODE_FREQ, t1Pin, 0, 110, 0.5, 0.5, PTSimpleGPIO.ACC_MODE_SLEEPS_AND_OR_SPINS)
+    try:
+        scaler = MajorScale (t1.task_ptr)
+        #t1.set_endFunc_obj (PTSimpleGPIO.MODE_FREQ, 0, addObj = scaler)
+        ptSimpleGPIO.setEndFuncObj (t1.task_ptr, scaler, PTSimpleGPIO.MODE_FREQ, 0)
+        t1.do_trains (21)
+    except Exception as e:
+        print (str(e))
+    finally:
+        del (t1)
+        del (scaler)
+        
 
 """
 a1 = array('f', (0.01*i for i in range (0, 100)))
