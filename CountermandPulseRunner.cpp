@@ -11,19 +11,19 @@ int main(int argc, char **argv){
 	CountermandPulse * cp = CountermandPulse::CountermandPulse_threadMaker(23, 0, 2000000, 250000, ACC_MODE_SLEEPS_AND_SPINS);
 	// calling doTask igives the standard pulse, not countermandable
 	cp->DoTask();
-	cp->waitOnBusy(2.5);
+	cp->waitOnBusy(3);
 	printf ("pulse 1 was standard, not countermandable.\n");
 	
 	// calling doCountermandPulse with a wait less than 2 seconds should be countermandable
 	cp->doCountermandPulse();
-	cp->waitOnBusy(1.95);
+	cp->waitOnBusy(1.99);
 	cp->countermand();
 	cp->waitOnBusy(2);
 	printf ("pulse 2 was countermanded = %d.\n", cp->wasCountermanded());
 	
 	// calling doCountermandPulse with a wait greater than 2 seconds should NOT be countermandable
 	cp->doCountermandPulse();
-	cp->waitOnBusy(2.05);
+	cp->waitOnBusy(2.01);
 	cp->countermand();
 	cp->waitOnBusy(1);
 	printf ("pulse 3 was countermanded = %d.\n", cp->wasCountermanded());

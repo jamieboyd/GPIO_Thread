@@ -18,18 +18,21 @@
 Task to do on High tick, sets GPIO line high or low depending on polarity, unless countermanded
 Sets cmpTaskPtr->wasCountermanded as appropriate
 last modified:
+2018/05/23 by Jamie Boyd - added taskMutexPtr to prevent simultaneous access by both thread and class method
 2018/04/04 by Jamie Boyd - added Lo func and wasCountermanded boolean
 2018/03/16 by Jamie Boyd - initial version */
 void Countermand_Hi (void *  taskData){
 	CountermandPulseStructPtr cmpTaskPtr = (CountermandPulseStructPtr) taskData;
+	pthread_mutex_lock (cmpTaskPtr->taskMutexPtr);
 	if (cmpTaskPtr->countermand == 2){ // countermand requested
 		cmpTaskPtr->countermand = 4; // set countermand in progress
-        cmpTaskPtr->wasCountermanded= true;
+		cmpTaskPtr->wasCountermanded= true;
 	}else{ // no countermand requested
-        *(cmpTaskPtr->GPIOperiHi) = cmpTaskPtr->pinBit; // no countermand so set high
-        cmpTaskPtr->countermand = 3; // set no countermand in progress
-        cmpTaskPtr->wasCountermanded= false;
+		*(cmpTaskPtr->GPIOperiHi) = cmpTaskPtr->pinBit; // no countermand so set high
+		cmpTaskPtr->countermand = 3; // set no countermand in progress
+		cmpTaskPtr->wasCountermanded= false;
 	}
+	pthread_mutex_unlock (cmpTaskPtr->taskMutexPtr);
 }
 
 /* ********************************** countermandable low callback *****************************************************
@@ -44,9 +47,10 @@ void Countermand_Lo (void *  taskData){
 	cmpTaskPtr->countermand = 0; // reset countermand to 0
 }
 
-/* **************** modFunc that sets taskData to a new CountermandPulse struct and copies over data from original *********************
-SimpleGPIO struct. Needed because we want to call SimpleGPIO_thread constructor 
+/* **************** modFunc that sets taskData to a new CountermandPulse struct *********************
+Copies over data from original SimpleGPIO struct. Needed because we want to call SimpleGPIO_thread constructor 
 last modified:
+2018/05/23 by Jamie Boyd - added taskMutexPtr to prevent simultaneous access by both thread and class method
 2018/04/04 by Jamie Boyd - initial version */
 int countermandSetTaskData (void * modData, taskParams * theTask){
 	CountermandPulseStructPtr newTaskData= new CountermandPulseStruct;
@@ -56,6 +60,7 @@ int countermandSetTaskData (void * modData, taskParams * theTask){
 	newTaskData->pinBit = oldTaskData->pinBit;
 	newTaskData->countermand = 0;
 	newTaskData->wasCountermanded = false;
+	newTaskData->taskMutexPtr = &(theTask->taskMutex);
 	delete oldTaskData;
 	theTask->taskData = (void *)newTaskData;
 	return 0;
@@ -98,9 +103,9 @@ CountermandPulse * CountermandPulse::CountermandPulse_threadMaker (int pin, int 
 	newCountermandPulse->setLowFunc (&Countermand_Lo);
 	// set custom delete function for task data
 	newCountermandPulse->setTaskDataDelFunc (&CountermandPulse_delTask);
-	// replace SimpleGPIOStruct with CountermandPulseStruct, which has an added field at the end
+	// replace SimpleGPIOStruct with CountermandPulseStruct, which has added fields at the end
 	newCountermandPulse->modCustom (countermandSetTaskData, nullptr, 0);
-	// make a task pointer for easy direct access to thread task data for countermanding without benefit of mutex
+	// make a task pointer for easy direct access to thread task data
 	newCountermandPulse->taskStructPtr = (CountermandPulseStructPtr)newCountermandPulse->getTaskData ();
 	return newCountermandPulse;
 }
@@ -122,14 +127,17 @@ bool CountermandPulse::doCountermandPulse (void){
 /* *************************** to countermand, just set countermand in the task pointer to 1, and current pulse will be countermanded
 IF countermand is received before delay is up. Returns true if pulse is in countermandable state, that is, waiting for duration
 Last Modified:
+2018/05/23 by jamie Boyd - added taskMutexPtr to prevent simultaneous access by both thread and class
 2018/04/04 by Jamie Boyd - initial version*/
 bool CountermandPulse::countermand (void){
+	bool returnVal = false;
+	pthread_mutex_lock (&theTask.taskMutex);
 	if (taskStructPtr->countermand== 1){
 		taskStructPtr->countermand = 2;
-        return true;
-    }else{
-        return false;
-    }
+		returnVal = true;
+	}
+	pthread_mutex_unlock (&theTask.taskMutex);
+	return returnVal;
 }
 
 /* ************************ returns truth that last pulse was countermanded ********************************
