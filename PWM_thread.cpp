@@ -98,7 +98,7 @@ float ptPWM_SetClock (float newPWMFreq, int PWMrange, bcm_peripheralPtr PWMperi,
 	return clockRate/(integerDivisor + (fractionalDivisor/4095));
 }
 
-/************************************************************************************
+/* ***********************************************************************************
 Initialization callback function. Initializes a single channel, either 0 or 1.
 last modified:
 2017/02/20 by Jamie Boyd - initial version 

@@ -28,7 +28,9 @@ typedef struct PWMStruct{
 	// data for outputting
 	unsigned int dataPos; // starting position in data array we are currently outputting
 	unsigned int nData; // number of points in data array
-	int * pwmData; // array of PWM values for thread to cycle through, 0 to range
+	unsigned int dataStartPos;
+	unsigned int dataEndPos;
+	int * pwmData; // array of PWM values for thread to cycle through, start to end
 	// these variables depend on channel, can be set at intiialization
 	unsigned int rangeRegisterOffset;
 	unsigned int dataRegisterOffset;
