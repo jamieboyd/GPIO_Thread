@@ -63,8 +63,7 @@ Last Modified:
 		return NULL;
 	}
 	HX711 * HX711Ptr = static_cast<HX711 * > (PyCapsule_GetPointer(PyPtr, "HX711"));
-	HX711Ptr->tare (nTares, false); // printing is always false; print from Python if you want, you have the array
-	Py_RETURN_NONE;
+	return Py_BuildValue ("f", HX711Ptr->tare (nTares, false)); // printing is always false; print from Python if you want, you have the array
 }
 
 /* ******************** Weighs a set number of times, not returning until done *****************************
@@ -145,6 +144,20 @@ static PyObject* py_HX711_setScaling (PyObject *self, PyObject *args) {
 	Py_RETURN_NONE;
 }
 
+
+static PyObject* py_HX711_scalingFromStd (PyObject *self, PyObject *args){
+	PyObject *PyPtr;
+	float standardGrams;
+	unsigned int nAvg;
+	if (!PyArg_ParseTuple(args, "OfI", &PyPtr, &standardGrams, &nAvg)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for new scaling.");
+		return NULL;
+	}
+	HX711 * HX711Ptr = static_cast<HX711 * > (PyCapsule_GetPointer(PyPtr, "HX711"));
+	return Py_BuildValue("f",HX711Ptr->scalingFromStd(standardGrams, nAvg));
+}
+
+
 static PyObject* py_HX711_turnON (PyObject *self, PyObject *PyPtr) {
 	HX711 * HX711Ptr = static_cast<HX711 * > (PyCapsule_GetPointer(PyPtr, "HX711"));
 	HX711Ptr->turnON();
@@ -170,6 +183,7 @@ static PyMethodDef HX711Methods[] = {
   {"getTareValue", py_HX711_getTareValue, METH_O, "returns current tare value used with HX711"},
   {"getScaling", py_HX711_getScaling, METH_O, "returns grams per ADC unit used with HX711"},
   {"setScaling", py_HX711_setScaling, METH_VARARGS, "sets grams per ADC unit for HX711"},
+  {"scalingFromStd", py_HX711_scalingFromStd, METH_VARARGS, "calculates scaling by weighing a standard"},
   {"turnOn", py_HX711_turnON, METH_O, "wakes HX711 from low power state"},
   {"turnOff", py_HX711_turnOFF, METH_O, "sets HX711 to low power state"},
   { NULL, NULL, 0, NULL}

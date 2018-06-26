@@ -61,8 +61,8 @@ void HX711_Hi (void *  taskData);
 void HX711_Lo (void *  taskData);
 
 /* *************************** Constants for control codes passed to thread in controlCode *********************************************/
-static const int kCTRL_WEIGH =0;
-static const int kCTRL_TARE=1;
+static const int kCTRL_SCALED =0;
+static const int kCTRL_RAW=1;
 
 /* ******************** Initialization struct for HX711 *******************************
  pin numbers, address base for memory mapped addresses, scaling constant (grams per A/D unit), pointer to array for weigh data, size of array */
@@ -117,6 +117,7 @@ class HX711: public pulsedThread{
 	int getDataPin (void);
 	int getClockPin(void);
 	float getScaling (void);
+	float scalingFromStd (float standardGrams, unsigned int nAvg);
 	void setScaling (float newScaling);
 	unsigned int getNweights (void);
 	private:
