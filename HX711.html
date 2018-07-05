@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<HTML>
+<head>
+<title>GPIO_Thread:HX711</title>
+<META NAME="AUTHOR" CONTENT="Jamie Boyd">
+</head>
+
+<H2>HX711 Load Cell Amplifier</H2>
+<p>The <a href = "https://www.sparkfun.com/products/13879">HX711 load cell amplifier</a> is an integrated circuit that reads analog voltages from a load cell, does analog to digital conversions, and serially outputs a 24 bit value representing the weight on the load cell. The interface to the Pi is through two GPIO lines, clock and data.  Although a two wire interface named clock and data suggests the I<sup>2</sup>C bus, the HX711 is <em>NOT</em> an I<sup>2</sup>C device, but uses a custom protocol where the Pi generates a clock signal and the HX711 shifts out data on every pulse of the clock. Timing is controlled in software; thus, any two GPIO pins can be used for the HX711 interface. The HX711 project provides a class with a threaded task that reads data from the HX711 into an array that can be shared with Python. The relevant files are:
+<ul><li>HX711.cpp/.h -- C++ class subclassed from pulsedThread to control the HX711</li>
+<li>HX711_runner.cpp -- C++ application using HX711 class to do everything you need to do with a scale</li>
+<li>HX711_Py.cpp -- C++ code for a Python module to make and use an instance of the HX711 scale class from Python</li>
+<li>HX711_setup.py -- Python code to make and install the HX711 Python/C module and the Scale Python module</li>
+<li>Scale.py -- Python code that wraps the HX711 module in a Python object interface, with a scaleRunner method that provides interactive control of a Scale object.</li></ul></p>
+
+<hr>
+<a href = "./GPIO_Thread.html">Back to GPIO Thread index</a>
+</body>
+</html>
