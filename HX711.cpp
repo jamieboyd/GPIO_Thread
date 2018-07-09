@@ -223,9 +223,10 @@ float HX711::tare (int nAvg, bool printVals){
 /* ************************** Calculates grams/unit scaling from a series of raw readings of a standard weight *****************************
 Tare value is not scaled, but in raw A/D units
 Last Modified:
+2018/07/09 by Jamie Boyd - bug fix, subtracted scaling instead of tareVal
 2018/06/26 by Jamie Boyd - inital version */
 float HX711::scalingFromStd (float standardGrams, unsigned int nAvg){
-	float newScaling = standardGrams/(readSynchronous (nAvg, false, kCTRL_RAW) - HX711TaskPtr->scaling);
+	float newScaling = standardGrams/(readSynchronous (nAvg, false, kCTRL_RAW) - HX711TaskPtr->tareVal);
 	HX711TaskPtr->scaling = newScaling;
 	return newScaling;
 }
