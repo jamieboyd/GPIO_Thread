@@ -140,7 +140,7 @@ class Scale:
         Runs a loop that lets the user easily use the main functions of the scale
         plus user can select other options from calling code and get the user selection to handle themselves
         """
-        inputStr = '------------------------------------Scale Runner------------------------------------\n'
+        inputStr = '\n------------------------------------Scale Runner------------------------------------\n'
         inputStr += '-1:\tQuit Scale Runner\n'
         inputStr += '0:\tTare the scale with average of 10 readings\n'
         inputStr += '1:\tPrint current Tare value\n'
@@ -152,7 +152,7 @@ class Scale:
         inputStr += '7:\tStart a threaded read\n'
         inputStr += '8:\tSet scale to low power mode\n'
         inputStr += '9:\tWake scale from low power mode\n'
-        inputStr += extraOptions + ':'
+        inputStr += extraOptions + '\n:'
         while True:
             event = int (input (inputStr))
             if event == -1:
@@ -160,27 +160,27 @@ class Scale:
             if event == 0:
                 self.tare(10, True)
             elif event ==1:
-               print ('Curent Tare Value = {:.5} A/D units'.format(HX711.getTareValue (self.hx711ptr)))
+               print ('\nCurent Tare Value = {:.5} A/D units'.format(HX711.getTareValue (self.hx711ptr)))
             elif event == 2:
                 try:
                     newScaling = float (input ("Enter new scaling factor in grams per A/D unit:"))
                 except ValueError:
-                    print ('Value Error: Next time, enter a number for the scaling')
+                    print ('\nValue Error: Next time, enter a number for the scaling')
                     continue
                 HX711.setScaling (self.hx711ptr, newScaling)
             elif event == 3:
                 try:
-                    stdWt = float (input ("Put standard on scale and enter its weight in grams:"))
+                    stdWt = float (input ("\nPut standard on scale and enter its weight in grams:"))
                 except ValueError:
-                    print ('Value Error: Next time, enter a number for the standard weight.')
+                    print ('\nValue Error: Next time, enter a number for the standard weight.')
                     continue
-                print ('Calculated Scaling ={:.5} grams per A/D unit'.format (HX711.scalingFromStd (self.hx711ptr, stdWt, 10))) 
+                print ('\nCalculated Scaling ={:.5} grams per A/D unit'.format (HX711.scalingFromStd (self.hx711ptr, stdWt, 10))) 
             elif event == 4:
-                print ('Curent Scaling Factor = {:.5} grams per A/D unit'.format(HX711.getScaling (self.hx711ptr)))
+                print ('\nCurent Scaling Factor = {:.5} grams per A/D unit'.format(HX711.getScaling (self.hx711ptr)))
             elif event == 5:
                 print ('Weight = {:.5} grams'.format(HX711.weigh (self.hx711ptr, 1)))
             elif event == 6:
-                print ('Average of 10 weighings = {:.5} grams'.format(HX711.weigh (self.hx711ptr, 10)))
+                print ('\nAverage of 10 weighings = {:.5} grams'.format(HX711.weigh (self.hx711ptr, 10)))
             elif event == 7:
                 self.threadStart (self.arraySize)
                 nReads = self.threadCheck() 
