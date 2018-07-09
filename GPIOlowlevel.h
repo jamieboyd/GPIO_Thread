@@ -120,14 +120,6 @@ extern int GPIOperi_users;
 volatile unsigned int * useGpioPeri (void);
 void unUseGPIOperi (void);
 
-/**************************************************Clock Peripheral*********************************************************
-Values for setting some registers need to be ORed with this magic number, the clock manager password */
-#define	BCM_PASSWORD 0x5A000000
-/* CLOCK_BASE is defined by 0x101000 offset from the base peripheral addresss */
-#define CLOCK_BASE (BCM_PERI_BASE + 0x101000)
-/*Frequency of oscillators that we use as source for things like PWM clock*/
-#define PI_CLOCK_RATE 19.2e6	//19.2 Mhz
-#define PLLD_CLOCK_RATE 500e6	// 500 MHz phase locked loop D 
 
 /***************************************************PWM Periperal**********************************************************
 PWM_BASE is defined by 0x20C000 offset from the base peripheral addresss */
@@ -150,10 +142,33 @@ PWM_BASE is defined by 0x20C000 offset from the base peripheral addresss */
 #define	PWM0_SERIAL     0x0002  // Run in serial mode
 #define	PWM0_ENABLE     0x0001  // Channel Enable
 
+#define PWM_MARK_SPACE 0
+#define PWM_BALANCED 1
+
 extern bcm_peripheralPtr PWMperi ;
 extern int PWMperi_users;
 volatile unsigned int * usePWMPeri (void);
 void unUsePWMperi (void);
+
+/************************************************** PWM Clock Control*********************************************************
+Values for setting some registers need to be ORed with this magic number, the clock manager password */
+#define	BCM_PASSWORD 0x5A000000
+/* CLOCK_BASE is defined by 0x101000 offset from the base peripheral addresss */
+#define PWM_CLOCK_BASE (BCM_PERI_BASE + 0x101000)
+/*Frequency of oscillators that we use as source for things like PWM clock*/
+#define PI_CLOCK_RATE 19.2e6	//19.2 Mhz
+#define PLLD_CLOCK_RATE 500e6	// 500 MHz phase locked loop D 
+
+extern bcm_peripheralPtr PWMClockperi;
+extern int PWMClockperi_users;
+volatile unsigned int * usePWMClockPeri (void);
+void unUsePWMClockperi (void);
+
+
+/*********************************************** GPU CLock ******************************************************/
+#define GPU_CLOCK1		(0x7E801000 - 0x7e000000 + BCM_PERI_BASE)
+#define GPU_CLOCK2		0x3F801000
+#define GPU_CLOCK3		0x3F003000
 
 /************************************************* BSC peripheral, for I2C******************************************************************
 I2C  Control, done with one of the Broadcom Serial Controllers, BSC0 for Pi 1, BSC1 for Pi 2 */
