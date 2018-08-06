@@ -9,7 +9,7 @@ static const int POLARITY = 0;
 int main(int argc, char **argv){
 	
 	// Use threadMaker function to make a simpleGPIO_thread (580 + 20 = 500 microseconds per pulse times 50 pulses = 0.025 seconds per train
-	SimpleGPIO_thread *  myGPIO= SimpleGPIO_thread::SimpleGPIO_threadMaker (GPIO_PIN, POLARITY, (unsigned int)4800,(unsigned int)200, (unsigned int)50, 1);
+	SimpleGPIO_thread *  myGPIO= SimpleGPIO_thread::SimpleGPIO_threadMaker (GPIO_PIN, POLARITY, (unsigned int)960,(unsigned int)40, (unsigned int)50, 1);
 	printf ("GPIO peri users = %d.\n", GPIOperi_users);
 	if (myGPIO == nullptr){
 		printf ("SimpleGPIO_thread object was not created. Now exiting...\n");
@@ -17,13 +17,13 @@ int main(int argc, char **argv){
 	}
 	// make an array of floats and fill it with values that vary from 0.2 to 1 in a sinusoidal fashion
 	float * endFuncArrayData = new float [128];
-	myGPIO->cosineDutyCycleArray (endFuncArrayData, 128, 64, 0.5, 0.5);
+	myGPIO->cosineDutyCycleArray (endFuncArrayData, 128, 64, 0.55, 0.35);
 	// Set a ponter to this array as endFunc data 
 	myGPIO->setUpEndFuncArray (endFuncArrayData, 128, 1);
 	// set the endFunc to modify pulse dutycycle from the array  
 	myGPIO->setEndFunc (&pulsedThreadDutyCycleFromArrayEndFunc);
-	// request thread to output 128 trains, as this is a multiple of the period, we start low and end low, should take 32 seconds
-	myGPIO ->DoTasks (128);
+	// request thread to output 1280 trains, as this is a multiple of the period, we start low and end low, should take 32 seconds
+	myGPIO ->DoTasks (1280);
 	// wait til the trains are all done, or 60 seconds, which is lots
 	printf ("Trains left = %d.\n", myGPIO->waitOnBusy (60));
 	// clean up
