@@ -9,7 +9,8 @@ Compile like this:
 g++ -O3 -std=gnu++11 -Wall -lpulsedThread GPIOlowlevel.cpp HX711.cpp HX711_runner.cpp -o HX711_Scale
 
 Last modified:
-2018//03/05 by Jamie Boyd - intial version for new pulsedThread verison of HX711.cpp 
+2018/06/26 by jamie Boyd - added function to set sclaing from a single standard weight
+2018/03/05 by Jamie Boyd - intial version for new pulsedThread verison of HX711.cpp 
 
 * *****************Constants for pin defaults, scaling in grams per A/D units, and size of array for weight data **********************************/
 const int kDATAPIN=22;
@@ -88,18 +89,19 @@ int main(int argc, char **argv){
 		printf ("0:\tTare the scale with average of 10 readings.\n");
 		printf ("1:\tPrint current Tare value.\n");
 		printf ("2:\tSet new scaling factor in grams per A/D unit\n");
-		printf ("3:\tPrint current scaling factor.\n");
-		printf ("4:\tWeigh something with a single reading\n");
-		printf ("5:\tWeigh something with an average of 10 readings\n");
-		printf ("6:\tStart a threaded read.\n"); 
-		printf ("7:\tSet scale to low power mode\n");
-		printf ("8:\tWake scale from low power mode\n");
+		printf ("3:\tCalculate scaling from a standard weight\n");
+		printf ("4:\tPrint current scaling factor.\n");
+		printf ("5:\tWeigh something with a single reading\n");
+		printf ("6:\tWeigh something with an average of 10 readings\n");
+		printf ("7:\tStart a threaded read.\n"); 
+		printf ("8:\tSet scale to low power mode\n");
+		printf ("9:\tWake scale from low power mode\n");
 		// scan the input into a string buffer
 		if (myGetline(line, maxChars, 1)  == false)
 			continue;
 		// Get the menu selection, and check it
 		sscanf (line, "%hhd\n", &menuSelect);
-		if ((menuSelect < -1) || (menuSelect > 8)){
+		if ((menuSelect < -1) || (menuSelect > 9)){
 			printf ("You entered a selection, %hhd, outside the range of menu items (-1-8)\n", menuSelect);
 			continue;
 		} 
@@ -119,16 +121,24 @@ int main(int argc, char **argv){
 					break;
 				sscanf (line, "%f\n", &newScaling);
 				scale->setScaling (newScaling);
+				break;
 			case 3:
-				printf ("Scaling factor is %.5E grams per A/D unit\n",scale->getScaling());
+				printf ("Enter weight of standard in grams:");
+				if (myGetline(line, maxChars, 1)  == false)
+					break;
+				sscanf (line, "%f\n", &newScaling);
+				printf ("Calculated scaling  is %.5E grams per A/D unit\n",scale-> scalingFromStd (newScaling, 10));
 				break;
 			case 4:
-				printf ("Measured Weight was %.3f grams.\n", scale->weigh (1,true));
+				printf ("Scaling factor is %.5E grams per A/D unit\n",scale->getScaling());
 				break;
 			case 5:
-				printf ("Measured Weight was %.3f grams.\n", scale->weigh ((unsigned int)10,true));
+				printf ("Measured Weight was %.3f grams.\n", scale->weigh (1,true));
 				break;
 			case 6:
+				printf ("Measured Weight was %.3f grams.\n", scale->weigh ((unsigned int)10,true));
+				break;
+			case 7:
 				scale->weighThreadStart (kNUM_WEIGHTS);
 				struct timespec sleeper;
 				sleeper.tv_sec = 0;
@@ -140,10 +150,10 @@ int main(int argc, char **argv){
 				}
 				scale->weighThreadStop ();
 				break;
-			case 7:
+			case 8:
 				scale->turnOFF();
 				break;
-			case 8:
+			case 9:
 				scale->turnON ();
 				break;
 		}

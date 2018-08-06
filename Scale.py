@@ -1,7 +1,7 @@
 from array import array
 import HX711
-"""HX711 is a c++ module that does the GPIO clocking and data reading from
-the HX711 load cell on a seperate thread at C++ speed using the pulsedThread library
+"""HX711 is a Python/C++ module from GPIO_Thread that does the GPIO clocking and data reading from
+the HX711 load cell on a separate thread at C++ speed using the pulsedThread library
 """
 
 class Scale:
@@ -30,9 +30,13 @@ class Scale:
         :param printVal:if set, will print the tare value as well as save it
         :returns:the tare value, in A/D units, not scaled into grams
         """
-        HX711.tare (self.hx711ptr, nAvg)
+        tareValue = HX711.tare (self.hx711ptr, nAvg)
         if printVal == True:
-            print ('Tare value is', self.getTareVal(), 'g')
+            for i in range (0, nAvg):
+                print ('Tare {} value is {} A/D units'.format (i, self.threadArray [i]))
+            print ('New Tare value is {:.5} A/D units'.format (tareValue))
+        return tareValue
+
         
     def weigh (self, nAvg):
         """
@@ -85,6 +89,12 @@ class Scale:
         """
         HX711.setScaling (self.hx711ptr, newScaling)
 
+    def setScalingFromStandard (self, standardWt):
+        """
+        Calculates scaling by measuring a standard weight, in grams
+        """
+        HX711.scalingFromStd (self.hx711ptr, stdWt, 10)
+
     def getScaling (self):
         """
         Gets the scaling in grams/24-bit A/D unit from the C++ object
@@ -130,26 +140,58 @@ class Scale:
         Runs a loop that lets the user easily use the main functions of the scale
         plus user can select other options from calling code and get the user selection to handle themselves
         """
+        inputStr = '\n------------------------------------Scale Runner------------------------------------\n'
+        inputStr += '-1:\tQuit Scale Runner\n'
+        inputStr += '0:\tTare the scale with average of 10 readings\n'
+        inputStr += '1:\tPrint current Tare value\n'
+        inputStr += '2:\tSet new scaling factor in grams per A/D unit\n'
+        inputStr += '3:\tCalculate scaling from a standard weight\n'
+        inputStr += '4:\tPrint current scaling factor\n'
+        inputStr += '5:\tWeigh something with a single reading\n'
+        inputStr += '6:\tWeigh something with an average of 10 readings\n'
+        inputStr += '7:\tStart a threaded read\n'
+        inputStr += '8:\tSet scale to low power mode\n'
+        inputStr += '9:\tWake scale from low power mode\n'
+        inputStr += extraOptions + '\n:'
         while True:
-            print ('------------------------------------Scale Runner------------------------------------')
-            event = int (input ('0 to tare\n1 to weigh once\n2 for avg of 10 readings\n3 to turn OFF\n4 to turn ON\n5 for threaded read\n6 to quit ScaleRunner\n' + extraOptions))
+            event = int (input (inputStr))
+            if event == -1:
+                break
             if event == 0:
-                self.tare(10, False)
-                print ('Tare Value = ', self.getTareVal (), 'g')
+                self.tare(10, True)
             elif event ==1:
-                print ('Weight =', self.weighOnce(), 'g')
+               print ('\nCurent Tare Value = {:.5} A/D units'.format(HX711.getTareValue (self.hx711ptr)))
             elif event == 2:
-                print ('Weight =', self.weigh(10), 'g')
+                try:
+                    newScaling = float (input ("Enter new scaling factor in grams per A/D unit:"))
+                except ValueError:
+                    print ('\nValue Error: Next time, enter a number for the scaling')
+                    continue
+                HX711.setScaling (self.hx711ptr, newScaling)
             elif event == 3:
-                self.turnOff()
+                try:
+                    stdWt = float (input ("\nPut standard on scale and enter its weight in grams:"))
+                except ValueError:
+                    print ('\nValue Error: Next time, enter a number for the standard weight.')
+                    continue
+                print ('\nCalculated Scaling ={:.5} grams per A/D unit'.format (HX711.scalingFromStd (self.hx711ptr, stdWt, 10))) 
             elif event == 4:
-                self.turnOn()
+                print ('\nCurent Scaling Factor = {:.5} grams per A/D unit'.format(HX711.getScaling (self.hx711ptr)))
             elif event == 5:
+                print ('Weight = {:.5} grams'.format(HX711.weigh (self.hx711ptr, 1)))
+            elif event == 6:
+                print ('\nAverage of 10 weighings = {:.5} grams'.format(HX711.weigh (self.hx711ptr, 10)))
+            elif event == 7:
                 self.threadStart (self.arraySize)
                 nReads = self.threadCheck() 
                 while nReads < self.arraySize:
-                    print ("Thread has read ", nReads, " weights, last reading was ", self.threadArray [nReads-1])
+                    print ("Thread has read {} weights, last reading was {:.5} grams".format (nReads, self.threadArray [nReads-1]))
                     nReads = self.threadCheck()
+            elif event == 8:
+                self.turnOff()
+            elif event == 9:
+                self.turnOn()
             else:
-                return event
+                break
+        return event
 

@@ -24,17 +24,17 @@
 	
 	
 	When output data are not ready for retrieval, digital output pin DOUT is high.
-	     _                                  _
-	____| |________________________________| |_________________________
+	       _                                                         _
+	____| |_____________________________________| |_________________________
 	with clock pin held low, (not reading any data) data pin pulses are 100 usec, frequency is 11.2 Hz (90 msec spacing)
 	each high-to-low transution indicates a new value is available from the HX711
 	
 	The data pin goes high when data has been read, and only goes low when new data is available
-	___      _   _       _    ______________________
-	   |____| |_| |_____| |__|                      |__Data Pin
+	___      _   _         _     ______________________
+	   |____| |_| |_____| |__|                                 |__Data Pin
 	
 	
-	___|||||||||||||||||||||||||____________________|| Clock Pin
+	___|||||||||||||||||||||||||________________________|| Clock Pin
 	
 	
 	By applying 25~27 positive clock pulses at the clock pin, data is shifted out from the data output pin.
@@ -61,8 +61,8 @@ void HX711_Hi (void *  taskData);
 void HX711_Lo (void *  taskData);
 
 /* *************************** Constants for control codes passed to thread in controlCode *********************************************/
-static const int kCTRL_WEIGH =0;
-static const int kCTRL_TARE=1;
+static const int kCTRL_SCALED =0;
+static const int kCTRL_RAW=1;
 
 /* ******************** Initialization struct for HX711 *******************************
  pin numbers, address base for memory mapped addresses, scaling constant (grams per A/D unit), pointer to array for weigh data, size of array */
@@ -117,6 +117,7 @@ class HX711: public pulsedThread{
 	int getDataPin (void);
 	int getClockPin(void);
 	float getScaling (void);
+	float scalingFromStd (float standardGrams, unsigned int nAvg);
 	void setScaling (float newScaling);
 	unsigned int getNweights (void);
 	private:

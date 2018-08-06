@@ -12,7 +12,7 @@
 	<li>XX_tester.cpp, or XX_runner.cpp, that makes a small stand-alone application using XX, mostly for testing purposes</li>
 	<li>XX_Py.cpp file that describes a Python/C module, ptXX, that wraps the C++ class methods with Python calls</li>
 	<li>often, PTXX.py that provides a "Pythonic" object interface to the Python/C module</li>
-	<li>XX_setup.py that builds and installs the Python/C module and, if present, XX.py</li>
+	<li>XX_setup.py that builds and installs the Python/C module and, if present, PTXX.py</li>
 	<li>Occasionally, PTXX_tester.py that tests some of the functions of the Python module</li>
 </ul>
 To install the Python module for a project, XX, use</br>
@@ -30,7 +30,7 @@ This installs the pulsedThread library, C++ header files, and a C++ file with fu
 
 <p>In most cases, no external libraries other than pulsedThread are used. Access to the GPIO hardware is done through memory mapping and reading/writing directly to peripheral registers, or through the /sys/ pseudo file system for polling. A pair of files, GPIOlowlevel.cpp/.h, contain the constants, macros, and functions for <a href = "./GPIOlowLevel.html">low level access to Raspberry Pi peripherals</a> such as GPIO and PWM. All of the projects include these two files.</p>
 
-<p>A define statement in GPIOlowlevel.h on line 23 sets the compiuler to use the correct address offsets for the Raspberry Pi models 2 and 3. If you wish to compile for running on a Raspberry Pi model 1, you need to comment out this define statement and uncomment the define statement for the Raspberry Pi 1 on the next line. It is not expected that many people will need to do this.</p>
+<p>A define statement in GPIOlowlevel.h on line 23 sets the compiler to use the correct address offsets for the Raspberry Pi models 2 and 3. If you wish to compile for running on a Raspberry Pi model 1, you need to comment out this define statement and uncomment the define statement for the Raspberry Pi 1 on the next line. It is not expected that many people will need to do this.</p>
 
 <p>Some of the projects use only the GPIO peripheral. These can be run without the need of sudo or gksudo. If a class uses any peripheral other than GPIO (PWM or Clock, e.g.), or if the project accesses /sys/ for polling, then programs using it will need to be run with sudo, or gksudo.</p>
 
@@ -39,7 +39,7 @@ This installs the pulsedThread library, C++ header files, and a C++ file with fu
 <li><a href = "./SimpleGPIO.html">Simple GPIO</a> -- ouputs digital pulses, trains, and infinite trains from a single GPIO pin</li>
 <li><a href = "./HX711.html">HX711</a> -- controls an HX711 load cell amplifier, writing clock pulses on one GPIO pin and reading data on another</li>
 <li><a href= "./PWM_thread.html">PWM Thread</a> -- controls the Pi's PWM (Pulse Width Modulation) peripheral</li>
-</ol>
+</ol> 
 
 <H2>Programming Notes</H2>
 <p>The timing and threading is controlled by the functions provided by pulsedThread. All of the pulsedThread functions for getting and setting timing and number of pulses can be used in the subclasses in GPIO_Thread. The biggest part of a new project's original code is providing an appropriate task data structure, an initialization function, and the HIGH and LOW functions.</p> 

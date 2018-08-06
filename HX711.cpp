@@ -113,7 +113,7 @@ void HX711_Lo (void *  taskData){
 		taskPtr->dataBitPos +=1;
 	}else{ // we have all the bits, so calculate weight and send out 25th pulse on clock pin for input and gain selection
 		// if we are weighing, not calculating a tare value, subtract tare value and multiple by scaling 
-		if (taskPtr->controlCode == kCTRL_WEIGH){
+		if (taskPtr->controlCode == kCTRL_SCALED){
 			taskPtr->weightData [taskPtr->iWeight] = (taskPtr->weightData [taskPtr->iWeight] - taskPtr->tareVal) * taskPtr->scaling;
 		}
 		// set dataBit pos to 0 and advance to next position in array to be ready for next weight
@@ -211,15 +211,30 @@ void HX711::turnON(void){
 /* ************************** takes a series of readings and stores the average value as a tare value *****************************
 Tare value is not scaled, but in raw A/D units
 Last Modified:
+2018/06/26 by Jamie Boyd - set HX711TaskPtr->tareVal  here, so SetScalingFromStd can use readSynchronous
 2018/03/01 by Jamie Boyd - updated for pulsed thread, and to use field for weighing vs taring */
 float HX711::tare (int nAvg, bool printVals){
-	return readSynchronous (nAvg, printVals, kCTRL_TARE);
+	float tareValResult = readSynchronous (nAvg, printVals, kCTRL_RAW);
+	HX711TaskPtr->tareVal = tareValResult;
+	return tareValResult;
+}
+
+
+/* ************************** Calculates grams/unit scaling from a series of raw readings of a standard weight *****************************
+Tare value is not scaled, but in raw A/D units
+Last Modified:
+2018/07/09 by Jamie Boyd - bug fix, subtracted scaling instead of tareVal
+2018/06/26 by Jamie Boyd - inital version */
+float HX711::scalingFromStd (float standardGrams, unsigned int nAvg){
+	float newScaling = standardGrams/(readSynchronous (nAvg, false, kCTRL_RAW) - HX711TaskPtr->tareVal);
+	HX711TaskPtr->scaling = newScaling;
+	return newScaling;
 }
 
 
 /* Takes a series of readings, averages them, and returns the scaled average */
 float HX711::weigh (unsigned int nAvg, bool printVals){
-	return readSynchronous (nAvg, printVals, kCTRL_WEIGH);
+	return readSynchronous (nAvg, printVals, kCTRL_SCALED);
 }
 
 
@@ -249,7 +264,7 @@ float HX711::readSynchronous (unsigned int nAvg, bool printVals, int weighMode){
 		for (unsigned int iAvg =0; iAvg < nAvg; iAvg +=1){
 			resultVal += HX711TaskPtr->weightData[iAvg];
 			if (printVals){
-				if (weighMode == kCTRL_TARE){
+				if (weighMode == kCTRL_RAW){
 					printf ("%d, ", (int) HX711TaskPtr->weightData[iAvg]);
 				}else{
 				printf ("%.3f, ", HX711TaskPtr->weightData[iAvg]);
@@ -259,9 +274,6 @@ float HX711::readSynchronous (unsigned int nAvg, bool printVals, int weighMode){
 		resultVal /= nAvg;
 		if (printVals){
 			printf ("\nAverage = %.3f.\n", resultVal);
-		}
-		if (weighMode == kCTRL_TARE){
-			HX711TaskPtr->tareVal = (float) resultVal;
 		}
 		HX711TaskPtr-> iWeight = 0;
 		return resultVal;
@@ -280,7 +292,7 @@ void HX711::weighThreadStart (unsigned int nWeightsP){
 		printf ("Requested number to weigh, %d, was greater than size of array, %d.\n", nWeightsP, nWeightData);
 	}else{
 		HX711TaskPtr->iWeight =0;
-		HX711TaskPtr->controlCode = kCTRL_WEIGH;
+		HX711TaskPtr->controlCode = kCTRL_SCALED;
 		HX711TaskPtr->dataBitPos =0;
 		DoTasks (nWeightsP);
 	}

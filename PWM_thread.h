@@ -4,9 +4,6 @@
 #include <pulsedThread.h>
 #include "GPIOlowlevel.h"
 
-#define PWM_MARK_SPACE 0
-#define PWM_BALANCED 1
-
 /* *********************** Forward declare functions used by thread so we can refer to them in constructors*************************/
 void ptPWM_Hi (void * volatile taskData);
 
@@ -28,7 +25,9 @@ typedef struct PWMStruct{
 	// data for outputting
 	unsigned int dataPos; // starting position in data array we are currently outputting
 	unsigned int nData; // number of points in data array
-	int * pwmData; // array of PWM values for thread to cycle through, 0 to range
+	unsigned int dataStartPos;
+	unsigned int dataEndPos;
+	int * pwmData; // array of PWM values for thread to cycle through, start to end
 	// these variables depend on channel, can be set at intiialization
 	unsigned int rangeRegisterOffset;
 	unsigned int dataRegisterOffset;
@@ -69,12 +68,16 @@ void ptPWM_Lo (void * volatile taskData); // blank, as we don't have HI and LO, 
 
 class PWM_thread : public pulsedThread{
 	public:
-	/* constructors, similar to pulsedThread, one expects unsigned ints for pulse delay and duration times in microseconds and number of pulses */
-	PWM_thread (int pinP, int polarityP, unsigned int delayUsecs, unsigned int durUsecs, unsigned int nPulses, void * initData, int accLevel , int &errCode) : pulsedThread (delayUsecs, durUsecs, nPulses, initData, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accLevel, errCode) {
+	/* constructors, one expects unsigned ints for pulse delay and duration times in microseconds and number of pulses 
+	 PWM has duration but no delay, has a channel (0 on pin 18, 1 on pin 19) instead of a GPIO pin, pulses is always 0 */
+	PWM_thread (int channelP, int polarityP, unsigned int durUsecs, unsigned int nPulses, void * initData, int accLevel , int &errCode) : pulsedThread (0, durUsecs, nPulses, initData, &PWMThread_Init, nullptr, &PWMThread_Hi, accLevel, errCode) {
+	channel = channelP;
+	polarity = polarityP;
+	};
+	/* the other constructor expects floats for frequency, duty cycle, and train duration */
+	PWM_thread (int channelP, int polarityP, float frequency, float trainDuration, void * initData, int accLevel, int &errCode) : pulsedThread (frequency, 1, trainDuration, initData, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accLevel,errCode) {
 	pinNumber = pinP;
 	polarity = polarityP;
 	};
-
-
 
 #endif
