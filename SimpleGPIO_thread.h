@@ -9,6 +9,9 @@
 void SimpleGPIO_Lo (void *  taskData);
 void SimpleGPIO_Hi (void *  taskData);
 int SimpleGPIO_Init (void * initDataP, void *  &taskDataP);
+int SimpleGPIO_setPinCallback (void * modData, taskParams * theTask);
+int SimpleGPIO_setLevelCallBack (void * modData, taskParams * theTask);
+void SimpleGPIO_delTask (void * taskData)
 
 /* ******************** Initialization struct for SimpleGPIO *******************************
  pin, polarity, and address base for memory mapped addresses to write to on HI and Lo */

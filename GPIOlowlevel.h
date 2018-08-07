@@ -121,19 +121,20 @@ volatile unsigned int * useGpioPeri (void);
 void unUseGPIOperi (void);
 
 
-/***************************************************PWM Periperal**********************************************************
+/* **************************************************PWM Periperal**********************************************************
 PWM_BASE is defined by 0x20C000 offset from the base peripheral addresss */
 #define PWM_BASE			(BCM_PERI_BASE + 0x20C000)
 /* PWM control registers addresses are defined by an offset to PWM_BASE. */
 #define PWM_CTL		0             // PWM Control
 #define PWM_STATUS  	1		// PWM Status
-#define PWM_RNG0		4            // PWM Channel 0 Range
-#define PWM_DAT0		5            // PWM Channel 0 Data
-#define PWM_RNG1		8            // PWM Channel 1 Range
-#define PWM_DAT1		9            // PWM Channel 1 Data
+#define PWM0_RNG		4            // PWM Channel 0 Range
+#define PWM0_DAT		5            // PWM Channel 0 Data
+#define PWM1_RNG		8            // PWM Channel 1 Range
+#define PWM1_DAT		9            // PWM Channel 1 Data
 #define PWMCLK_CNTL 	40        // PWM Clock Control
 #define PWMCLK_DIV	41         // PWM Clock Divisor
-/* defined bits for PWM  control registers */
+/* *****************defined bits for PWM  control registers ****************************
+*******************************channel 0******************************************/
 #define	PWM0_MS_MODE    0x0080  // Run in MS mode
 #define	PWM0_USEFIFO    0x0020  // Data from FIFO
 #define	PWM0_REVPOLAR   0x0010  // Reverse polarity
@@ -141,6 +142,15 @@ PWM_BASE is defined by 0x20C000 offset from the base peripheral addresss */
 #define	PWM0_REPEATFF   0x0004  // Repeat last value if FIFO empty
 #define	PWM0_SERIAL     0x0002  // Run in serial mode
 #define	PWM0_ENABLE     0x0001  // Channel Enable
+/* ******************channel 1 ******************************************************/
+#define	PWM1_MS_MODE    0x8000  // Run in MS mode
+#define	PWM1_USEFIFO    0x2000  // Data from FIFO
+#define	PWM1_REVPOLAR   0x1000  // Reverse polarity
+#define	PWM1_OFFSTATE   0x0800  // Ouput Off state
+#define	PWM1_REPEATFF   0x0400  // Repeat last value if FIFO empty
+#define	PWM1_SERIAL       0x0200  // Run in serial mo
+#define	PWM1_ENABLE     0x0100  // Channel Enable
+
 
 #define PWM_MARK_SPACE 0
 #define PWM_BALANCED 1
@@ -150,7 +160,7 @@ extern int PWMperi_users;
 volatile unsigned int * usePWMPeri (void);
 void unUsePWMperi (void);
 
-/************************************************** PWM Clock Control*********************************************************
+/* ************************************************* PWM Clock Control*********************************************************
 Values for setting some registers need to be ORed with this magic number, the clock manager password */
 #define	BCM_PASSWORD 0x5A000000
 /* CLOCK_BASE is defined by 0x101000 offset from the base peripheral addresss */
