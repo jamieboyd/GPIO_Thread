@@ -7,62 +7,51 @@
 /* *********************** Forward declare functions used by thread *************************/
 void ptPWM_Hi (void * taskData);
 int ptPWM_Init (void * initData, void * &taskData);
+void ptPWM_delChan (char bcm_PWM_chan);
 
-/*
-task data for PWM is:
-channel (0 or 1)
-mode (Mark/space or balanced)
-range
-*/
-typedef struct ptPWMStruct{
-	// variables copied over from init struct
-	// pwm init settings
+/* ********************************* Initialization struct for PWM ******************************
+last modified:
+2018/08/07 byJamie Boyd - updating for pulsedThread subclass threading
+2017/02/17 by Jamie Boyd - initial version */
+typedef struct ptPWMinitStruct{
 	int channel; // 0 done on GPIO 18 or 1 done on GPIO 19
 	int mode; //MARK_SPACE for servos or BALANCED for analog
-	int polarity; // 0 for normal polarity, 1 for reversed
-	unsigned int *  ctlRegister; // address of PWM control register
-	unsigned int * dataRegister; // address of register to write data to
-	// peripheral base adresses
+	int range ; // PWM clock counts per output value, sets precision of output, from static class variable
+	int enable; // 1 to start PWMing immediatley, 0 to start in unenabled state
 	volatile unsigned int * GPIOperiAddr;  // base address needed when writing to registers for setting and unsetting
 	volatile unsigned int * PWMperiAddr; // base address for PWM peripheral
-	volatile unsigned int * PWMClockperiAddr; // base address for PWM clock stuff
+	int * arrayData; // array of PWM values for thread to cycle through, 0 to range
+	unsigned int nData; // number of points in data array
+}ptPWMinitStruct, *ptPWMinitStructPtr;
+
+/* ******************** Custom Data Struct for PWM ***************************
+last modified:
+2018/08/07 byJamie Boyd - updating for pulsedThread subclass threading
+2017/02/17 by Jamie Boyd - initial version */
+typedef struct ptPWMStruct{
+	// copied from pwm init settings
+	int channel; // 0 done on GPIO 18 or 1 done on GPIO 19
+	int mode; //MARK_SPACE for servos or BALANCED for analog
+	// setings inited as default
+	int enable;  // 1 if channel is enabled, 0 if not enabled
+	int polarity; // 1 for reversed output polarity, 0 for normal, default is 0
+	int offState; // 0 for low level when PWM is not enabled, 1 for high level when PWM is enabled
+	// calculated register addresses, used for customDataMod functions
+	volatile unsigned int *  ctlRegister; // address of PWM control register
+	volatile unsigned int * dataRegister; // address of register to write data to
 	// data for outputting
 	int * arrayData; // array of PWM values for thread to cycle through, start to end, 0 to range-1
 	unsigned int nData; // number of points in data array
 	unsigned int arrayPos; // position in data array we are currently outputting
 	unsigned int startPos;
 	unsigned int endPos;
-	
-	// these variables depend on channel (0 or 1), and will be set at intiialization
-	//unsigned int rangeRegisterOffset;
-	
-	//unsigned int modeBit;
-	//unsigned int enableBit;
 } ptPWMStruct, *ptPWMStructPtr;
 
-	
-	
 
-/* ***********************************************
+/* **********************function declarations for *************************/
  
- last modified:
-2018/08/06 byJamie Boyd - updating for pulsedThread subclass threading
-2017/02/17 by Jamie Boyd - initial version
-*************************************************/
-typedef struct ptPWMinitStruct{
-	int channel; // 0 done on GPIO 18 or 1 done on GPIO 19
-	int mode; //MARK_SPACE for servos or BALANCED for analog
-	int polarity; // 0 for normal polarity, 1 for reversed
-	int range ; // PWM clock counts per output value, sets precision of output
-	int waitForEnable; // 
-	volatile unsigned int * GPIOperiAddr;  // base address needed when writing to registers for setting and unsetting
-	volatile unsigned int * PWMperiAddr; // base address for PWM peripheral
-	unsigned int nData; // number of points in data array
-	int * arrayData; // array of PWM values for thread to cycle through, 0 to range
-}ptPWMinitStruct, *ptPWMinitStructPtr;
+// 
 
-// function declarations
-void ptPWM_delChan (char bcm_PWM_chan);
 void ptPWM_cleanUp(bcm_peripheralPtr &GPIOperi, bcm_peripheralPtr &PWMperi, bcm_peripheralPtr &PWMClockperi);
 //int ptPWM_mapPeripherals (bcm_peripheralPtr &GPIOperi, bcm_peripheralPtr &PWMperi, bcm_peripheralPtr &PWMClockperi);
 //float ptPWM_SetClock (float newFreq, int PWMrange, bcm_peripheralPtr PWMperi, bcm_peripheralPtr PWMClockperi);
@@ -82,8 +71,8 @@ class PWM_thread : public pulsedThread{
 	PWM_thread (float frequency, float trainDuration, void * initData, int accLevel, int &errCode) : pulsedThread (frequency, 1, trainDuration, initData, &ptPWM_Init, nullptr, &ptPWM_Hi, accLevel,errCode) {
 	};
 	/* Static ThreadMakers make an initStruct and call a constructor with it, returning a pointer to a PWM_thread */
-	static PWM_thread * PWM_threadMaker (int channel, int mode, int polarity, int enable, int * arrayData, unsigned int nData, unsigned int  durUsecs, unsigned int nPulses, int accuracyLevel);
-	static PWM_thread * PWM_threadMaker (int channel, int mode, int polarity,  int enable, int * arrayData, unsigned int nData, float frequency, float trainDuration, int accuracyLevel);
+	static PWM_thread * PWM_threadMaker (int channel, int mode, int enable, int * arrayData, unsigned int nData, unsigned int  durUsecs, unsigned int nPulses, int accuracyLevel);
+	static PWM_thread * PWM_threadMaker (int channel, int mode,  int enable, int * arrayData, unsigned int nData, float frequency, float trainDuration, int accuracyLevel);
 	// maps the GPIO, PWM, and PWMclock perip[herals
 	static int mapPeripherals ();
 	// sets PWM clock for given frequency and range, do this before enabling either PWM channel to start output
@@ -91,8 +80,12 @@ class PWM_thread : public pulsedThread{
 	// data members
 	static float PWMfreq;
 	static int PWMrange;
-	//protected:
-
+	protected:
+	int PWM_chan;
+	// settings started with default values, with function to change them
+	int polarity; // 0 for normal polarity, 1 for reversed
+	int offState; // 0 for low when not enabled, 1 for high when enabled
+	int enable; // 0 for not enabled, 1 for enabled
 	
 	
 };

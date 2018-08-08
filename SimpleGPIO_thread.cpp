@@ -136,7 +136,7 @@ SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int pola
 	initStruct->GPIOperiAddr =  useGpioPeri ();
 	if (initStruct->GPIOperiAddr == nullptr){
 #if beVerbose
-        printf ("SimpleGPIO_threadMaker failed to map GPIO peripheral.\n");
+		printf ("SimpleGPIO_threadMaker failed to map GPIO peripheral.\n");
 #endif
 		return nullptr;
 	}	
