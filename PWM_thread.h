@@ -7,7 +7,12 @@
 /* *********************** Forward declare functions used by thread *************************/
 void ptPWM_Hi (void * taskData);
 int ptPWM_Init (void * initData, void * &taskData);
-void ptPWM_delChan (char bcm_PWM_chan);
+void ptPWM_delTask (char bcm_PWM_chan);
+int ptPWM_setEnableCallback (void * modData, taskParams * theTask);
+int ptPWM_reversePolarityCallback (void * modData, taskParams * theTask);
+int ptPWM_setOffStateCallback (void * modData, taskParams * theTask);
+int ptPWM_setArrayPosCallback (void * modData, taskParams * theTask);
+int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask);
 
 /* ********************************* Initialization struct for PWM ******************************
 last modified:
@@ -23,6 +28,7 @@ typedef struct ptPWMinitStruct{
 	int * arrayData; // array of PWM values for thread to cycle through, 0 to range
 	unsigned int nData; // number of points in data array
 }ptPWMinitStruct, *ptPWMinitStructPtr;
+
 
 /* ******************** Custom Data Struct for PWM ***************************
 last modified:
@@ -48,41 +54,43 @@ typedef struct ptPWMStruct{
 } ptPWMStruct, *ptPWMStructPtr;
 
 
-/* **********************function declarations for *************************/
- 
-// 
+/* **************custom struct for changing PWM array settings *****************************
+Used to modify which section of the array to currently use, or set current position in the array, or change array 
+last modified:
+2018/08/08 by Jamie Boyd - initial verison */
+typedef struct ptPWMArrayModStruct{
+	int modBits;			// bit-wise for which param to modify, 1 for startPos, 2 for endPos, 4 for arrayPos, 8 for array data
+	unsigned int startPos; // where to start in the array when out putting data
+	unsigned int endPos;		// where to end in the array
+	unsigned int arrayPos;	// current position in array, as it is iterated through
+	int * arrayData; //data for the array
+}ptPWMArrayModStruct, *ptPWMArrayModStructPtr;
 
-void ptPWM_cleanUp(bcm_peripheralPtr &GPIOperi, bcm_peripheralPtr &PWMperi, bcm_peripheralPtr &PWMClockperi);
-//int ptPWM_mapPeripherals (bcm_peripheralPtr &GPIOperi, bcm_peripheralPtr &PWMperi, bcm_peripheralPtr &PWMClockperi);
-//float ptPWM_SetClock (float newFreq, int PWMrange, bcm_peripheralPtr PWMperi, bcm_peripheralPtr PWMClockperi);
-int ptPWM_enableCallback (void * modData, taskParams * theTask);
-int ptPWM_setNumDataCallback (void * modData, taskParams * theTask);
-int ptPWM_setArrayPosCallback (void * modData, taskParams * theTask);
-int ptPWM_setArrayCallback (void * modData, taskParams * theTask);
 
-
+/* ********************************************* PWM_thread class *********************************************
+last modified:
+2018/08/08 by Jamie Boyd - initial verison */
 class PWM_thread : public pulsedThread{
 	public:
-	/* constructors, one expects unsigned ints for pulse delay and duration times in microseconds and number of pulses 
-	 PWM has duration but no delay, has a channel (0 on pin 18, 1 on pin 19) instead of a GPIO pin, pulses is always 0 */
+	/* constructors, one with unsigned ints for pulse delay and duration times in microseconds and number of pulses */
 	PWM_thread (unsigned int durUsecs, unsigned int nPulses, void * initData, int accLevel , int &errCode) : pulsedThread (0, durUsecs, nPulses, initData, &ptPWM_Init, nullptr, &ptPWM_Hi, accLevel, errCode) {
 	};
-	/* the other constructor expects floats for frequency, duty cycle, and train duration */
+	/* and the the other constructor with floats for frequency, duty cycle, and train duration */
 	PWM_thread (float frequency, float trainDuration, void * initData, int accLevel, int &errCode) : pulsedThread (frequency, 1, trainDuration, initData, &ptPWM_Init, nullptr, &ptPWM_Hi, accLevel,errCode) {
 	};
-	/* Static ThreadMakers make an initStruct and call a constructor with it, returning a pointer to a PWM_thread */
+	/* Static ThreadMakers make an initStruct and call a constructor with it, returning a pointer to a new PWM_thread */
 	static PWM_thread * PWM_threadMaker (int channel, int mode, int enable, int * arrayData, unsigned int nData, unsigned int  durUsecs, unsigned int nPulses, int accuracyLevel);
 	static PWM_thread * PWM_threadMaker (int channel, int mode,  int enable, int * arrayData, unsigned int nData, float frequency, float trainDuration, int accuracyLevel);
-	// maps the GPIO, PWM, and PWMclock perip[herals
+	// maps the GPIO, PWM, and PWMclock perip[herals. DO this before anything else
 	static int mapPeripherals ();
 	// sets PWM clock for given frequency and range, do this before enabling either PWM channel to start output
 	static float setClock (float PWMFreq, int PWMrange);
 	// data members
 	static float PWMfreq;
 	static int PWMrange;
+	static int PWMchans; // bitwise pwm channels in use init at 0
 	protected:
 	int PWM_chan;
-	// settings started with default values, with function to change them
 	int polarity; // 0 for normal polarity, 1 for reversed
 	int offState; // 0 for low when not enabled, 1 for high when enabled
 	int enable; // 0 for not enabled, 1 for enabled
