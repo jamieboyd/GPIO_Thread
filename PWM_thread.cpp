@@ -79,23 +79,26 @@ int ptPWM_Init (void * initDataP, void *  volatile &taskDataP){
 	return 0; // 
 }
 
-/* *************************************** Sets the next value in the array to be output********************************************
+/* *********************************** Hifunc writes the next value to be output to data register ******************************
 Last Modified:
-2018/08/07 by Jamie Boyd -updated for pusledThread subclass*/
+2018/08/07 by Jamie Boyd -updated for pusledThread subclass */
 void ptPWM_Hi (void * volatile taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
-	*(taskData->dataRegister) = taskData->arrayData [taskData->arrayPos];
-	if (taskData->arrayPos == taskData->endPos ){
-		taskData->arrayPos = taskData->startPos;
+	if (taskData->arrayPos < taskData->endPos){
+		taskData->arrayPos += 1;
 	}else{
-		taskData->arrayPos +=1;
+		taskData->arrayPos = taskData->startPos;
 	}
+	*(taskData->dataRegister) = taskData->arrayData[taskData->arrayPos];
+
 }
 
-/* ****************************** Custom delete Function *****************************************************/
+/* ****************************** Custom delete Function *****************************************************
+Last Modified:
+2018/08/07 by Jamie Boyd -updated for pusledThread subclass */
 void ptPWM_delTask (void * taskData){
 	ptPWMStructPtr pwmTaskPtr = (ptPWMStructPtr) taskData;
-	delete (ptPWMStructPtr);
+	delete (pwmTaskPtr);
 }
 
 /*
@@ -113,7 +116,6 @@ void ptPWM_delTask (void * taskData){
 /* ****************************** Destructor handles peripheral mapping and unsets alternate *************************
 Thread data is destroyed by the pulsedThread destructor. All we need to do here is unset the alternate function for the GPIO pin
 and decrement the tally for the peripheral mappings
-and 
 Last Modified:
 2018/08/07 by Jamie Boyd - Initial Version */
 PWM_thread::~PWM_thread (){
@@ -131,38 +133,6 @@ PWM_thread::~PWM_thread (){
 	unUseGPIOperi();
 	unUsePWMperi();
 	unUsePWMclockPeri();
-}
-
-/* frees a single PWM channel, so it can be used for standard GPIO agian */
-void ptPWM_delChan (char bcm_PWM_chan){
-	if (bcm_PWM_chan == 0){
-		INP_GPIO(GPIOperi->addr,18);
-		OUT_GPIO(GPIOperi->addr,18);
-		GPIO_CLR(GPIOperi->addr, (1 << 18)) ;
-	}else{
-		if (bcm_PWM_chan == 1){
-			INP_GPIO(GPIOperi->addr,19);
-			OUT_GPIO(GPIOperi->addr,19);
-			GPIO_CLR(GPIOperi->addr, (1 << 19));
-		}
-	}
-}
-
-/*Frees up all PWM resources.  Shuts down PWM and PWM clock */
-void ptPWM_cleanUp(bcm_peripheralPtr &GPIOperi, bcm_peripheralPtr &PWMperi, bcm_peripheralPtr &PWMClockperi){
-	// GPIO
-	unmap_peripheral(GPIOperi);
-	delete GPIOperi;
-	GPIOperi = nullptr;
-	// PWM
-	*(PWMperi->addr + PWM_CTL) = 0 ;  // Turn off PWM.
-	unmap_peripheral(PWMperi);
-	delete PWMperi;
-	PWMperi = nullptr;
-	// pwm clock
-	unmap_peripheral(PWMClockperi);
-	delete PWMClockperi;
-	PWMClockperi = nullptr;
 }
 
 
@@ -232,8 +202,10 @@ int ptPWM_setArrayCallback (void * modData, taskParams * theTask){
 }
 
 
- /* ******************************** PWM_thread Class Methods *******************************************************
- static function maps peripherals for PWM. Does not set PWM clock. Does not set up any channels 
+ /* ******************************** PWM_thread Class Methods *********************************************
+
+******************************* Memory maps Peripherals for PWM ******************************************
+ static function maps peripherals (GPIO, PWM, and PWM clock) needed for PWM. Does not set PWM clock. Does not set up any channels 
 Last Modified: 2018/08/06 by Jamie Boyd - first version */
  int PWM_thread::mapPeripherals(){
 	 // GPIOperi
