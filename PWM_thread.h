@@ -85,6 +85,9 @@ class PWM_thread : public pulsedThread{
 	static int mapPeripherals ();
 	// sets PWM clock for given frequency and range, do this before enabling either PWM channel to start output
 	static float setClock (float PWMFreq, int PWMrange);
+	int setEnable (int enableState, int isLocking);
+	int setPolarity (int polarityP, int isLocking);
+	int setOffState (int offStateP, int isLocking);
 	// data members
 	static float PWMfreq;
 	static int PWMrange;
@@ -93,7 +96,7 @@ class PWM_thread : public pulsedThread{
 	int PWM_chan;
 	int polarity; // 0 for normal polarity, 1 for reversed
 	int offState; // 0 for low when not enabled, 1 for high when enabled
-	int enable; // 0 for not enabled, 1 for enabled
+	int enabled; // 0 for not enabled, 1 for enabled
 	
 	
 };

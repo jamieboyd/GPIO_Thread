@@ -292,7 +292,6 @@ float PWM_thread::setClock (float PWMFreq, int PWMrange){
 }
 
 
-
 /* ******************** ThreadMaker with Integer pulse duration, delay, and number of pulses timing description inputs ********************
  Last Modified:
 2018/08/06 by Jamie Boyd - Initial Version, copied and modified from GPIO thread maker */
@@ -302,6 +301,7 @@ PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode, int enable, int
 #if beVerbose
 		printf ("PWM channel %d is already in use.\n", channel);
 #endif
+		PWM_thread::PWMchans &= (~chanBit); // unset channel bit
 		return nullptr;
 	}
 	PWM_thread::PWMchans |= chanBit;
@@ -328,10 +328,51 @@ PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode, int enable, int
 	newPWM_thread ->PWM_chan = channel;
 	newPWM_thread ->offState =0; // 0 for low when not enabled, 1 for high when enabled
 	newPWM_thread->polarity = 0; // 0 for normal polarity, 1 for reversed
-	inewPWM_thread ->enable=enable; // 0 for not enabled, 1 for enabled
+	inewPWM_thread ->enabled=enable; // 0 for not enabled, 1 for enabled
+	PWM_thread::PWMchans |= ~chanBit; // set channel bit
 	return newPWM_thread;
 }
 
+/* ******************** ThreadMaker with Integer pulse duration, delay, and number of pulses timing description inputs ********************
+ Last Modified:
+2018/08/06 by Jamie Boyd - Initial Version, copied and modified from GPIO thread maker */
+PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode,  int enable, int * arrayData, unsigned int nData, float frequency, float trainDuration, int accuracyLevel) {
+	unsigned int chanBit = (1<<channel);
+	if (PWM_thread::PWMchans & chanBit){
+#if beVerbose
+		printf ("PWM channel %d is already in use.\n", channel);
+#endif
+		return nullptr;
+	}
+	PWM_thread::PWMchans |= chanBit;
+	// make and fill an init struct
+	ptPWMinitStructPtr  initStruct = new ptPWMinitStruct;
+	initStruct->channel = channel;
+	initStruct->mode = mode;
+	// Set address for GPIO peri
+	initStruct->GPIOperiAddr = GPIOperi->addr ;
+	// set addess for PWM peri
+	initStruct->PWMperiAddr = PWMperi->addr;
+	// call PWM_thread constructor, which calls pulsedThread constructor
+	int errCode =0;
+	PWM_thread * newPWM_thread = new PWM_thread (frequency, trainDuration, (void *) initStruct, accuracyLevel, errCode) 
+	if (errCode){
+#if beVerbose
+		printf ("PWM_threadMaker failed to make PWM_thread.\n");
+#endif
+		PWM_thread::PWMchans &= (~chanBit); // unset channel bit
+		return nullptr;
+	}
+	// set custom task delete function
+	newPWM_thread->setTaskDataDelFunc (&PWM_delTask);
+	// set object variables 
+	newPWM_thread ->PWM_chan = channel;
+	newPWM_thread ->offState =0; // 0 for low when not enabled, 1 for high when enabled
+	newPWM_thread->polarity = 0; // 0 for normal polarity, 1 for reversed
+	newPWM_thread ->enabled=enable; // 0 for not enabled, 1 for enabled
+	PWM_thread::PWMchans |= ~chanBit; // set channel bit
+	return newPWM_thread;
+}
 
  /* ****************************** Destructor handles peripheral mapping and unsets alternate *************************
 Thread data is destroyed by the pulsedThread destructor. All we need to do here is unset the alternate function for the GPIO pin
@@ -356,3 +397,42 @@ PWM_thread::~PWM_thread (){
 	unUsePWMperi();
 	unUsePWMclockPeri();
 }
+
+/* ****************************** utility functions - setters and getters *************************
+
+******************************* sets Enable State ************************************
+Last Modified:
+2018/08/08 by Jamie Boyd - Initial Version  */
+int PWM_thread::setEnable (int enableStateP, int isLocking){
+	enabled = enableStateP;
+	int * newEnableVal = new int;
+	* newEnableVal =  enableState;
+	int returnVal = modCustom (&ptPWM_setEnableCallback, (void *) newEnableVal, isLocking);
+	return returnVal;
+}
+
+
+/* ****************************** sets Polarity ************************************
+Last Modified:
+2018/08/08 by Jamie Boyd - Initial Version  */
+int PWM_thread::setPolarity (int polarityP, int isLocking){
+	
+	polarity = polarityP;
+	int * newPolarityVal = new int;
+	* newPolarityVal =  polarity;
+	int returnVal = modCustom (&ptPWM_reversePolarityCallback, (void *) newPolarityVal, isLocking);
+	return returnVal;
+}
+
+/* ****************************** sets OFF state ************************************
+Last Modified:
+2018/08/08 by Jamie Boyd - Initial Version  */
+int PWM_thread::setOffState (int offStateP, int isLocking){
+	
+	offState = offStateP;
+	int * newOffstateVal = new int;
+	* newOffstateVal =  offState;
+	int returnVal = modCustom (&ptPWM_setOffStateCallback, (void *) newOffstateVal, isLocking);
+	return returnVal;
+}
+
