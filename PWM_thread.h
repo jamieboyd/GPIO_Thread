@@ -78,6 +78,7 @@ class PWM_thread : public pulsedThread{
 	/* and the the other constructor with floats for frequency, duty cycle, and train duration */
 	PWM_thread (float frequency, float trainDuration, void * initData, int accLevel, int &errCode) : pulsedThread (frequency, 1, trainDuration, initData, &ptPWM_Init, nullptr, &ptPWM_Hi, accLevel,errCode) {
 	};
+	~PWM_thread ();
 	/* Static ThreadMakers make an initStruct and call a constructor with it, returning a pointer to a new PWM_thread */
 	static PWM_thread * PWM_threadMaker (int channel, int mode, int enable, int * arrayData, unsigned int nData, unsigned int  durUsecs, unsigned int nPulses, int accuracyLevel);
 	static PWM_thread * PWM_threadMaker (int channel, int mode,  int enable, int * arrayData, unsigned int nData, float frequency, float trainDuration, int accuracyLevel);
@@ -92,7 +93,6 @@ class PWM_thread : public pulsedThread{
 	static float PWMfreq;
 	static int PWMrange;
 	static int PWMchans; // bitwise pwm channels in use init at 0
-	protected:
 	int PWM_chan;
 	int polarity; // 0 for normal polarity, 1 for reversed
 	int offState; // 0 for low when not enabled, 1 for high when enabled

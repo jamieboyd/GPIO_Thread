@@ -1,17 +1,23 @@
 #include "PWM_thread.h"
-
+	
 
 /* ********************* PWM Initialization callback function ****************************************
 Initializes a single channel, either 0 or 1 
 last modified:
 2018/08/07 by Jamie Boyd - modified for pulsedThread subclassing
 2017/02/20 by Jamie Boyd - initial version  */
-int ptPWM_Init (void * initDataP, void *  volatile &taskDataP){
+int ptPWM_Init (void * initDataP, void *  &taskDataP){
+#if beVerbose
+		printf ("ptPWM_Init called.\n");
+#endif
 	// initData is a pointer to our init structure
-	ptPWMInitStructPtr initData = (ptPWMInitStructPtr)initDataP;
-	// task data is a pointer to taskCustomData that needs to be initialized from our custom init structure
+	ptPWMinitStructPtr initData = (ptPWMinitStructPtr)initDataP;
+	// taskDataP is a pointer to taskCustomData that needs to be initialized from our custom init structure
 	ptPWMStructPtr taskData = new ptPWMStruct;
 	taskDataP = taskData;
+#if beVerbose
+		printf ("ptPWM_Init: taskDataP initialized\n");
+#endif
 	// copy PWM settings, and set defaults
 	taskData->channel = initData->channel;
 	taskData->mode = initData->mode;
@@ -24,6 +30,10 @@ int ptPWM_Init (void * initDataP, void *  volatile &taskDataP){
 	taskData->startPos =0;
 	taskData->arrayPos =0;
 	taskData->endPos =taskData->nData - 1;
+#if beVerbose
+		printf ("ptPWM_Init: taskDataP filled\n");
+		printf ("ptPWM_Init: first value in array = %d\n",  taskData->arrayData[0]);
+#endif
 	// set up PWM channel 0 or 1 by writing to control register and range register
 	// some register address offsets and bits vary by chanel
 	unsigned int dataRegisterOffset;
@@ -33,8 +43,8 @@ int ptPWM_Init (void * initDataP, void *  volatile &taskDataP){
 	unsigned int polarityBit;
 	unsigned int offStateBit;
 	if (initData->channel == 0){
-		INP_GPIO(initData->GPIOaddr,18);           // Set GPIO 18 to input to clear bits
-		SET_GPIO_ALT(initData->GPIOaddr,18,5);     // Set GPIO 18 to Alt5 function PWM0
+		INP_GPIO(initData->GPIOperiAddr,18);           // Set GPIO 18 to input to clear bits
+		SET_GPIO_ALT(initData->PWMperiAddr,18,5);     // Set GPIO 18 to Alt5 function PWM0
 		rangeRegisterOffset = PWM0_RNG;
 		dataRegisterOffset = PWM0_DAT;
 		modeBit = PWM0_MS_MODE;
@@ -43,8 +53,8 @@ int ptPWM_Init (void * initDataP, void *  volatile &taskDataP){
 		offStateBit = PWM0_OFFSTATE;
 
 	}else{
-		INP_GPIO(initData->GPIOaddr,19);           	// Set GPIO 19 to input to clear bits
-		SET_GPIO_ALT(initData->GPIOaddr,19,5);     // Set GPIO 19 to Alt5 function PWM1
+		INP_GPIO(initData->GPIOperiAddr,19);           	// Set GPIO 19 to input to clear bits
+		SET_GPIO_ALT(initData->GPIOperiAddr,19,5);     // Set GPIO 19 to Alt5 function PWM1
 		rangeRegisterOffset = PWM1_RNG;
 		dataRegisterOffset = PWM1_DAT;
 		modeBit = PWM1_MS_MODE;
@@ -52,30 +62,46 @@ int ptPWM_Init (void * initDataP, void *  volatile &taskDataP){
 		polarityBit = PWM1_REVPOLAR;
 		offStateBit = PWM1_OFFSTATE;
 	}
+#if beVerbose
+		printf ("ptPWM_Init: Channel set up\n");
+#endif
 	// save control and data register address for easy access from thread hiFunc and customMod functions
-	taskData -> ctlRegister = initData->PWMaddr  + PWM_CTL;
-	taskData->dataRegister = initData->PWMaddr  + dataRegisterOffset ;
+	taskData -> ctlRegister = initData->PWMperiAddr  + PWM_CTL;
+	taskData->dataRegister = initData->PWMperiAddr  + dataRegisterOffset ;
+#if beVerbose
+		printf ("ptPWM_Init: saved control and data offset\n");
+#endif
 	// set range - this will be the same for both channels, because it is a headache otherwise
-	*(initData->PWMaddr  + rangeRegisterOffset) = initData->range; 
+	*(initData->PWMperiAddr  + rangeRegisterOffset) = initData->range; 
 	// set mode
 	if (initData->mode ==PWM_MARK_SPACE){
 		*(taskData -> ctlRegister ) |= modeBit ; // put PWM in MS Mode
 	}else{
 		*(taskData -> ctlRegister ) &= ~modeBit;  // clear MS mode bit for balanced mode
 	}
+#if beVerbose
+		printf ("ptPWM_Init: set range and mode\n");
+#endif
 	// set polarity to non-reversed
 	*(taskData -> ctlRegister ) &= ~polarityBit;  // clear reverse polarity bit
 	// set off state to low 
 	*(taskData -> ctlRegister ) &= ~offStateBit; // clear OFFstate bit
+#if beVerbose
+		printf ("ptPWM_Init: set polarity and offset\n");
+		
+#endif
 	// if wait-for-enable, clear enable bit, else set the bit to start PWM running right away
-	if (initData->waitForEnable){
+	if (initData->enable){
 		*(taskData -> ctlRegister) &= ~enableBit; // clear enable bit
 	}else{
 		// set initial PWM value first so we have something to put out
 		*(taskData->dataRegister) = taskData->arrayData[0];
 		*(taskData -> ctlRegister) |= enableBit;
 	}
-	delete (initDataP);
+	delete initData;
+#if beVerbose
+		printf ("ptPWM_Init exiting.\n");
+#endif
 	return 0; // 
 }
 
@@ -126,7 +152,7 @@ int ptPWM_setEnableCallback (void * modData, taskParams * theTask){
 		*(taskData -> ctlRegister) |= enableBit; // set enable bit
 	}
 	delete (enablePtr);
-	return 0
+	return 0;
 }
 
 /* ***************** Sets polarity of PWM output ***********************
@@ -136,7 +162,7 @@ Last Modified:
 int ptPWM_reversePolarityCallback (void * modData, taskParams * theTask){
 	ptPWMStructPtr taskData = (ptPWMStructPtr) theTask->taskData;
 	int * polarityPtr =(int *)modData;
-	unsigned int polarity bit;
+	unsigned int polarityBit;
 	if (taskData->channel ==0){
 		polarityBit = PWM0_REVPOLAR;;
 	}else{
@@ -144,7 +170,7 @@ int ptPWM_reversePolarityCallback (void * modData, taskParams * theTask){
 	}
 	if (*polarityPtr == 0){ // normal polarity
 		*(taskData -> ctlRegister)  &= ~polarityBit;  // clear reverse polarity bit
-	}|else{
+	}else{
 		*(taskData -> ctlRegister) = polarityBit ; // set reverse polarity
 	}
 	delete (polarityPtr);
@@ -158,7 +184,7 @@ Last Modified:
 int ptPWM_setOffStateCallback (void * modData, taskParams * theTask){
 	ptPWMStructPtr taskData = (ptPWMStructPtr) theTask->taskData;
 	int * offStatePtr =(int *)modData;
-	unsigned int OffstateBit;
+	unsigned int offStateBit;
 	if (taskData->channel ==0){
 		offStateBit = PWM0_OFFSTATE;
 	}else{
@@ -183,7 +209,7 @@ int ptPWM_setArrayPosCallback (void * modData, taskParams * theTask){
 	ptPWMStructPtr taskData = (ptPWMStructPtr) theTask->taskData;
 	taskData ->arrayPos = *newArrayPos;
 	*(taskData->dataRegister) = taskData->arrayData[taskData ->arrayPos];
-	delete (newArrayPos);
+	delete newArrayPos;
 	return 0;
 }
 
@@ -208,6 +234,7 @@ int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask){
 		taskData -> arrayData = modDataPtr->arrayData;
 	}
 	delete modDataPtr;
+	return 0;
 }
 
 
@@ -309,13 +336,16 @@ PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode, int enable, int
 	ptPWMinitStructPtr  initStruct = new ptPWMinitStruct;
 	initStruct->channel = channel;
 	initStruct->mode = mode;
+	initStruct->arrayData = arrayData;
+	initStruct->nData = nData;
+	initStruct ->range =  PWM_thread::PWMrange;
 	// Set address for GPIO peri
 	initStruct->GPIOperiAddr = GPIOperi->addr ;
 	// set addess for PWM peri
 	initStruct->PWMperiAddr = PWMperi->addr;
 	// call PWM_thread constructor, which calls pulsedThread constructor
 	int errCode =0;
-	PWM_thread * newPWM_thread = new PWM_thread (durUsecs, nPulses, (void *) initStruct, accuracyLevel, errCode) 
+	PWM_thread * newPWM_thread = new PWM_thread (durUsecs, nPulses, (void *) initStruct, accuracyLevel, errCode) ;
 	if (errCode){
 #if beVerbose
 		printf ("PWM_threadMaker failed to make PWM_thread.\n");
@@ -323,17 +353,17 @@ PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode, int enable, int
 		return nullptr;
 	}
 	// set custom task delete function
-	newPWM_thread->setTaskDataDelFunc (&PWM_delTask);
+	newPWM_thread->setTaskDataDelFunc (&ptPWM_delTask);
 	// set object variables 
 	newPWM_thread ->PWM_chan = channel;
 	newPWM_thread ->offState =0; // 0 for low when not enabled, 1 for high when enabled
 	newPWM_thread->polarity = 0; // 0 for normal polarity, 1 for reversed
-	inewPWM_thread ->enabled=enable; // 0 for not enabled, 1 for enabled
+	newPWM_thread ->enabled=enable; // 0 for not enabled, 1 for enabled
 	PWM_thread::PWMchans |= ~chanBit; // set channel bit
 	return newPWM_thread;
 }
 
-/* ******************** ThreadMaker with Integer pulse duration, delay, and number of pulses timing description inputs ********************
+/* ******************** ThreadMaker with floating point frequency and duration timing description inputs ********************
  Last Modified:
 2018/08/06 by Jamie Boyd - Initial Version, copied and modified from GPIO thread maker */
 PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode,  int enable, int * arrayData, unsigned int nData, float frequency, float trainDuration, int accuracyLevel) {
@@ -349,13 +379,16 @@ PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode,  int enable, in
 	ptPWMinitStructPtr  initStruct = new ptPWMinitStruct;
 	initStruct->channel = channel;
 	initStruct->mode = mode;
+	initStruct->arrayData = arrayData;
+	initStruct->nData = nData;
+	initStruct ->range =  PWM_thread::PWMrange;
 	// Set address for GPIO peri
 	initStruct->GPIOperiAddr = GPIOperi->addr ;
 	// set addess for PWM peri
 	initStruct->PWMperiAddr = PWMperi->addr;
 	// call PWM_thread constructor, which calls pulsedThread constructor
 	int errCode =0;
-	PWM_thread * newPWM_thread = new PWM_thread (frequency, trainDuration, (void *) initStruct, accuracyLevel, errCode) 
+	PWM_thread * newPWM_thread = new PWM_thread (frequency, trainDuration, (void *) initStruct, accuracyLevel, errCode) ;
 	if (errCode){
 #if beVerbose
 		printf ("PWM_threadMaker failed to make PWM_thread.\n");
@@ -364,7 +397,7 @@ PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode,  int enable, in
 		return nullptr;
 	}
 	// set custom task delete function
-	newPWM_thread->setTaskDataDelFunc (&PWM_delTask);
+	newPWM_thread->setTaskDataDelFunc (&ptPWM_delTask);
 	// set object variables 
 	newPWM_thread ->PWM_chan = channel;
 	newPWM_thread ->offState =0; // 0 for low when not enabled, 1 for high when enabled
@@ -391,11 +424,11 @@ PWM_thread::~PWM_thread (){
 			GPIO_CLR(GPIOperi->addr, (1 << 19));
 		}
 	}
-	unsigned int chanBit = (1<<channel);
+	unsigned int chanBit = (1<<PWM_chan);
 	PWM_thread::PWMchans &= (~chanBit); // unset channel bit
 	unUseGPIOperi();
 	unUsePWMperi();
-	unUsePWMclockPeri();
+	unUsePWMClockperi();
 }
 
 /* ****************************** utility functions - setters and getters *************************
@@ -406,7 +439,7 @@ Last Modified:
 int PWM_thread::setEnable (int enableStateP, int isLocking){
 	enabled = enableStateP;
 	int * newEnableVal = new int;
-	* newEnableVal =  enableState;
+	* newEnableVal =  enabled;
 	int returnVal = modCustom (&ptPWM_setEnableCallback, (void *) newEnableVal, isLocking);
 	return returnVal;
 }
