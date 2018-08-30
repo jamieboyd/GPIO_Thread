@@ -13,9 +13,37 @@
 <li>PTSimpleGPIO.py -- Python code that wraps the ptSimpleGPIO module in a Python object interface</li>
 <li>PTSimpleGPIO_test.py -- Python code with tests for PTSimpleGPIO. May require oscilloscope, LED</li></ul>
 
-
-int pin, int polarity, unsigned int delayUsecs, unsigned int durUsecs, unsigned int nPulses, int accuracyLevel
-
+<h3>SimpleGPIO_thread Class</h3>
+<p>The SimpleGPIO_thread class extends the pulsedThread class. The constructor calls the pulsedThread constructor with an initilization function and a structure holding data for initilization, plus parameters for thread timing. The SimpleGPIO_thread class simplifies thread creation a little bit by providing two static ThreadMaker functions that make an initStruct and call a constructor with it, returning a pointer to a SimpleGPIO_thread. One ThreadMaker sets timing parameters in microsecond delays and durations, and the other sets timing parameters in frequency and duty cycle.</p>
+<ul><li>static SimpleGPIO_thread * SimpleGPIO_threadMaker (
+	<dl><dt>int pin</dt>
+	<dd>GPIO pin number to use, in Broadcom numbering</dd>
+	<dt>int polarity</dt>
+	<dd>Zero for normally low, non-zero for normally high</dd>
+	<dt>unsigned int delayUsecs</dt>
+	<dd>time of low period of pulse, in microseconds</dd>
+	<dt>unsigned int durUsecs</dt>
+	<dd>time of high period of pulse, in microseconds</dd>
+	<dt>unsigned int nPulses</dt>
+	<dd>number of pulses in a train, or 1 for a single pulse, or 0 for an infnite train</dd>
+	<dt>int accuracyLevel</dt>
+	<dd>controls how timing is done, see pulsedThread</dd>);
+</dl></li><br>
+<li>static SimpleGPIO_thread * SimpleGPIO_threadMaker (
+	<dl><dt>int pin</dt>
+	<dd>GPIO pin number to use, in Broadcom numbering</dd>
+	<dt>int polarity</dt>
+	<dd>Zero for normally low, non-zero for normally high</dd>
+	<dt>float frequency</dt>
+	<dd>frequency of train, in Hz</dd>
+	<dt>float dutyCycle</dt>
+	<dd>duty cycle in train, from 0 to 1</dd>
+	<dt>float trainDuration</dt>
+	<dd>Duration of train, in seconds</dd>
+	<dt>int accuracyLevel</dt>
+	<dd>controls how timing is done, see pulsedThread</dd>);
+</dl></li>
+</ul>
 
 
 

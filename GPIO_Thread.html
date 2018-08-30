@@ -15,8 +15,8 @@
 	<li>XX_setup.py that builds and installs the Python/C module and, if present, PTXX.py</li>
 	<li>Occasionally, PTXX_tester.py that tests some of the functions of the Python module</li>
 </ul>
-To install the Python module for a project, XX, use</br>
-sudo python3 XX_setup.py install</br>
+To install the Python module for a project, XX, use<br>
+sudo python3 XX_setup.py install<br>
 This will install both the Python/C module, and its Python wrapper module, if present.</p>
 
  <p>Before compiling/installing any of the GPIO_Thread projects, you first need to install the <a href="https://github.com/jamieboyd/pulsedThread">pulsedThread library</a>, as it is used by all the projects in GPIO_Thread:<br>
@@ -28,7 +28,7 @@ This will install both the Python/C module, and its Python wrapper module, if pr
 </ol>
 This installs the pulsedThread library, C++ header files, and a C++ file with functions for using pulsedThread from a Python/C module.</p>
 
-<p>In most cases, no external libraries other than pulsedThread are used. Access to the GPIO hardware is done through memory mapping and reading/writing directly to peripheral registers, or through the /sys/ pseudo file system for polling. A pair of files, GPIOlowlevel.cpp/.h, contain the constants, macros, and functions for <a href = "./GPIOlowLevel.html">low level access to Raspberry Pi peripherals</a> such as GPIO and PWM. All of the projects include these two files.</p>
+<p>In most cases, no external libraries other than pulsedThread are used. Access to the GPIO hardware is done through memory mapping and reading/writing directly to peripheral registers, or through the /sys/ pseudo file system for polling. Constants, macros, and functions for low level access to Raspberry Pi peripherals such as GPIO and PWM are contained in pair of files, <a href = "./GPIOlowLevel.html">GPIOlowlevel.cpp/.h.</a>. All of the projects include these two files.</p>
 
 <p>A define statement in GPIOlowlevel.h on line 23 sets the compiler to use the correct address offsets for the Raspberry Pi models 2 and 3. If you wish to compile for running on a Raspberry Pi model 1, you need to comment out this define statement and uncomment the define statement for the Raspberry Pi 1 on the next line. It is not expected that many people will need to do this.</p>
 
