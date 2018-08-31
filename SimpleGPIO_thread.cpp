@@ -3,7 +3,7 @@
 /* *************************** Functions that are called from thread can not be class methods *********************
 
 ***************************************Initialization callback function ****************************************
-Copies pinBit and set/unset register adressses to  task data
+Copies pinBit and set/unset register adressses to task data
 last modified:
 2018/02/09 by Jamie Boyd - copied some functionality over from thread make function
 2018/02/01 by Jamie Boyd - initial version  */

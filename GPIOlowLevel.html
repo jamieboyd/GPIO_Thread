@@ -22,9 +22,12 @@ The Raspberry Pi 3 is Broadcom BCM2837 but has the same peripheral address start
 #define IFACE_DEV_MEM	0	// use this for GPIO or PWM and/or clock access<br>
 As a user of the GPIO_Thread classes, all you need to know is to use sudo or gksudo when accessing anything other than the GPIO peripheral, and the class (e.g. SimpleGPIO_thread) will use the appropriate interface.</p>
 
-<p>GPIOlowLevel.cpp contains utility functions for peripheral mapping and global variables for the mappings. With the memory mappings available globally, only one mapping is needed for each peripheral. The number of threads using each peripheral is also tracked, so a memory mapping can be deleted when it is no longer needed.<br>
-bcm_peripheralPtr GPIOperi = nullptr; // memory mapping for GPIO peripheral<br>int GPIOperi_users=0; // number of threads using the GPIO peripheral mapping</p>
-
+<p>GPIOlowLevel.cpp contains utility functions for peripheral mapping and global variables for the mappings. With the memory mappings available globally, only one mapping is needed for each peripheral. The number of threads using each peripheral is also tracked, so a memory mapping can be deleted when it is no longer needed. Each peripheral had its own mapping. For the GPIO peripheral for instance, we have:<dl>
+	<dt>bcm_peripheralPtr GPIOperi = nullptr;</dt>
+	<dd>// memory mapping for GPIO peripheral</dd>
+	<dt>int GPIOperi_users=0;</dt>
+	<dd>// number of threads using the GPIO peripheral mapping</dd></dl>
+ We also have function useGpioPeri ()that makes a memory mapping for the GPIO peripheral if one does not already exist, and increments GPIOperi_users, and function unUseGPIOperi ()that decrements GPIOperi_users and deletes the mapping if it is no longer needed. Analogous global variables and function exist for each peripheral.</p>
 <hr>
 <a href = "./GPIO_Thread.html">Back to GPIO Thread index</a>
 </body>
