@@ -33,14 +33,18 @@ int main(int argc, char **argv){
 	printf ("first ArrayData = %d,%d,%d,%d,%d \n", arrayData [0], arrayData [1] , arrayData [2], arrayData [3] , arrayData [4] );
 	
 	// make the thread
-	PWM_thread * myPWM = PWM_thread::PWM_threadMaker (PWMchan, PWMmode, 1, arrayData, PWMrange, (unsigned int) 1000, (unsigned int) PWMrange, 1);
+	PWM_thread * myPWM = PWM_thread::PWM_threadMaker (PWMchan, PWMmode, 0, arrayData, PWMrange, (unsigned int) 1000, (unsigned int) PWMrange, 1);
 	if (myPWM == nullptr){
 		printf ("thread maker failed to make a thread.\n");
 		return 1;
 	}
 	printf ("thread maker made a thread.\n");
 	printf ("Thread channel = %d.\n", myPWM->PWM_chan);
-	myPWM->DoTasks (10);
+	myPWM->setEnable (0, 1);
+	myPWM->DoTasks (2);
+	myPWM->waitOnBusy (60);
+	myPWM->setEnable (1, 1);
+	myPWM->DoTasks (2);
 	myPWM->waitOnBusy (60);
 	delete myPWM;
 	
