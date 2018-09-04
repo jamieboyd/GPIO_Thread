@@ -38,6 +38,7 @@ int main(int argc, char **argv){
 		printf ("thread maker failed to make a thread.\n");
 		return 1;
 	}
+	printf ("Wait on busy returned %d\n", myPWM->waitOnBusy(1));
 	printf ("thread maker made a thread.\n");
 	printf ("Thread channel = %d.\n", myPWM->PWM_chan);
 	myPWM->DoTasks (10);
