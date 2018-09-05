@@ -2,52 +2,12 @@
 
 #define pi 3.141592653589
 
-/*sets PWM clock to give newPWMFreq PWM frequency. This PWM frequency is only accurate for the given PWMrange
-The two PWM channels could use different ranges, and thus have different PWM frequencies
-even though they use the same PWM clock.
-Returns new clock frequency if the requested PWM frequency, PWMrange combination caused the clock 
-divisor to exceed the maximum settable value of 4095 
-float ptPWM_SetClock (float newPWMFreq, int PWMrange, bcm_peripheralPtr PWMperi, bcm_peripheralPtr PWMClockperi){
-	
-	float clockFreq = newPWMFreq * PWMrange;
-	unsigned int clockRate ;
-	int clockSrc ;
-	if (clockFreq < (PI_CLOCK_RATE/4)){
-		clockRate = PI_CLOCK_RATE;
-		clockSrc = 1;
-		printf ("Using PWM clock source oscillator at 19.2 MHz.\n");
-	}else{
-		clockRate = PLLD_CLOCK_RATE;
-		clockSrc = 6;
-		printf ("Using PWM clock source PLL D at 500 MHz.\n");
-	}
-	int integerDivisor = clockRate/clockFreq; // Divisor Value for clock, clock source freq/Divisor = PWM hz
-	if (integerDivisor > 4095){ // max divisor is 4095 - need to select larger range or higher frequency
-		printf ("max divisor is 4095 - need to select larger range or higher frequency.\n");
-		return 1;
-	}
-	int fractionalDivisor = ((clockRate/clockFreq) - integerDivisor) * 4096;
-	unsigned int PWM_CTLstate = *(PWMperi->addr + PWM_CTL); // save state of PWM_CTL register
-	*(PWMperi->addr + PWM_CTL) = 0 ;  // Turn off PWM.
-	*(PWMClockperi->addr  + PWMCLK_CNTL) =(*(PWMClockperi->addr  + PWMCLK_CNTL) &~0x10)|BCM_PASSWORD; // Turn off PWM clock enable flag.
-	while(*(PWMClockperi->addr  + PWMCLK_CNTL)&0x80); // Wait for clock busy flag to turn off.
-	//printf ("PWM Clock Busy flag turned off.\n");
-	*(PWMClockperi->addr  + PWMCLK_DIV) =(integerDivisor  << 12)|(fractionalDivisor&4095)|BCM_PASSWORD; // Configure divider. 
-	*(PWMClockperi->addr  + PWMCLK_CNTL) = 0x400 | clockSrc | BCM_PASSWORD; // start PWM clock with Source=Oscillator @19.2 MHz, 2-stage MASH
-	*(PWMClockperi->addr  + PWMCLK_CNTL) = 0x410| clockSrc | BCM_PASSWORD; // Source (=Oscillator 19.2 MHz , 6 = 500MHZ PLL d) 2-stage MASH, plus enable
-	while(!(*(PWMClockperi->addr  + PWMCLK_CNTL) &0x80)); // Wait for busy flag to turn on.
-	//printf ("PWM Clock Busy flag turned on again.\n");
-	*(PWMperi->addr + PWM_CTL) = PWM_CTLstate; // restore saved PWM_CTL register state
-	return clockRate/(integerDivisor + (fractionalDivisor/4095));
-}
-*/
-
 float PWM_thread::PWMfreq =0;
 int PWM_thread::PWMchans=0;
 int PWM_thread::PWMrange =0;
 
 int pwmRange = 4096; // PWM clock counts per output value, sets precision of output
-float pwmFreq = 100; // desired frequency that PWM output value is updated, will be same frequency requested for pulsed thread output
+float pwmFreq = 100; // desired frequency that PWM output value is updated, should be >= frequency requested for pulsed thread output
 unsigned int arraySizeBase = 2048; // size of the array, must contain at least one period of output. A bigger array can put out a lower frequency 
 float sin_frequency = 1; // requested sine wave frequency in Hz
 
@@ -57,7 +17,8 @@ int main(int argc, char **argv){
 	float PWMfreq = 100;
 	int PWMrange = 4096;
 	int PWMchan = 0;
-	int PWMmode = PWM_MARK_SPACE;
+	int PWMmode = PWM_MARK_SPACE; //PWM_BALANCED; 
+
 	unsigned int arraySizeBase = 2048; // size of the array, must contain at least one period of output. A bigger array can put out a lower frequency 
 	
 	
@@ -98,8 +59,8 @@ int main(int argc, char **argv){
 		return 1;
 	}
 	//myPWM->setEnable (0, 1);
-	myPWM->DoTasks (2);
-	myPWM->waitOnBusy (10);
+	myPWM->DoTasks (10);
+	myPWM->waitOnBusy (30);
 	/*
 	INP_GPIO(GPIOperi ->addr,18);           // Set GPIO 18 to input to clear bits
 	SET_GPIO_ALT(GPIOperi ->addr,18,5);     // Set GPIO 18 to Alt5 function PWM0
