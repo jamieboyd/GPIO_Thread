@@ -61,48 +61,8 @@ This function takes a pointer to a bcm_peripheral struct, p, whose addr_p field 
 to the base addresss of the peripheral you wish to control. It maps the low level memory
 of the peripheral and fills out the rest of the fields in the bcm_peripheral struct.
 The memInterface paramater determines which method to use. */
-inline int map_peripheral(bcm_peripheralPtr p, int memInterface){
-	if (memInterface == IFACE_DEV_GPIOMEM){
-		// Open newfangled dev/gpiomem instead of /dev/mem for access without sudo
-		if ((p->mem_fd = open("/dev/gpiomem", O_RDWR|O_SYNC) ) < 0) {
-			perror("Failed to open /dev/gpiomem");
-			return 1;
-		}
-	}else{
-		if ((p->mem_fd = open("/dev/mem", O_RDWR|O_SYNC) ) < 0) {
-			perror("Failed to open /dev/mem. Did you forget to sudo");
-			return 1;
-		}
-	}	
-	/* mmap IO */
-	p->map = mmap(
-		NULL,							//Any address in our space will do
-		BLOCK_SIZE,						//Map length
-		PROT_READ|PROT_WRITE|PROT_EXEC,	// Enable reading & writing to mapped memory
-		MAP_SHARED| MAP_LOCKED,			//Shared with other processes
-		p->mem_fd,						//File to map
-		p->addr_p						//Offset to base address
-	);
-	//p->map = mmap(NULL, BLOCK_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, p->mem_fd, p->addr_p);
-	if (p->map == MAP_FAILED) {
-		perror("mmap error");
-		close (p->mem_fd);
-		return 1;
-	}
-	p ->addr = (volatile unsigned int *)p->map;
-	// close file descriptor
-	if (close(p -> mem_fd) < 0){
-		perror("couldn't close memory file descriptor");
-		return 1;
-	}
-	return 0;
-}
-
-/* ******************** Un-Map a Peripheral *******************************************/
-inline void unmap_peripheral(bcm_peripheralPtr p) {
-	munmap(p->map, BLOCK_SIZE);
-}
-
+int map_peripheral(bcm_peripheralPtr p, int memInterface);
+void unmap_peripheral(bcm_peripheralPtr p);
 /**************************************************GPIO Peripheral************************************************
 GPIO_BASE is the base address of GPIO peripherals, and its offset from the physical address is 0x200000. */
 #define GPIO_BASE       	(BCM_PERI_BASE + 0x200000)	// GPIO controller
@@ -163,7 +123,7 @@ void unUsePWMperi (void);
 /* ************************************************* PWM Clock Control*********************************************************
 Values for setting some registers need to be ORed with this magic number, the clock manager password */
 #define	BCM_PASSWORD 0x5A000000
-/* CLOCK_BASE is defined by 0x101000 offset from the base peripheral addresss */
+/* PWM_CLOCK_BASE is defined by 0x101000 offset from the base peripheral addresss */
 #define PWM_CLOCK_BASE (BCM_PERI_BASE + 0x101000)
 /*Frequency of oscillators that we use as source for things like PWM clock*/
 #define PI_CLOCK_RATE 19.2e6	//19.2 Mhz
@@ -171,6 +131,7 @@ Values for setting some registers need to be ORed with this magic number, the cl
 
 extern bcm_peripheralPtr PWMClockperi;
 extern int PWMClockperi_users;
+extern float bcm_PWM_Clockfreq ;
 volatile unsigned int * usePWMClockPeri (void);
 void unUsePWMClockperi (void);
 

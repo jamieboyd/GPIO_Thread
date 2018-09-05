@@ -1,5 +1,48 @@
 #include "GPIOlowlevel.h"
 
+int map_peripheral(bcm_peripheralPtr p, int memInterface){
+	if (memInterface == IFACE_DEV_GPIOMEM){
+		// Open newfangled dev/gpiomem instead of /dev/mem for access without sudo
+		if ((p->mem_fd = open("/dev/gpiomem", O_RDWR|O_SYNC) ) < 0) {
+			perror("Failed to open /dev/gpiomem");
+			return 1;
+		}
+	}else{
+		if ((p->mem_fd = open("/dev/mem", O_RDWR|O_SYNC) ) < 0) {
+			perror("Failed to open /dev/mem. Did you forget to sudo");
+			return 1;
+		}
+	}	
+	/* mmap IO */
+	p->map = mmap(
+		NULL,							//Any address in our space will do
+		BLOCK_SIZE,						//Map length
+		PROT_READ|PROT_WRITE|PROT_EXEC,	// Enable reading & writing to mapped memory
+		MAP_SHARED| MAP_LOCKED,			//Shared with other processes
+		p->mem_fd,						//File to map
+		p->addr_p						//Offset to base address
+	);
+	//p->map = mmap(NULL, BLOCK_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, p->mem_fd, p->addr_p);
+	if (p->map == MAP_FAILED) {
+		perror("mmap error");
+		close (p->mem_fd);
+		return 1;
+	}
+	p ->addr = (volatile unsigned int *)p->map;
+	// close file descriptor
+	if (close(p -> mem_fd) < 0){
+		perror("couldn't close memory file descriptor");
+		return 1;
+	}
+	return 0;
+}
+
+/* ******************** Un-Map a Peripheral *******************************************/
+void unmap_peripheral(bcm_peripheralPtr p) {
+	munmap(p->map, BLOCK_SIZE);
+}
+
+
 /* ****** Utility functions for peripheral mapping ***********************
 have to initialize these somewhere */
 bcm_peripheralPtr GPIOperi = nullptr;
@@ -60,8 +103,12 @@ volatile unsigned int * usePWMPeri (void){
 	} 
  }
 
+ 
 bcm_peripheralPtr PWMClockperi = nullptr;
 int PWMClockperi_users=0;
+ 
+/*Global for PWM clock frequency */
+float bcm_PWM_Clockfreq =0;
 
 volatile unsigned int * usePWMClockPeri (void){
 	// map PWM clock peripheral, if needed

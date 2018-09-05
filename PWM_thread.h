@@ -5,14 +5,16 @@
 #include "GPIOlowlevel.h"
 
 /* *********************** Forward declare functions used by thread *************************/
-void ptPWM_Hi (void * taskData);
-int ptPWM_Init (void * initData, void * &taskData);
+void ptPWM_Hi (void *  taskData);
+int ptPWM_Init (void * initData, void *  &taskData);
 void ptPWM_delTask (char bcm_PWM_chan);
 int ptPWM_setEnableCallback (void * modData, taskParams * theTask);
 int ptPWM_reversePolarityCallback (void * modData, taskParams * theTask);
 int ptPWM_setOffStateCallback (void * modData, taskParams * theTask);
 int ptPWM_setArrayPosCallback (void * modData, taskParams * theTask);
 int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask);
+
+float ptPWM_SetClock (float newPWMFreq, int PWMrange, bcm_peripheralPtr PWMperi, bcm_peripheralPtr PWMClockperi);
 
 /* ********************************* Initialization struct for PWM ******************************
 last modified:
@@ -73,10 +75,10 @@ last modified:
 class PWM_thread : public pulsedThread{
 	public:
 	/* constructors, one with unsigned ints for pulse delay and duration times in microseconds and number of pulses */
-	PWM_thread (unsigned int durUsecs, unsigned int nPulses, void * initData, int accLevel , int &errCode) : pulsedThread (0, durUsecs, nPulses, initData, &ptPWM_Init, nullptr, &ptPWM_Hi, accLevel, errCode) {
+	PWM_thread (unsigned int durUsecs, unsigned int nPulses, void *  initData, int accLevel , int &errCode) : pulsedThread (0, durUsecs, nPulses, initData, &ptPWM_Init, nullptr, &ptPWM_Hi, accLevel, errCode) {
 	};
 	/* and the the other constructor with floats for frequency, duty cycle, and train duration */
-	PWM_thread (float frequency, float trainDuration, void * initData, int accLevel, int &errCode) : pulsedThread (frequency, 1, trainDuration, initData, &ptPWM_Init, nullptr, &ptPWM_Hi, accLevel,errCode) {
+	PWM_thread (float frequency, float trainDuration, void *  initData, int accLevel, int &errCode) : pulsedThread (frequency, 1, trainDuration, initData, &ptPWM_Init, nullptr, &ptPWM_Hi, accLevel,errCode) {
 	};
 	~PWM_thread ();
 	/* Static ThreadMakers make an initStruct and call a constructor with it, returning a pointer to a new PWM_thread */

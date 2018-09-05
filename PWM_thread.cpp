@@ -1,9 +1,10 @@
 #include "PWM_thread.h"
 	
-
+	
 /* ********************* PWM Initialization callback function ****************************************
 Initializes a single channel, either 0 or 1 
 last modified:
+2018/09/04 by Jamie Boyd - debugging
 2018/08/07 by Jamie Boyd - modified for pulsedThread subclassing
 2017/02/20 by Jamie Boyd - initial version  */
 int ptPWM_Init (void * initDataP, void *  &taskDataP){
@@ -30,6 +31,32 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 	taskData->startPos =0;
 	taskData->arrayPos =0;
 	taskData->endPos =taskData->nData - 1;
+	
+	//grrrr
+	INP_GPIO(GPIOperi ->addr,18);           // Set GPIO 18 to input to clear bits
+	SET_GPIO_ALT(GPIOperi ->addr,18,5);     // Set GPIO 18 to Alt5 function PWM0
+	unsigned int rangeRegisterOffset = PWM0_RNG;
+	unsigned int dataRegisterOffset = PWM0_DAT;
+	unsigned int modeBit = 0x80;
+	unsigned int enableBit = 0x1;
+	
+	
+	taskData -> ctlRegister = initData->PWMperiAddr  + PWM_CTL;
+	taskData->dataRegister = initData->PWMperiAddr  + dataRegisterOffset ;
+	
+	*(PWMperi ->addr  + rangeRegisterOffset) = initData->range; // set range
+	if (initData->mode ==PWM_MARK_SPACE){
+		*(PWMperi ->addr + PWM_CTL) |= modeBit; // put PWM in MS Mode
+	}else{
+		*(PWMperi ->addr  + PWM_CTL) &= ~(modeBit);  // clear MS mode bit for balanced mode
+	}
+	// set initial PWM value first so we have something to put out
+	*(PWMperi ->addr  + dataRegisterOffset) = 1500;
+	*(PWMperi ->addr  + PWM_CTL) |= enableBit;
+	
+	/*
+	
+	
 #if beVerbose
 		printf ("ptPWM_Init: taskDataP filled\n");
 		printf ("ptPWM_Init: first value in array = %d\n",  taskData->arrayData[0]);
@@ -44,7 +71,7 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 	unsigned int offStateBit;
 	if (initData->channel == 0){
 		INP_GPIO(initData->GPIOperiAddr,18);           // Set GPIO 18 to input to clear bits
-		SET_GPIO_ALT(initData->PWMperiAddr,18,5);     // Set GPIO 18 to Alt5 function PWM0
+		SET_GPIO_ALT(initData->GPIOperiAddr,18,5);     // Set GPIO 18 to Alt5 function PWM0
 		rangeRegisterOffset = PWM0_RNG;
 		dataRegisterOffset = PWM0_DAT;
 		modeBit = PWM0_MS_MODE;
@@ -91,7 +118,7 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 		
 #endif
 	// if wait-for-enable, clear enable bit, else set the bit to start PWM running right away
-	if (initData->enable){
+	if (!(initData->enable)){
 		*(taskData -> ctlRegister) &= ~enableBit; // clear enable bit
 	}else{
 		// set initial PWM value first so we have something to put out
@@ -101,7 +128,7 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 	delete initData;
 #if beVerbose
 		printf ("ptPWM_Init exiting.\n");
-#endif
+#endif*/
 	return 0; // 
 }
 
@@ -109,7 +136,7 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 gets the next value from the array to be output and writes it to the data register
 Last Modified:
 2018/08/07 by Jamie Boyd -updated for pusledThread subclass */
-void ptPWM_Hi (void * volatile taskDataP){
+void ptPWM_Hi (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
 	if (taskData->arrayPos < taskData->endPos){
 		taskData->arrayPos += 1;
@@ -267,6 +294,9 @@ Last Modified: 2018/08/06 by Jamie Boyd - first version */
 #endif
 		return 3;
 	}
+#if beVerbose
+	printf ("GPIO address = %u PWM address = %u PWM clock address = %u \n", GPIOperi ->addr, PWMperi->addr, PWMClockperi->addr);
+#endif
 	return 0;
 }
 
