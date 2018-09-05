@@ -39,7 +39,6 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 	unsigned int enableBit;
 	unsigned int polarityBit;
 	unsigned int offStateBit;
-
 	if (initData->channel == 0){
 		INP_GPIO(GPIOperi ->addr, 18);           // Set GPIO 18 to input to clear bits
 		SET_GPIO_ALT(GPIOperi ->addr, 18, 5);     // Set GPIO 18 to Alt5 function PWM0
@@ -60,130 +59,31 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 		polarityBit = PWM1_REVPOLAR;
 		offStateBit = PWM1_OFFSTATE;
 	}
-	// save ctl and data register addresses in task data for easy access
-	taskData -> ctlRegister = PWMperi->addr + PWM_CTL;
-	taskData->dataRegister = PWMperi->addr + dataRegisterOffset;
-	// set range - this will be the same for both channels, because it is a headache otherwise
-	*(PWMperi ->addr  + rangeRegisterOffset) = initData->range; 
-	// set mode
-	if (initData->mode ==PWM_MARK_SPACE){
-		*(taskData -> ctlRegister) |= modeBit; // put PWM in MS Mode
-	}else{
-		*(taskData -> ctlRegister) &= ~(modeBit);  // clear MS mode bit for balanced mode
-	}
-	// set polarity to non-reversed
-	*(taskData -> ctlRegister ) &= ~polarityBit;  // clear reverse polarity bit
-	// set off state to low 
-	*(taskData -> ctlRegister ) &= ~offStateBit; // clear OFFstate bit
-	// set or clear enable bit
-	if (!(initData->enable)){
-		*(taskData -> ctlRegister) &= ~enableBit; // clear enable bit
-	}else{
-		// set initial PWM value first so we have something to put out
-		*(taskData->dataRegister) = taskData->arrayData[0];
-		*(taskData -> ctlRegister) |= enableBit;
-	}
-	delete initData;
-	//grrrr
-	/*
-	INP_GPIO(GPIOperi ->addr,18);           // Set GPIO 18 to input to clear bits
-	SET_GPIO_ALT(GPIOperi ->addr,18,5);     // Set GPIO 18 to Alt5 function PWM0
-	rangeRegisterOffset = PWM0_RNG;
-	dataRegisterOffset = PWM0_DAT;
-	modeBit = 0x80; 
-	enableBit = 0x1;
+	// set range
 	*(PWMperi ->addr  + rangeRegisterOffset) = initData->range; // set range
+	// set mode
 	if (initData->mode ==PWM_MARK_SPACE){
 		*(PWMperi ->addr + PWM_CTL) |= modeBit; // put PWM in MS Mode
 	}else{
 		*(PWMperi ->addr  + PWM_CTL) &= ~(modeBit);  // clear MS mode bit for balanced mode
 	}
-	// set initial PWM value first so we have something to put out
-	printf ("output = %u.\n",taskData->arrayData[0]);
-	*(PWMperi ->addr  + dataRegisterOffset) = taskData->arrayData[0]; 
-	*(PWMperi ->addr  + PWM_CTL) |= enableBit;
-	taskData -> ctlRegister = PWMperi ->addr  + PWM_CTL;
-	taskData->dataRegister = PWMperi ->addr + dataRegisterOffset ;
-	*/
-	// if not initially enabled, clear enable bit, else set the bit to start PWM running right away
-	
-	//delete initData;
-	
-	
-	/*
-#if beVerbose
-		printf ("ptPWM_Init: taskDataP filled\n");
-		printf ("ptPWM_Init: first value in array = %d\n",  taskData->arrayData[0]);
-#endif
-	// set up PWM channel 0 or 1 by writing to control register and range register
-	// some register address offsets and bits vary by chanel
-	unsigned int dataRegisterOffset;
-	unsigned int rangeRegisterOffset;
-	unsigned int modeBit;
-	unsigned int enableBit;
-	unsigned int polarityBit;
-	unsigned int offStateBit;
-	if (initData->channel == 0){
-		INP_GPIO(initData->GPIOperiAddr,18);           // Set GPIO 18 to input to clear bits
-		SET_GPIO_ALT(initData->GPIOperiAddr,18,5);     // Set GPIO 18 to Alt5 function PWM0
-		rangeRegisterOffset = PWM0_RNG;
-		dataRegisterOffset = PWM0_DAT;
-		modeBit = PWM0_MS_MODE;
-		enableBit = PWM0_ENABLE;
-		polarityBit = PWM0_REVPOLAR;
-		offStateBit = PWM0_OFFSTATE;
-
-	}else{
-		INP_GPIO(initData->GPIOperiAddr,19);           	// Set GPIO 19 to input to clear bits
-		SET_GPIO_ALT(initData->GPIOperiAddr,19,5);     // Set GPIO 19 to Alt5 function PWM1
-		rangeRegisterOffset = PWM1_RNG;
-		dataRegisterOffset = PWM1_DAT;
-		modeBit = PWM1_MS_MODE;
-		enableBit = PWM1_ENABLE;
-		polarityBit = PWM1_REVPOLAR;
-		offStateBit = PWM1_OFFSTATE;
-	}
-#if beVerbose
-		printf ("ptPWM_Init: Channel set up\n");
-#endif
-	// save control and data register address for easy access from thread hiFunc and customMod functions
-	taskData -> ctlRegister = initData->PWMperiAddr  + PWM_CTL;
-	taskData->dataRegister = initData->PWMperiAddr  + dataRegisterOffset ;
-#if beVerbose
-		printf ("ptPWM_Init: saved control and data offset\n");
-#endif
-	// set range - this will be the same for both channels, because it is a headache otherwise
-	*(initData->PWMperiAddr  + rangeRegisterOffset) = initData->range; 
-	// set mode
-	if (initData->mode ==PWM_MARK_SPACE){
-		*(taskData -> ctlRegister ) |= modeBit ; // put PWM in MS Mode
-	}else{
-		*(taskData -> ctlRegister ) &= ~modeBit;  // clear MS mode bit for balanced mode
-	}
-#if beVerbose
-		printf ("ptPWM_Init: set range and mode\n");
-#endif
 	// set polarity to non-reversed
-	*(taskData -> ctlRegister ) &= ~polarityBit;  // clear reverse polarity bit
+	*(PWMperi ->addr  + PWM_CTL) &= ~polarityBit;  // clear reverse polarity bit
 	// set off state to low 
-	*(taskData -> ctlRegister ) &= ~offStateBit; // clear OFFstate bit
-#if beVerbose
-		printf ("ptPWM_Init: set polarity and offset\n");
-		
-#endif
-	// if wait-for-enable, clear enable bit, else set the bit to start PWM running right away
-	if (!(initData->enable)){
-		*(taskData -> ctlRegister) &= ~enableBit; // clear enable bit
-	}else{
+	*(PWMperi ->addr  + PWM_CTL) &= ~offStateBit; // clear OFFstate bit
+	// set enable state
+	if (initData->enable){
 		// set initial PWM value first so we have something to put out
-		*(taskData->dataRegister) = taskData->arrayData[0];
-		*(taskData -> ctlRegister) |= enableBit;
+		*(PWMperi ->addr  + dataRegisterOffset) = taskData->arrayData[0]; 
+		*(PWMperi ->addr  + PWM_CTL) |= enableBit;
+	}else{
+		*(PWMperi ->addr  + PWM_CTL) &= ~enableBit;
 	}
+	// save ctl and data register addresses in task data for easy access
+	taskData -> ctlRegister = PWMperi->addr + PWM_CTL;
+	taskData->dataRegister = PWMperi->addr + dataRegisterOffset;
 	delete initData;
-#if beVerbose
-		printf ("ptPWM_Init exiting.\n");
-#endif*/
-	return 0; // 
+	return 0; 
 }
 
 /* *********************************** PWM Hi function (no low function) ******************************
@@ -420,6 +320,7 @@ PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode, int enable, int
 	ptPWMinitStructPtr initStruct = new ptPWMinitStruct;
 	initStruct->channel = channel;
 	initStruct->mode = mode;
+	initStruct -> enable = enable;
 	initStruct->arrayData = arrayData;
 	initStruct->nData = nData;
 	initStruct ->range =  PWM_thread::PWMrange;
@@ -463,6 +364,7 @@ PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode,  int enable, in
 	ptPWMinitStructPtr  initStruct = new ptPWMinitStruct;
 	initStruct->channel = channel;
 	initStruct->mode = mode;
+	initStruct -> enable = enable;
 	initStruct->arrayData = arrayData;
 	initStruct->nData = nData;
 	initStruct ->range =  PWM_thread::PWMrange;

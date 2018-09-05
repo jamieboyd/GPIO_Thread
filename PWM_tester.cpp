@@ -15,7 +15,7 @@ int main(int argc, char **argv){
 	float PWMoversampling = 5; // make PWM frequency updating this many times faster than thread frequency
 	int PWMchan = 0; // channel to use, 0 or 1
 	int PWMmode = PWM_MARK_SPACE; //PWM_BALANCED for LEDs/Analog out or PWM_MARK_SPACE for servos
-	float sin_frequency = 5; // requested sine wave frequency in Hz
+	float sin_frequency = 1; // requested sine wave frequency in Hz
 	
 	
 	// map peripherals for PWM controller
