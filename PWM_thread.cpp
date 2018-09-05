@@ -104,7 +104,8 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 	*(PWMperi ->addr  + PWM_CTL) |= enableBit;
 	taskData -> ctlRegister = PWMperi ->addr  + PWM_CTL;
 	taskData->dataRegister = PWMperi ->addr + dataRegisterOffset ;
-	*/
+	*/ 
+	// end grrrr
 	// if not initially enabled, clear enable bit, else set the bit to start PWM running right away
 	
 	//delete initData;
