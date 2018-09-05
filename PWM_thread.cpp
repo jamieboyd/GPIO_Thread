@@ -33,14 +33,12 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 	taskData->endPos =taskData->nData - 1;
 	// set up PWM channel 0 or 1 by writing to control register and range register
 	// some register address offsets and bits vary by chanel
-	
 	unsigned int dataRegisterOffset;
 	unsigned int rangeRegisterOffset;
 	unsigned int modeBit;
 	unsigned int enableBit;
 	unsigned int polarityBit;
 	unsigned int offStateBit;
-	
 	if (initData->channel == 0){
 		printf ("channel 0\n");
 		INP_GPIO(GPIOperi ->addr, 18);           // Set GPIO 18 to input to clear bits
@@ -53,8 +51,8 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 		offStateBit = PWM0_OFFSTATE;
 
 	}else{
-		INP_GPIO(initData->GPIOperiAddr,19);           	// Set GPIO 19 to input to clear bits
-		SET_GPIO_ALT(initData->GPIOperiAddr,19,5);     // Set GPIO 19 to Alt5 function PWM1
+		INP_GPIO(GPIOperi ->addr,19);           	// Set GPIO 19 to input to clear bits
+		SET_GPIO_ALT(GPIOperi ->addr,19,5);     // Set GPIO 19 to Alt5 function PWM1
 		rangeRegisterOffset = PWM1_RNG;
 		dataRegisterOffset = PWM1_DAT;
 		modeBit = PWM1_MS_MODE;
@@ -62,10 +60,8 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 		polarityBit = PWM1_REVPOLAR;
 		offStateBit = PWM1_OFFSTATE;
 	}
-	taskData -> ctlRegister = PWMperi ->addr  + PWM_CTL;
+	taskData -> ctlRegister = PWMperi ->addr + PWM_CTL;
 	taskData->dataRegister = PWMperi ->addr + dataRegisterOffset ;
-	
-	
 	// set range - this will be the same for both channels, because it is a headache otherwise
 	*(PWMperi ->addr  + rangeRegisterOffset) = initData->range; 
 	// set mode
@@ -351,14 +347,18 @@ Last Modified: 2018/08/06 by Jamie Boyd - first version */
 
 
 /* ************************************sets PWM clock to give new PWM frequency******************************************************
+The PWM frequency is 1/(time taken to output a single value) which is determined by range and clock frequency
 This PWM frequency is only accurate for the given PWMrange The two PWM channels could use different ranges, and thus have different PWM frequencies
-even though they use the same PWM clock. Don't do that; use the same range for both channels, saved in a class variable
+even though they use the same PWM clock. We don't do that here; we use the same range for both channels, saved in a class variable
 Returns new clock frequency, else returns -1 if the requested PWM frequency, PWMrange combination caused the clock 
 divisor to exceed the maximum settable value of 4095 
-Last Modified: 2018/08/06 by Jamie Boyd- modified for pulsedThread subclassing*/
-float PWM_thread::setClock (float PWMFreq, int PWMrange){
+Last Modified: 
+2018/09/04 by Jamie Boyd - removed return value, freq saved in static field
+2018/08/06 by Jamie Boyd- modified for pulsedThread subclassing*/
+void PWM_thread::setClock (float PWMFreq){
 	
-	float clockFreq = PWMFreq * PWMrange;
+	 // clock must be this fast in Hz to output PWM_thread::PWMrange ticks in 1/PWMFreq seconds
+	float clockFreq = PWMFreq * PWM_thread::PWMrange;
 	unsigned int clockRate ;
 	int clockSrc ;
 	if (clockFreq < (PI_CLOCK_RATE/4)){
@@ -377,26 +377,23 @@ float PWM_thread::setClock (float PWMFreq, int PWMrange){
 	}
 	int fractionalDivisor = ((clockRate/clockFreq) - integerDivisor) * 4096;
 	unsigned int PWM_CTLstate = *(PWMperi->addr + PWM_CTL); // save state of PWM_CTL register
-	*(PWMperi->addr + PWM_CTL) = 0 ;  // Turn off PWM.
-	*(PWMClockperi->addr  + PWMCLK_CNTL) =(*(PWMClockperi->addr  + PWMCLK_CNTL) &~0x10)|BCM_PASSWORD; // Turn off PWM clock enable flag.
-	while(*(PWMClockperi->addr  + PWMCLK_CNTL)&0x80); // Wait for clock busy flag to turn off.
+	*(PWMperi->addr + PWM_CTL) = 0;  // Turn off PWM.
+	*(PWMClockperi->addr + PWMCLK_CNTL) =(*(PWMClockperi->addr  + PWMCLK_CNTL) &~0x10)|BCM_PASSWORD; // Turn off PWM clock enable flag.
+	while(*(PWMClockperi->addr + PWMCLK_CNTL)&0x80); // Wait for clock busy flag to turn off.
 #if beVerbose
 	printf ("PWM Clock Busy flag turned off.\n");
 #endif
-	*(PWMClockperi->addr  + PWMCLK_DIV) =(integerDivisor  << 12)|(fractionalDivisor&4095)|BCM_PASSWORD; // Configure divider. 
-	*(PWMClockperi->addr  + PWMCLK_CNTL) = 0x400 | clockSrc | BCM_PASSWORD; // start PWM clock with Source=Oscillator @19.2 MHz, 2-stage MASH
-	*(PWMClockperi->addr  + PWMCLK_CNTL) = 0x410| clockSrc | BCM_PASSWORD; // Source (1=Oscillator 19.2 MHz , 6 = 500MHZ PLL d) 2-stage MASH, plus enable
-	while(!(*(PWMClockperi->addr  + PWMCLK_CNTL) &0x80)); // Wait for busy flag to turn on.
+	*(PWMClockperi->addr + PWMCLK_DIV) =(integerDivisor  << 12)|(fractionalDivisor & 4095)|BCM_PASSWORD; // Configure divider. 
+	*(PWMClockperi->addr + PWMCLK_CNTL) = 0x400 | clockSrc | BCM_PASSWORD; // start PWM clock with Source=Oscillator @19.2 MHz, 2-stage MASH
+	*(PWMClockperi->addr + PWMCLK_CNTL) = 0x410| clockSrc | BCM_PASSWORD; // Source (1=Oscillator 19.2 MHz , 6 = 500MHZ PLL d) 2-stage MASH, plus enable
+	while(!(*(PWMClockperi->addr + PWMCLK_CNTL) &0x80)); // Wait for busy flag to turn on.
 #if beVerbose
 	printf ("PWM Clock Busy flag turned on again.\n");
 #endif
 	*(PWMperi->addr + PWM_CTL) = PWM_CTLstate; // restore saved PWM_CTL register state
-	// calculate and save final frequency, save range as well
-	PWM_thread::PWMfreq = clockRate/(integerDivisor + (fractionalDivisor/4095));
-	PWM_thread::PWMrange =PWMrange;
-	return PWM_thread::PWMfreq;
+	// calculate and save final PWM frequency
+	PWM_thread::PWMfreq = (clockRate/(integerDivisor + (fractionalDivisor/4095)))/PWM_thread::PWMrange;
 }
-
 
 /* ******************** ThreadMaker with Integer pulse duration, delay, and number of pulses timing description inputs ********************
  Last Modified:
@@ -407,21 +404,20 @@ PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode, int enable, int
 #if beVerbose
 		printf ("PWM channel %d is already in use.\n", channel);
 #endif
-		PWM_thread::PWMchans &= (~chanBit); // unset channel bit
 		return nullptr;
 	}
 	PWM_thread::PWMchans |= chanBit;
 	// make and fill an init struct
-	ptPWMinitStructPtr  initStruct = new ptPWMinitStruct;
+	ptPWMinitStructPtr initStruct = new ptPWMinitStruct;
 	initStruct->channel = channel;
 	initStruct->mode = mode;
 	initStruct->arrayData = arrayData;
 	initStruct->nData = nData;
 	initStruct ->range =  PWM_thread::PWMrange;
 	// Set address for GPIO peri
-	initStruct->GPIOperiAddr = GPIOperi->addr ;
+	//initStruct->GPIOperiAddr = GPIOperi->addr ;
 	// set addess for PWM peri
-	initStruct->PWMperiAddr = PWMperi->addr;
+	//initStruct->PWMperiAddr = PWMperi->addr;
 	// call PWM_thread constructor, which calls pulsedThread constructor
 	int errCode =0;
 	PWM_thread * newPWM_thread = new PWM_thread (durUsecs, nPulses, (void *) initStruct, accuracyLevel, errCode) ;
@@ -461,13 +457,9 @@ PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode,  int enable, in
 	initStruct->arrayData = arrayData;
 	initStruct->nData = nData;
 	initStruct ->range =  PWM_thread::PWMrange;
-	// Set address for GPIO peri
-	initStruct->GPIOperiAddr = GPIOperi->addr ;
-	// set addess for PWM peri
-	initStruct->PWMperiAddr = PWMperi->addr;
 	// call PWM_thread constructor, which calls pulsedThread constructor
 	int errCode =0;
-	PWM_thread * newPWM_thread = new PWM_thread (frequency, trainDuration, (void *) initStruct, accuracyLevel, errCode) ;
+	PWM_thread * newPWM_thread = new PWM_thread (frequency, trainDuration, (void *) initStruct, accuracyLevel, errCode);
 	if (errCode){
 #if beVerbose
 		printf ("PWM_threadMaker failed to make PWM_thread.\n");
@@ -482,7 +474,7 @@ PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode,  int enable, in
 	newPWM_thread ->offState =0; // 0 for low when not enabled, 1 for high when enabled
 	newPWM_thread->polarity = 0; // 0 for normal polarity, 1 for reversed
 	newPWM_thread ->enabled=enable; // 0 for not enabled, 1 for enabled
-	PWM_thread::PWMchans |= ~chanBit; // set channel bit
+	PWM_thread::PWMchans |= ~chanBit; // set static channel bit
 	return newPWM_thread;
 }
 

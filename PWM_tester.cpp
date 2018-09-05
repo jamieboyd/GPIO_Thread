@@ -1,26 +1,29 @@
 #include "PWM_thread.h"
 
-#define pi 3.141592653589
+// need to initialize C++ static class fields in this way
+float PWM_thread::PWMfreq =0; // this will be set when clock is initialized
+int PWM_thread::PWMchans=0; // this will track channels active, bitwise, 0,1,2, or 3
+int PWM_thread::PWMrange =4096;  // PWM clock counts per output value, sets precision of output, we keep same for both channels
 
-float PWM_thread::PWMfreq =0;
-int PWM_thread::PWMchans=0;
-int PWM_thread::PWMrange =0;
-
-int pwmRange = 4096; // PWM clock counts per output value, sets precision of output
-float pwmFreq = 100; // desired frequency that PWM output value is updated, should be >= frequency requested for pulsed thread output
-unsigned int arraySizeBase = 2048; // size of the array, must contain at least one period of output. A bigger array can put out a lower frequency 
-float sin_frequency = 1; // requested sine wave frequency in Hz
-
+//float pwmFreq = 100; // desired frequency that PWM output value is updated, should be >= frequency requested for pulsed thread output
+//unsigned int arraySizeBase = 2048; // size of the array, must contain at least one period of output. A bigger array can put out a lower frequency 
 
 int main(int argc, char **argv){
 	
-	float PWMfreq = 100;
-	int PWMrange = 4096;
-	int PWMchan = 0;
-	int PWMmode = PWM_MARK_SPACE; //PWM_BALANCED; 
-
-	unsigned int arraySizeBase = 2048; // size of the array, must contain at least one period of output. A bigger array can put out a lower frequency 
-	
+	// PWM settings
+	float threadFreq = 1000;
+	float PWMoversampling = 5; // make PWM frequency updating this many times faster than thread frequency
+	int PWMchan = 0; // channel to use, 0 or 1
+	int PWMmode = PWM_MARK_SPACE; //PWM_BALANCED for LEDs/Analog out or PWM_MARK_SPACE for servos
+	float sin_frequency = 1; // requested sine wave frequency in Hz
+	// make sine wave array data
+	unsigned int arraySize = (unsigned int)(threadFreq/sin_frequency);
+	int * dataArray = new int [arraySize];
+	const double phi = 6.2831853071794;
+	double offset = PWM_thread::PWMrange/2;
+	for (unsigned int ii=0; ii< arraySize; ii +=1){
+		arrayData [ii] = (unsigned int) (offset - 0.5 * cos (phi * (double) (ii/arraySize)));
+	}
 	
 	// map peripherals for PWM controller
 	int mapResult = PWM_thread::mapPeripherals ();
@@ -29,38 +32,25 @@ int main(int argc, char **argv){
 		return 1;
 	}
 	
-	// set clock for PWM from constants
-	bcm_PWM_Clockfreq = PWM_thread::setClock (PWMfreq, PWMrange);
-	if (bcm_PWM_Clockfreq == -1){
-		printf ("Could not set clock for PWM with frequency = %.3f and range = %d.\n", PWMfreq, PWMrange);
+	// set clock for PWM from variables
+	float reqPWMfreq = threadFreq * PWMoversampling; // requested PWM frequency
+	PWM_thread::setClock (reqPWMfreq);
+	if (PWM_thread::PWMfreq == -1){
+		printf ("Could not set clock for PWM with frequency = %.3f and range = %d.\n", reqPWMfreq, PWM_thread::PWMrange);
 		return 1;
 	}
-	printf ("clock frequency = %.3f\n", bcm_PWM_Clockfreq);
+	printf ("PWM update frequency = %.3f\n", PWM_thread::PWMfreq);
 	
-	
-	// calculate update frequency
-	float updateFrequency = bcm_PWM_Clockfreq /pwmRange;
-	printf ("Requested pwm update frequency=%.3f, Actual pwm update frequency is %.3f, PWM clock frequency is %.3f.\n", pwmFreq, updateFrequency, bcm_PWM_Clockfreq);	
-	unsigned int periodSize = updateFrequency/sin_frequency;
-	unsigned int arraySize = ((unsigned int)(arraySizeBase/periodSize)) * periodSize;
-	
-	// make data array at base size
-	int * dataArray = new int [arraySizeBase];
-	
-	for (int i =0; i< arraySize; i++){
-		dataArray [i] = (pwmRange/2 -  0.5*(pwmRange * cos (2 * pi * (i%periodSize)/periodSize)));
-	}
-	
-	// make the thread
-	
-	PWM_thread * myPWM = PWM_thread::PWM_threadMaker (PWMchan, PWMmode, 1, dataArray, PWMrange, (unsigned int) 1000, (unsigned int) PWMrange, 1);
+	// make the thread to do infinite train
+	PWM_thread * myPWM = PWM_thread::PWM_threadMaker (PWMchan, PWMmode, 1, dataArray, arraySize, threadFreq, (float) 0, 1);
 	if (myPWM == nullptr){
 		printf ("thread maker failed to make a thread.\n");
 		return 1;
 	}
 	//myPWM->setEnable (0, 1);
-	myPWM->DoTasks (10);
+	myPWM->startInfiniteTrain ();
 	myPWM->waitOnBusy (30);
+	myPWM->stopInfiniteTrain ();
 	/*
 	INP_GPIO(GPIOperi ->addr,18);           // Set GPIO 18 to input to clear bits
 	SET_GPIO_ALT(GPIOperi ->addr,18,5);     // Set GPIO 18 to Alt5 function PWM0

@@ -131,7 +131,6 @@ Values for setting some registers need to be ORed with this magic number, the cl
 
 extern bcm_peripheralPtr PWMClockperi;
 extern int PWMClockperi_users;
-extern float bcm_PWM_Clockfreq ;
 volatile unsigned int * usePWMClockPeri (void);
 void unUsePWMClockperi (void);
 

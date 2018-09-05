@@ -103,12 +103,8 @@ volatile unsigned int * usePWMPeri (void){
 	} 
  }
 
- 
 bcm_peripheralPtr PWMClockperi = nullptr;
 int PWMClockperi_users=0;
- 
-/*Global for PWM clock frequency */
-float bcm_PWM_Clockfreq =0;
 
 volatile unsigned int * usePWMClockPeri (void){
 	// map PWM clock peripheral, if needed

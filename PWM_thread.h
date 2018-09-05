@@ -14,8 +14,6 @@ int ptPWM_setOffStateCallback (void * modData, taskParams * theTask);
 int ptPWM_setArrayPosCallback (void * modData, taskParams * theTask);
 int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask);
 
-float ptPWM_SetClock (float newPWMFreq, int PWMrange, bcm_peripheralPtr PWMperi, bcm_peripheralPtr PWMClockperi);
-
 /* ********************************* Initialization struct for PWM ******************************
 last modified:
 2018/08/07 byJamie Boyd - updating for pulsedThread subclass threading
@@ -25,8 +23,6 @@ typedef struct ptPWMinitStruct{
 	int mode; //MARK_SPACE for servos or BALANCED for analog
 	int range ; // PWM clock counts per output value, sets precision of output, from static class variable
 	int enable; // 1 to start PWMing immediatley, 0 to start in unenabled state
-	volatile unsigned int * GPIOperiAddr;  // base address needed when writing to registers for setting and unsetting
-	volatile unsigned int * PWMperiAddr; // base address for PWM peripheral
 	int * arrayData; // array of PWM values for thread to cycle through, 0 to range
 	unsigned int nData; // number of points in data array
 }ptPWMinitStruct, *ptPWMinitStructPtr;
@@ -87,7 +83,7 @@ class PWM_thread : public pulsedThread{
 	// maps the GPIO, PWM, and PWMclock perip[herals. DO this before anything else
 	static int mapPeripherals ();
 	// sets PWM clock for given frequency and range, do this before enabling either PWM channel to start output
-	static float setClock (float PWMFreq, int PWMrange);
+	static void setClock (float PWMFreq);
 	int setEnable (int enableState, int isLocking);
 	int setPolarity (int polarityP, int isLocking);
 	int setOffState (int offStateP, int isLocking);
