@@ -11,11 +11,11 @@ int PWM_thread::PWMrange =4096;  // PWM clock counts per output value, sets prec
 int main(int argc, char **argv){
 	
 	// PWM settings
-	float threadFreq = 1000;
-	float PWMoversampling = 5; // make PWM frequency updating this many times faster than thread frequency
+	float threadFreq = 40000;
+	float PWMoversampling = 1; // make PWM frequency updating this many times faster than thread frequency
 	int PWMchan = 0; // channel to use, 0 or 1
-	int PWMmode = PWM_MARK_SPACE; //PWM_BALANCED for LEDs/Analog out or PWM_MARK_SPACE for servos
-	float sin_frequency = 5; // requested sine wave frequency in Hz
+	int PWMmode = PWM_BALANCED; //PWM_BALANCED for LEDs/Analog out or PWM_MARK_SPACE for servos
+	float sin_frequency = 8000; // requested sine wave frequency in Hz
 	
 	
 	// map peripherals for PWM controller
@@ -47,14 +47,14 @@ int main(int argc, char **argv){
 	}
 	
 	// make the thread to do infinite train
-	PWM_thread * myPWM = PWM_thread::PWM_threadMaker (PWMchan, PWMmode, 1, dataArray, arraySize, threadFreq, (float) 0, 1);
+	PWM_thread * myPWM = PWM_thread::PWM_threadMaker (PWMchan, PWMmode, 1, dataArray, arraySize, threadFreq, (float) 0, 2);
 	if (myPWM == nullptr){
 		printf ("thread maker failed to make a thread.\n");
 		return 1;
 	}
 	//myPWM->setEnable (0, 1);
 	myPWM->startInfiniteTrain ();
-	myPWM->waitOnBusy (30);
+	myPWM->waitOnBusy (10);
 	myPWM->stopInfiniteTrain ();
 	/*
 	INP_GPIO(GPIOperi ->addr,18);           // Set GPIO 18 to input to clear bits
