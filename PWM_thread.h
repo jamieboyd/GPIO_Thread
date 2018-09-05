@@ -2,6 +2,7 @@
 #define PWM_THREAD_H
 
 #include <pulsedThread.h>
+#include <math.h>
 #include "GPIOlowlevel.h"
 
 /* *********************** Forward declare functions used by thread *************************/

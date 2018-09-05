@@ -39,6 +39,7 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 	unsigned int enableBit;
 	unsigned int polarityBit;
 	unsigned int offStateBit;
+	/*
 	if (initData->channel == 0){
 		printf ("channel 0\n");
 		INP_GPIO(GPIOperi ->addr, 18);           // Set GPIO 18 to input to clear bits
@@ -74,11 +75,11 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 		*(taskData -> ctlRegister) &= ~enableBit; // clear enable bit
 	}else{
 		// set initial PWM value first so we have something to put out
-		*(taskData->dataRegister) = taskData->arrayData[100];
+		*(taskData->dataRegister) = 1500;//taskData->arrayData[100];
 		*(taskData -> ctlRegister) |= enableBit;
-	}
+	} */
 	//grrrr
-	/*
+	
 	INP_GPIO(GPIOperi ->addr,18);           // Set GPIO 18 to input to clear bits
 	SET_GPIO_ALT(GPIOperi ->addr,18,5);     // Set GPIO 18 to Alt5 function PWM0
 	rangeRegisterOffset = PWM0_RNG;
@@ -92,7 +93,8 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 		*(PWMperi ->addr  + PWM_CTL) &= ~(modeBit);  // clear MS mode bit for balanced mode
 	}
 	// set initial PWM value first so we have something to put out
-	*(PWMperi ->addr  + dataRegisterOffset) = 1500;
+	printf ("output = %u.\n",taskData->arrayData[0]);
+	*(PWMperi ->addr  + dataRegisterOffset) = taskData->arrayData[0]; 
 	*(PWMperi ->addr  + PWM_CTL) |= enableBit;
 	taskData -> ctlRegister = PWMperi ->addr  + PWM_CTL;
 	taskData->dataRegister = PWMperi ->addr + dataRegisterOffset ;
@@ -101,7 +103,7 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 	//delete initData;
 	
 	
-	
+	/*
 #if beVerbose
 		printf ("ptPWM_Init: taskDataP filled\n");
 		printf ("ptPWM_Init: first value in array = %d\n",  taskData->arrayData[0]);
@@ -373,7 +375,7 @@ void PWM_thread::setClock (float PWMFreq){
 	int integerDivisor = clockRate/clockFreq; // Divisor Value for clock, clock source freq/Divisor = PWM hz
 	if (integerDivisor > 4095){ // max divisor is 4095 - need to select larger range or higher frequency
 		printf ("Calculated integer divisor, %d, is greater than 4095, the max divisor, you need to select a larger range or higher frequency\n", integerDivisor);
-		return -1;
+		return ;
 	}
 	int fractionalDivisor = ((clockRate/clockFreq) - integerDivisor) * 4096;
 	unsigned int PWM_CTLstate = *(PWMperi->addr + PWM_CTL); // save state of PWM_CTL register

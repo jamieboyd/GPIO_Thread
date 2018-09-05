@@ -15,15 +15,8 @@ int main(int argc, char **argv){
 	float PWMoversampling = 5; // make PWM frequency updating this many times faster than thread frequency
 	int PWMchan = 0; // channel to use, 0 or 1
 	int PWMmode = PWM_MARK_SPACE; //PWM_BALANCED for LEDs/Analog out or PWM_MARK_SPACE for servos
-	float sin_frequency = 1; // requested sine wave frequency in Hz
-	// make sine wave array data
-	unsigned int arraySize = (unsigned int)(threadFreq/sin_frequency);
-	int * dataArray = new int [arraySize];
-	const double phi = 6.2831853071794;
-	double offset = PWM_thread::PWMrange/2;
-	for (unsigned int ii=0; ii< arraySize; ii +=1){
-		arrayData [ii] = (unsigned int) (offset - 0.5 * cos (phi * (double) (ii/arraySize)));
-	}
+	float sin_frequency = 5; // requested sine wave frequency in Hz
+	
 	
 	// map peripherals for PWM controller
 	int mapResult = PWM_thread::mapPeripherals ();
@@ -40,6 +33,18 @@ int main(int argc, char **argv){
 		return 1;
 	}
 	printf ("PWM update frequency = %.3f\n", PWM_thread::PWMfreq);
+	
+	// make sine wave array data
+	unsigned int arraySize = (unsigned int)(threadFreq/sin_frequency);
+	int * dataArray = new int [arraySize];
+	const double phi = 6.2831853071794;
+	double offset = PWM_thread::PWMrange/2;
+	for (unsigned int ii=0; ii< arraySize; ii +=1){
+		dataArray [ii] = (unsigned int) (offset - offset * cos (phi *((double) ii/ (double) arraySize)));
+#ifdef beVerbose
+		printf ("data at %u = %u.\n", ii, dataArray [ii]); 
+#endif
+	}
 	
 	// make the thread to do infinite train
 	PWM_thread * myPWM = PWM_thread::PWM_threadMaker (PWMchan, PWMmode, 1, dataArray, arraySize, threadFreq, (float) 0, 1);
