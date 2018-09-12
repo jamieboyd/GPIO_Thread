@@ -10,7 +10,7 @@ int PWM_thread::PWMrange =1000;  // PWM clock counts per output value, sets prec
 
 
 // make a global for Hz
-unsigned int OutFreq = 6041; 
+unsigned int OutFreq = 6042; 
 void freqFunc (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
 	taskData->arrayPos += OutFreq;
