@@ -8,6 +8,15 @@ int PWM_thread::PWMrange =1000;  // PWM clock counts per output value, sets prec
 //float pwmFreq = 100; // desired frequency that PWM output value is updated, should be >= frequency requested for pulsed thread output
 //unsigned int arraySizeBase = 2048; // size of the array, must contain at least one period of output. A bigger array can put out a lower frequency 
 
+
+// make a global for Hz
+unsigned int OutFreq = 6041; 
+void freqFunc (void * taskDataP){
+	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
+	taskData->arrayPos += OutFreq;
+	*(taskData->dataRegister) = taskData-> arrayData[(taskData->arrayPos % (taskData->endPos -1))];	
+}
+
 int main(int argc, char **argv){
 	
 	// PWM settings
@@ -34,15 +43,15 @@ int main(int argc, char **argv){
 	}
 	printf ("PWM update frequency = %.3f\n", PWM_thread::PWMfreq);
 	
-	// make sine wave array data
-	unsigned int arraySize = (unsigned int)(threadFreq/sin_frequency);
+	// make sine wave array data for 1 Hz sine wave
+	unsigned int arraySize = (unsigned int)(threadFreq);
 	int * dataArray = new int [arraySize];
 	const double phi = 6.2831853071794;
 	double offset = PWM_thread::PWMrange/2;
 	for (unsigned int ii=0; ii< arraySize; ii +=1){
 		dataArray [ii] = (unsigned int) (offset - offset * cos (phi *((double) ii/ (double) arraySize)));
 #ifdef beVerbose
-		printf ("data at %u = %u.\n", ii, dataArray [ii]); 
+		//printf ("data at %u = %u.\n", ii, dataArray [ii]); 
 #endif
 	}
 	
@@ -52,6 +61,9 @@ int main(int argc, char **argv){
 		printf ("thread maker failed to make a thread.\n");
 		return 1;
 	}
+	// install a custom function for frequency control
+	myPWM->setHighFunc (&freqFunc); // sets the function that is called on high part of cycle
+	
 	//myPWM->setEnable (0, 1);
 	myPWM->startInfiniteTrain ();
 	myPWM->waitOnBusy (10);

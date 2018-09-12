@@ -296,24 +296,24 @@ void PWM_thread::setClock (float PWMFreq){
 		printf ("Calculated integer divisor, %d, is greater than 4095, the max divisor, you need to select a larger range or higher frequency\n", integerDivisor);
 		return ;
 	}
-//#if beVerbose
+#if beVerbose
 	printf ("Calculated integer divisor is %d.\n", integerDivisor);
-//#endif
+#endif
 	int fractionalDivisor = ((clockRate/clockFreq) - integerDivisor) * 4096;
 	unsigned int PWM_CTLstate = *(PWMperi->addr + PWM_CTL); // save state of PWM_CTL register
 	*(PWMperi->addr + PWM_CTL) = 0;  // Turn off PWM.
 	*(PWMClockperi->addr + PWMCLK_CNTL) =(*(PWMClockperi->addr  + PWMCLK_CNTL) &~0x10)|BCM_PASSWORD; // Turn off PWM clock enable flag.
 	while(*(PWMClockperi->addr + PWMCLK_CNTL)&0x80); // Wait for clock busy flag to turn off.
-//#if beVerbose
+#if beVerbose
 	printf ("PWM Clock Busy flag turned off.\n");
-//#endif
+#endif
 	*(PWMClockperi->addr + PWMCLK_DIV) =(integerDivisor  << 12)|(fractionalDivisor & 4095)|BCM_PASSWORD; // Configure divider. 
 	*(PWMClockperi->addr + PWMCLK_CNTL) = 0x400 | clockSrc | BCM_PASSWORD; // start PWM clock with Source=Oscillator @19.2 MHz, 2-stage MASH
 	*(PWMClockperi->addr + PWMCLK_CNTL) = 0x410| clockSrc | BCM_PASSWORD; // Source (1=Oscillator 19.2 MHz , 6 = 500MHZ PLL d) 2-stage MASH, plus enable
 	while(!(*(PWMClockperi->addr + PWMCLK_CNTL) &0x80)); // Wait for busy flag to turn on.
-//#if beVerbose
+#if beVerbose
 	printf ("PWM Clock Busy flag turned on again.\n");
-//#endif
+#endif
 	*(PWMperi->addr + PWM_CTL) = PWM_CTLstate; // restore saved PWM_CTL register state
 	// calculate and save final PWM frequency
 	PWM_thread::PWMfreq = (clockRate/(integerDivisor + (fractionalDivisor/4095)))/PWM_thread::PWMrange;
