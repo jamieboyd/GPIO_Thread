@@ -39,10 +39,10 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 	unsigned int enableBit;
 	unsigned int polarityBit;
 	unsigned int offStateBit;
-
+	
 	if (initData->channel == 0){
-		INP_GPIO(GPIOperi ->addr, 18);           // Set GPIO 18 to input to clear bits
-		SET_GPIO_ALT(GPIOperi ->addr, 18, 5);     // Set GPIO 18 to Alt5 function PWM0
+		INP_GPIO(GPIOperi ->addr, 41);           // Set GPIO 18 to input to clear bits
+		SET_GPIO_ALT(GPIOperi ->addr, 41, 0);     // Set GPIO 18 to Alt5 function PWM0
 		rangeRegisterOffset = PWM0_RNG;
 		dataRegisterOffset = PWM0_DAT;
 		modeBit = PWM0_MS_MODE;

@@ -35,7 +35,7 @@ last modified:
 2017/02/17 by Jamie Boyd - initial version */
 typedef struct ptPWMStruct{
 	// copied from pwm init settings
-	int channel; // 0 done on GPIO 18 or 1 done on GPIO 19
+	int channel; // 0 done on GPIO 18 or 1 done on GPIO 19, 2 for channel 0 through audio on pin 40, 3 for channel 1 on audio through pin 41
 	int mode; //MARK_SPACE for servos or BALANCED for analog
 	// setings inited as default
 	int enable;  // 1 if channel is enabled, 0 if not enabled
