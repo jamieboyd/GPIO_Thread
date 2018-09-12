@@ -3,7 +3,7 @@
 // need to initialize C++ static class fields in this way
 float PWM_thread::PWMfreq =0; // this will be set when clock is initialized
 int PWM_thread::PWMchans=0; // this will track channels active, bitwise, 0,1,2, or 3
-int PWM_thread::PWMrange =1024;  // PWM clock counts per output value, sets precision of output, we keep same for both channels
+int PWM_thread::PWMrange =1000;  // PWM clock counts per output value, sets precision of output, we keep same for both channels
 
 //float pwmFreq = 100; // desired frequency that PWM output value is updated, should be >= frequency requested for pulsed thread output
 //unsigned int arraySizeBase = 2048; // size of the array, must contain at least one period of output. A bigger array can put out a lower frequency 
@@ -11,11 +11,11 @@ int PWM_thread::PWMrange =1024;  // PWM clock counts per output value, sets prec
 int main(int argc, char **argv){
 	
 	// PWM settings
-	float threadFreq = 1.5e5;
+	float threadFreq = 2e5;
 	float PWMoversampling =1; // make PWM frequency updating this many times faster than thread frequency
-	int PWMchan = 0; // channel to use, 0 or 1
+	int PWMchan = 2; // channel to use, 0 or 1for channel, plus 2 to play over audio
 	int PWMmode = PWM_BALANCED; //PWM_BALANCED for LEDs/Analog out or PWM_MARK_SPACE for servos
-	float sin_frequency = 6000; // requested sine wave frequency in Hz
+	float sin_frequency = 20000; // requested sine wave frequency in Hz
 	
 	
 	// map peripherals for PWM controller

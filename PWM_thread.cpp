@@ -39,10 +39,30 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 	unsigned int enableBit;
 	unsigned int polarityBit;
 	unsigned int offStateBit;
-	
-	if (initData->channel == 0){
-		INP_GPIO(GPIOperi ->addr, 41);           // Set GPIO 18 to input to clear bits
-		SET_GPIO_ALT(GPIOperi ->addr, 41, 0);     // Set GPIO 18 to Alt5 function PWM0
+	// channel = 0 done on GPIO 18 or 1 done on GPIO 19, 2 for channel 0 through audio on pin 40, 3 for channel 1 on audio through pin 41
+	// that is, bit 0 is for the channel and bit 1 is for the output
+	if (initData->channel & 1){ // bit 1 is set for channel 1 (on GPIO 18 or 40 for audio), unset for channel 0 (on GPIO 19 or 41 for audio)
+		if (initData->channel & 2){ // send channel 1 to audio output
+			INP_GPIO(GPIOperi ->addr,41);           	// Set GPIO 41 to input to clear bits
+			SET_GPIO_ALT(GPIOperi ->addr,41,0);     // Set GPIO 41 to Alt0 function PWM1
+		}else{
+			INP_GPIO(GPIOperi ->addr,19);           	// Set GPIO 19 to input to clear bits
+			SET_GPIO_ALT(GPIOperi ->addr,19,5);     // Set GPIO 19 to Alt5 function PWM1
+		}
+		rangeRegisterOffset = PWM1_RNG;
+		dataRegisterOffset = PWM1_DAT;
+		modeBit = PWM1_MS_MODE;
+		enableBit = PWM1_ENABLE;
+		polarityBit = PWM1_REVPOLAR;
+		offStateBit = PWM1_OFFSTATE;
+	}else{
+		if (initData->channel & 2){ // send channel 0 to audio output
+			INP_GPIO(GPIOperi ->addr, 40);           // Set GPIO 40to input to clear bits
+			SET_GPIO_ALT(GPIOperi ->addr, 40, 0);     // Set GPIO 40 to Alt0 function PWM0
+		}else{
+			INP_GPIO(GPIOperi ->addr, 18);           // Set GPIO 18 to input to clear bits
+			SET_GPIO_ALT(GPIOperi ->addr, 18, 0);     // Set GPIO 18 to Alt5 function PWM0
+		}
 		rangeRegisterOffset = PWM0_RNG;
 		dataRegisterOffset = PWM0_DAT;
 		modeBit = PWM0_MS_MODE;
@@ -50,15 +70,6 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 		polarityBit = PWM0_REVPOLAR;
 		offStateBit = PWM0_OFFSTATE;
 
-	}else{
-		INP_GPIO(GPIOperi ->addr,19);           	// Set GPIO 19 to input to clear bits
-		SET_GPIO_ALT(GPIOperi ->addr,19,5);     // Set GPIO 19 to Alt5 function PWM1
-		rangeRegisterOffset = PWM1_RNG;
-		dataRegisterOffset = PWM1_DAT;
-		modeBit = PWM1_MS_MODE;
-		enableBit = PWM1_ENABLE;
-		polarityBit = PWM1_REVPOLAR;
-		offStateBit = PWM1_OFFSTATE;
 	}
 	// set range
 	*(PWMperi ->addr  + rangeRegisterOffset) = initData->range; // set range
@@ -285,21 +296,24 @@ void PWM_thread::setClock (float PWMFreq){
 		printf ("Calculated integer divisor, %d, is greater than 4095, the max divisor, you need to select a larger range or higher frequency\n", integerDivisor);
 		return ;
 	}
+//#if beVerbose
+	printf ("Calculated integer divisor is %d.\n", integerDivisor);
+//#endif
 	int fractionalDivisor = ((clockRate/clockFreq) - integerDivisor) * 4096;
 	unsigned int PWM_CTLstate = *(PWMperi->addr + PWM_CTL); // save state of PWM_CTL register
 	*(PWMperi->addr + PWM_CTL) = 0;  // Turn off PWM.
 	*(PWMClockperi->addr + PWMCLK_CNTL) =(*(PWMClockperi->addr  + PWMCLK_CNTL) &~0x10)|BCM_PASSWORD; // Turn off PWM clock enable flag.
 	while(*(PWMClockperi->addr + PWMCLK_CNTL)&0x80); // Wait for clock busy flag to turn off.
-#if beVerbose
+//#if beVerbose
 	printf ("PWM Clock Busy flag turned off.\n");
-#endif
+//#endif
 	*(PWMClockperi->addr + PWMCLK_DIV) =(integerDivisor  << 12)|(fractionalDivisor & 4095)|BCM_PASSWORD; // Configure divider. 
 	*(PWMClockperi->addr + PWMCLK_CNTL) = 0x400 | clockSrc | BCM_PASSWORD; // start PWM clock with Source=Oscillator @19.2 MHz, 2-stage MASH
 	*(PWMClockperi->addr + PWMCLK_CNTL) = 0x410| clockSrc | BCM_PASSWORD; // Source (1=Oscillator 19.2 MHz , 6 = 500MHZ PLL d) 2-stage MASH, plus enable
 	while(!(*(PWMClockperi->addr + PWMCLK_CNTL) &0x80)); // Wait for busy flag to turn on.
-#if beVerbose
+//#if beVerbose
 	printf ("PWM Clock Busy flag turned on again.\n");
-#endif
+//#endif
 	*(PWMperi->addr + PWM_CTL) = PWM_CTLstate; // restore saved PWM_CTL register state
 	// calculate and save final PWM frequency
 	PWM_thread::PWMfreq = (clockRate/(integerDivisor + (fractionalDivisor/4095)))/PWM_thread::PWMrange;
