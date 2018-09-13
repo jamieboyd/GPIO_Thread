@@ -31,6 +31,7 @@ typedef struct ptPWMinitStruct{
 
 /* ******************** Custom Data Struct for PWM ***************************
 last modified:
+2018/09/12 by Jamie Boyd - added freq for use by sine wave subclass
 2018/08/07 byJamie Boyd - updating for pulsedThread subclass threading
 2017/02/17 by Jamie Boyd - initial version */
 typedef struct ptPWMStruct{
@@ -50,6 +51,7 @@ typedef struct ptPWMStruct{
 	unsigned int arrayPos; // position in data array we are currently outputting
 	unsigned int startPos;
 	unsigned int endPos;
+	unsigned int freq; // used by subclass for sine wave
 } ptPWMStruct, *ptPWMStructPtr;
 
 
@@ -63,6 +65,7 @@ typedef struct ptPWMArrayModStruct{
 	unsigned int endPos;		// where to end in the array
 	unsigned int arrayPos;	// current position in array, as it is iterated through
 	int * arrayData; //data for the array
+	
 }ptPWMArrayModStruct, *ptPWMArrayModStructPtr;
 
 

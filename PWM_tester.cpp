@@ -25,7 +25,7 @@ void freqFunc (void * taskDataP){
 int main(int argc, char **argv){
 	
 	// PWM settings - this is about as fast as you can go; the clock it uses is the 500MHz PLL D with the integer divider being 2.
-	float threadFreq = 2e5;
+	float threadFreq = 250e3;
 	int PWMchan = 2; // channel to use, 0 or 1for channel, plus 2 to play over audio
 	int PWMmode = PWM_BALANCED; //PWM_BALANCED for LEDs/Analog out or PWM_MARK_SPACE for servos	
 	
