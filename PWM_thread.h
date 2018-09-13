@@ -20,7 +20,7 @@ last modified:
 2018/08/07 byJamie Boyd - updating for pulsedThread subclass threading
 2017/02/17 by Jamie Boyd - initial version */
 typedef struct ptPWMinitStruct{
-	int channel; // 0 done on GPIO 18 or 1 done on GPIO 19
+	int channel; // 0 done on GPIO 18 or 1 done on GPIO 19, plus 2 for audio output
 	int mode; //MARK_SPACE for servos or BALANCED for analog
 	int range ; // PWM clock counts per output value, sets precision of output, from static class variable
 	int enable; // 1 to start PWMing immediatley, 0 to start in unenabled state
@@ -50,8 +50,7 @@ typedef struct ptPWMStruct{
 	unsigned int nData; // number of points in data array
 	unsigned int arrayPos; // position in data array we are currently outputting
 	unsigned int startPos;
-	unsigned int endPos;
-	unsigned int freq; // used by subclass for sine wave
+	unsigned int stopPos;
 } ptPWMStruct, *ptPWMStructPtr;
 
 
@@ -60,9 +59,9 @@ Used to modify which section of the array to currently use, or set current posit
 last modified:
 2018/08/08 by Jamie Boyd - initial verison */
 typedef struct ptPWMArrayModStruct{
-	int modBits;			// bit-wise for which param to modify, 1 for startPos, 2 for endPos, 4 for arrayPos, 8 for array data
+	int modBits;			// bit-wise for which param to modify, 1 for startPos, 2 for stopPos, 4 for arrayPos, 8 for array data
 	unsigned int startPos; // where to start in the array when out putting data
-	unsigned int endPos;		// where to end in the array
+	unsigned int stopPos;		// where to end in the array
 	unsigned int arrayPos;	// current position in array, as it is iterated through
 	int * arrayData; //data for the array
 	
@@ -95,7 +94,8 @@ class PWM_thread : public pulsedThread{
 	static float PWMfreq;
 	static int PWMrange;
 	static int PWMchans; // bitwise pwm channels in use init at 0
-	int PWM_chan;
+	protected:
+	int PWM_chan; // 0 or 1
 	int polarity; // 0 for normal polarity, 1 for reversed
 	int offState; // 0 for low when not enabled, 1 for high when enabled
 	int enabled; // 0 for not enabled, 1 for enabled

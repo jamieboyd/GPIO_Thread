@@ -14,11 +14,14 @@ WIth
 Last Modified:
 2018/09/12 by Jamie Boyd - initial version for testing
 */
-unsigned int OutFreq = 24000;  // we will pass this as a paramater to a modFunction when we do it for real 
+unsigned int OutFreq = 110;  // we will pass this as a paramater to a modFunction when we do it for real 
 void freqFunc (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
-	taskData->arrayPos += OutFreq;
-	*(taskData->dataRegister) = taskData-> arrayData[(taskData->arrayPos % (taskData->endPos -1))];	
+	*(taskData->dataRegister) = taskData-> arrayData[taskData->arrayPos];
+	taskData->arrayPos += OutFreq ; //taskDataP->freq;
+	if (taskData->arrayPos >= taskData->nData){
+		taskData->arrayPos = taskData->arrayPos % (taskData->nData);
+	}
 }
 
 

@@ -30,7 +30,7 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 	taskData->nData = initData->nData;
 	taskData->startPos =0;
 	taskData->arrayPos =0;
-	taskData->endPos =taskData->nData - 1;
+	taskData->stopPos =taskData->nData;
 	// set up PWM channel 0 or 1 by writing to control register and range register
 	// some register address offsets and bits vary by chanel
 	unsigned int dataRegisterOffset;
@@ -103,12 +103,11 @@ Last Modified:
 2018/08/07 by Jamie Boyd -updated for pusledThread subclass */
 void ptPWM_Hi (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
-	if (taskData->arrayPos < taskData->endPos){
-		taskData->arrayPos += 1;
-	}else{
+	*(taskData->dataRegister) = taskData->arrayData[taskData->arrayPos];
+	taskData->arrayPos += 1;
+	if (taskData->arrayPos == taskData->stopPos){
 		taskData->arrayPos = taskData->startPos;
 	}
-	*(taskData->dataRegister) = taskData->arrayData[taskData->arrayPos];
 }
 
 /* ****************************** PWN Custom delete Function *****************************************************
@@ -206,7 +205,7 @@ int ptPWM_setArrayPosCallback (void * modData, taskParams * theTask){
 }
 
 /* *************************** Sets Array start/end limits, current position, or changes array **********************************
-modData is a ptPWMArrayModStruct structure of modBits, startPos, endPos, arrayPos, and array data
+modData is a ptPWMArrayModStruct structure of modBits, startPos, stopPos, arrayPos, and array data
 last modified:
 2018/08/08 by Jamie Boyd - initial version */
 int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask){
@@ -216,7 +215,7 @@ int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask){
 		taskData ->startPos = modDataPtr->startPos;
 	}
 	if ((modDataPtr->modBits) & 2){
-		taskData -> endPos = modDataPtr->endPos;
+		taskData -> stopPos = modDataPtr->stopPos;
 	}
 	if ((modDataPtr->modBits) & 4){
 		taskData -> arrayPos = modDataPtr-> arrayPos;
@@ -354,7 +353,7 @@ PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode, int enable, int
 	newPWM_thread ->offState =0; // 0 for low when not enabled, 1 for high when enabled
 	newPWM_thread->polarity = 0; // 0 for normal polarity, 1 for reversed
 	newPWM_thread ->enabled=enable; // 0 for not enabled, 1 for enabled
-	PWM_thread::PWMchans |= ~chanBit; // set channel bit
+	PWM_thread::PWMchans |= chanBit; // set channel bit
 	return newPWM_thread;
 }
 
