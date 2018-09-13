@@ -14,7 +14,7 @@ Last Modified:
 void ptPWM_sin_func (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
 	*(taskData->dataRegister) = taskData-> arrayData[taskData->arrayPos];
-	taskData->arrayPos += taskDataP->startPos;  // startPos is hijacked to use  for frequency, so we can use same structs as superclass. 
+	taskData->arrayPos += taskData->startPos;  // startPos is hijacked to use  for frequency, so we can use same structs as superclass. 
 	if (taskData->arrayPos >= taskData->nData){
 		taskData->arrayPos = taskData->arrayPos % (taskData->nData);
 	}
@@ -28,7 +28,7 @@ int ptPWM_setFrequencyCallback (void * modData, taskParams * theTask){
 	unsigned int * newFreq= (unsigned int *)modData;
 	ptPWMStructPtr taskData = (ptPWMStructPtr) theTask->taskData;
 	taskData->startPos = *newFreq;  // startPos is hijacked to use  for frequency, so we can use same structs as superclass. 
-	delete newArrayPos;
+	delete newFreq;
 	return 0;
 }
 
@@ -38,7 +38,7 @@ int ptPWM_setFrequencyCallback (void * modData, taskParams * theTask){
 
  ********************************************* PWM_sin_threadMaker***********************************************************
 returns a pointer to a new PWM_sin_thread object.  */
-PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channel, int mode, int enable, initialFreq){
+PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channel, int enable, unsigned int initialFreq){
 	
 	// set channel bit in the class field for channels in use, or exit if already in use
 	unsigned int chanBit = channel & 1; // will be 0 or 1
@@ -52,22 +52,21 @@ PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channel, int mode, int
 	// make and fill an init struct
 	ptPWMinitStructPtr initStruct = new ptPWMinitStruct;
 	initStruct->channel = channel;
-	initStruct->mode = mode;
+	initStruct->mode = PWM_BALANCED;
 	initStruct -> enable = enable;
 	// arrayData contains a sine wave with PWM_SIN_UPDATE_FREQ points. 
 	int * arrayData = new int [PWM_SIN_UPDATE_FREQ];
 	double arraySize = (double)PWM_SIN_UPDATE_FREQ;
 	double offset = PWM_SIN_RANGE/2;
 	for (double ii=0; ii< arraySize; ii +=1){
-		arrayData [ii] = (unsigned int) round (offset - offset * sin (PHI *(ii/ arraySize)));
+		arrayData [(unsigned int)ii] = (unsigned int) round (offset - offset * sin (PHI *(ii/ arraySize)));
 	}
 	initStruct->arrayData = arrayData;
 	initStruct->nData = PWM_SIN_UPDATE_FREQ;
 	initStruct ->range =  PWM_thread::PWMrange;
-	initStruct->freq = 1;
 	// call PWM_sin_thread constructor, which calls PWM_thread constructor
 	int errCode =0;
-	PWM_sin_thread * new_pwm_sin = new PWM_sin_thread ((void *) initStruct, int &errCode) ;
+	PWM_sin_thread * new_pwm_sin = new PWM_sin_thread ((void *) initStruct, errCode) ;
 	if (errCode){
 #if beVerbose
 		printf ("PWM_sin_threadMaker failed to make PWM_sin_thread.\n");
@@ -85,8 +84,8 @@ PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channel, int mode, int
 	// install PWM_sin_thread custom function to replace PWM_Thread
 	new_pwm_sin->setHighFunc (&ptPWM_sin_func); // sets the function that is called on high part of cycle
 	// set initial frequency
-	newPWM_thread->setFrequency (initialFreq, 0);
-	return newPWM_thread;
+	new_pwm_sin->setFrequency (initialFreq, 0);
+	return new_pwm_sin;
 }
 
 
@@ -97,7 +96,7 @@ int PWM_sin_thread::setFrequency (unsigned int newFrequency, int isLocking){
 	
 	frequency = newFrequency;
 	int * newFrequencyVal = new int;
-	* newPolarityVal =  newFrequency;
+	* newFrequencyVal =  newFrequency;
 	int returnVal = modCustom (&ptPWM_setFrequencyCallback, (void *) newFrequencyVal, isLocking);
 	return returnVal;
 }

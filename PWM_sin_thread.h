@@ -1,7 +1,7 @@
 #ifndef PWM_SIN_THREAD_H
 #define PWM_SIN_THREAD_H
 
-#include <PWM_thread.h>
+#include "PWM_thread.h"
 
 
 /* *********************** PWM_sin_thread ********************************************************
@@ -11,7 +11,7 @@ the clock it uses is the 500MHz PLL D with the integer divider being 2.  Could g
 a smaller range; these values work well for audio frequencies
 */
 
-const float PWM_SIN_UPDATE_FREQ = 250e3;
+const unsigned int  PWM_SIN_UPDATE_FREQ = 250e3;
 const unsigned int PWM_SIN_RANGE = 1000;
 const double PHI = 6.2831853071794;
 
@@ -28,10 +28,10 @@ last modified:
 class PWM_sin_thread : public PWM_thread{
 	public:
 	/* constructor, we will call the superclass constructor with float  times in microseconds and number of pulses */
-	PWM_sin_thread (void * initData, int &errCode) : PWM_thread (PWM_SIN_UPDATE_FREQ, 0, initData, ACC_MODE_SLEEPS_AND_OR_SPINS, errCode) {
+	PWM_sin_thread (void * initData, int &errCode) : PWM_thread ((float)PWM_SIN_UPDATE_FREQ, 0, initData, ACC_MODE_SLEEPS_AND_OR_SPINS, errCode) {
 	};
 	/* Static thread maker makes and fill an init struct, calls constructor, and return a pointer to a new PWM_sin_thread */
-	static PWM_sin_thread * PWM_sin_threadMaker (int channel, int mode, int enable, unsigned int initialFreq);
+	static PWM_sin_thread * PWM_sin_threadMaker (int channel, int enable, unsigned int initialFreq);
 	// sets the frequency to output
 	int setFrequency (unsigned int newFrequency, int isLocking);
 	protected:

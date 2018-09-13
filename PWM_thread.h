@@ -8,7 +8,7 @@
 /* *********************** Forward declare functions used by thread *************************/
 void ptPWM_Hi (void *  taskData);
 int ptPWM_Init (void * initData, void *  &taskData);
-void ptPWM_delTask (char bcm_PWM_chan);
+void ptPWM_delTask (void * taskData);
 int ptPWM_setEnableCallback (void * modData, taskParams * theTask);
 int ptPWM_reversePolarityCallback (void * modData, taskParams * theTask);
 int ptPWM_setOffStateCallback (void * modData, taskParams * theTask);

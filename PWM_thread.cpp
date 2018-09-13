@@ -258,9 +258,6 @@ Last Modified: 2018/08/06 by Jamie Boyd - first version */
 #endif
 		return 3;
 	}
-#if beVerbose
-	printf ("GPIO address = %u PWM address = %u PWM clock address = %u \n", GPIOperi ->addr, PWMperi->addr, PWMClockperi->addr);
-#endif
 	return 0;
 }
 
