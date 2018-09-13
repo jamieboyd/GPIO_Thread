@@ -10,7 +10,7 @@ int PWM_thread::PWMrange =1000;  // PWM clock counts per output value, sets prec
 The method is to make a cosine wave at lowest ever needed frequency, in this case 1 Hz, and instead of changing the wave when we change frequencies,
 we change the step by which we jump. We can easily do any multiple of the base frequency.   With 1Hz cosine wave, we add 1 each time for 1 Hz,
 add 2 each time for 2 Hz, etc, using the % operator so we don't get tripped up at wrap-around. 
-W
+WIth
 Last Modified:
 2018/09/12 by Jamie Boyd - initial version for testing
 */
