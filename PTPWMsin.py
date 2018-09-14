@@ -10,9 +10,15 @@ class PWM_Sin (PTSimpleGPIO.Infinite_train):
         self.enabled = enable
         self.frequency = initial_frequency
         self.respectTheGIL = False
+        if enable:
+            self.start_train()
 
     def set_enable (self, enable_state, is_locking):
         self.enabled = enable_state
+        if enable_state:
+            self.start_train()
+        else:
+             self.stop_train()
         return ptPWMsin.setEnable(self.task_ptr, enable_state, is_locking)
 
     def set_frequency (self, frequency, is_locking):
