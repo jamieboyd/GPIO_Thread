@@ -7,7 +7,7 @@ setup(name='ptPWM_sin',
       py_modules=['PTPWMsin'],
       ext_modules=[
         Extension('ptPWMsin',
-                  ['GPIOlowlevel.cpp', 'PWM_thread.cpp', 'PWM_sin_thread.cpp', 'PWM_sinPy.cpp'],
+                  ['GPIOlowlevel.cpp', 'PWM_thread.cpp', 'PWM_sin_thread.cpp', 'PWM_sin_Py.cpp'],
                   include_dirs = ['./','/usr/include'],
                   library_dirs = ['./','/usr/local/lib'],
 		  extra_compile_args=["-O3", "-std=gnu++11"],

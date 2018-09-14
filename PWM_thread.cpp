@@ -338,6 +338,7 @@ PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode, int enable, uns
 	}
 	// set bit for channel in use
 	unsigned int chanBit = (1<<(channel & 1));
+	
 	if (PWM_thread::PWMchans & chanBit){
 #if beVerbose
 		printf ("PWM channel %d is already in use.\n", chanBit);
@@ -345,6 +346,7 @@ PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode, int enable, uns
 		return nullptr;
 	}
 	PWM_thread::PWMchans |= chanBit;
+	
 	// make and fill an init struct
 	ptPWMinitStructPtr initStruct = new ptPWMinitStruct;
 	initStruct->channel = channel;
@@ -395,6 +397,7 @@ PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode,  int enable, un
 		printf ("PWM update frequency = %.3f\n", PWM_thread::PWMfreq);
 	}
 	unsigned int chanBit = (1<<channel);
+	
 	if (PWM_thread::PWMchans & chanBit){
 #if beVerbose
 		printf ("PWM channel %d is already in use.\n", channel);
@@ -402,6 +405,7 @@ PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode,  int enable, un
 		return nullptr;
 	}
 	PWM_thread::PWMchans |= chanBit;
+	
 	// make and fill an init struct
 	ptPWMinitStructPtr  initStruct = new ptPWMinitStruct;
 	initStruct->channel = channel;

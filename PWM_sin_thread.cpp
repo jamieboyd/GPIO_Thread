@@ -1,5 +1,6 @@
 #include "PWM_sin_thread.h"
 
+
 /* ******************************************  PWM_sin_thread  functions for pulsedThread *****************************************
 
 
@@ -57,8 +58,6 @@ PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channel, int enable, u
 		}
 		printf ("PWM update frequency = %.3f\n", PWM_thread::PWMfreq);
 	}
-	
-	
 	// set channel bit in the class field for channels in use, or exit if already in use
 	unsigned int chanBit = channel & 1; // will be 0 or 1
 	if (PWM_thread::PWMchans & chanBit){
@@ -99,7 +98,7 @@ PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channel, int enable, u
 	new_pwm_sin ->offState =0; // 0 for low when not enabled, 1 for high when enabled
 	new_pwm_sin->polarity = 0; // 0 for normal polarity, 1 for reversed
 	new_pwm_sin ->enabled=enable; // 0 for not enabled, 1 for enabled
-	PWM_sin_thread::PWMchans |= chanBit; // set channel bit in supclass static field (subclass inherits this, right?)
+	PWM_thread::PWMchans |= chanBit; // set channel bit in supclass static field (subclass inherits this, right?)
 	// install PWM_sin_thread custom function to replace PWM_Thread
 	new_pwm_sin->setHighFunc (&ptPWM_sin_func); // sets the function that is called on high part of cycle
 	// set initial frequency

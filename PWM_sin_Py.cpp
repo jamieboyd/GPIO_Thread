@@ -1,7 +1,13 @@
 #include <pyPulsedThread.h>
 #include "PWM_sin_thread.h"
+#include "PWM_thread.h"
 
-/* ************ Python C mosule using PWM_sin_thread to do PWM sine wave output from Python ******************************
+// need to initialize C++ static class fields in this way
+float PWM_thread::PWMfreq = 0; // this will be set when clock is initialized
+int PWM_thread::PWMchans=0; // this will track channels active, bitwise, 0,1,2, or 3
+int PWM_thread::PWMrange =1000;  // PWM clock counts per output value, sets precision of output, we keep same for both channels
+
+/* ************ Python C module using PWM_sin_thread to do PWM sine wave output from Python ******************************
 Last Modifed:
 2018/09/13 by Jamie Boyd - initial version
 
@@ -41,14 +47,14 @@ Last Modified;
   
 static PyObject* ptPWMsin__setFrequency (PyObject *self, PyObject *args){
 	PyObject *PyPtr;
-	unsigned int newlFreq;
+	unsigned int newFreq;
 	int isLocking;
-	if (!PyArg_ParseTuple(args,"OIi",  &PyPtr, &newlFreq, &isLocking)) {
+	if (!PyArg_ParseTuple(args,"OIi",  &PyPtr, &newFreq, &isLocking)) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object, new frequency, and isLocking.");
 		return NULL;
 	}
 	PWM_sin_thread * threadPtr = static_cast<PWM_sin_thread* > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
-	int returnVal =threadPtr->setFrequency(newlFreq, isLocking);
+	int returnVal =threadPtr->setFrequency(newFreq, isLocking);
 	return  Py_BuildValue("i", returnVal);
 }
 
@@ -67,7 +73,7 @@ static PyObject* ptPWMsin__setEnable(PyObject *self, PyObject *args){
 
 
 /* Module method table - those starting with ptPWMsin are defined here, those starting with pulsedThread are defined in pyPulsedThread.h*/
-static PyMethodDef ptPWM_sinMethods[] = {
+static PyMethodDef ptPWMsinMethods[] = {
 	{"isBusy", pulsedThread_isBusy, METH_O, "(PyCapsule) returns number of tasks a thread has left to do, 0 means finished all tasks"},
 	{"waitOnBusy", pulsedThread_waitOnBusy, METH_VARARGS, " (PyCapsule, timeOutSecs) Returns when a thread is no longer busy, or after timeOutSecs"},
 	//{"doTask", pulsedThread_doTask, METH_O, "(PyCapsule) Tells the pulsedThread object to do whatever task it was configured for"},
@@ -83,23 +89,23 @@ static PyMethodDef ptPWM_sinMethods[] = {
 	{"setArrayEndFunc", pulsedThread_setArrayFunc, METH_VARARGS, "(PyCapsule, Python float array, endFuncType, isLocking) sets pulsedThread endFunc to set frequency (type 0) or duty cycle (type 1) from a Python float array"},
 	{"cosDutyCycleArray", pulsedThread_cosineDutyCycleArray, METH_VARARGS, "(Python float array, pointsPerCycle, offset, scaling) fills passed-in array with cosine values of given period, with applied scaling and offset expected to range between 0 and 1"},
 	
-	{"new", ptPWMsin_New, METH_VARARGS, "(channel, enable, initial frequency) Creates and configures new PWM_sin task"},
-	{"setFrequency", ptPWMsin__setFrequency, METH_VARARGS, "(PyCapsule, unsigned int frequency int isLocking) Sets the frequency of the sine output by PWM_sin"},
-	{"setEnable", ptPWMsin__setEnable, METH_VARARGS, "(PyCapsule, int enableState, int isLocking)  Enables or disables the PWM_sin task"},
+	{"new", ptPWMsin_New, METH_VARARGS, "(channel, enable, initial frequency) Creates and configures new PWMsin task"},
+	{"setFrequency", ptPWMsin__setFrequency, METH_VARARGS, "(PyCapsule, unsigned int frequency int isLocking) Sets the frequency of the sine output by PWMsin"},
+	{"setEnable", ptPWMsin__setEnable, METH_VARARGS, "(PyCapsule, int enableState, int isLocking)  Enables or disables the PWMsin task"},
 	{ NULL, NULL, 0, NULL}
   };
   
   /* Module structure */
-  static struct PyModuleDef ptPWM_sinmodule = {
+  static struct PyModuleDef ptPWMsinmodule = {
     PyModuleDef_HEAD_INIT,
-    "ptPWM_sin",           /* name of module */
+    "ptPWMsin",           /* name of module */
     "An external module for a sine wave made from a Raspberry Pi PWM output using pulsedThread",  /* Doc string (may be NULL) */
     -1,                 /* Size of per-interpreter state or -1 */
-    ptPWM_sinMethods       /* Method table */
+    ptPWMsinMethods       /* Method table */
   };
 
   /* Module initialization function */
   PyMODINIT_FUNC
-  PyInit_ptPWM_sin(void) {
-    return PyModule_Create(&ptPWM_sinmodule);
+  PyInit_ptPWMsin(void) {
+    return PyModule_Create(&ptPWMsinmodule);
   }  
