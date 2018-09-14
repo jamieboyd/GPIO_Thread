@@ -130,10 +130,10 @@ int ptPWM_setEnableCallback (void * modData, taskParams * theTask){
 	ptPWMStructPtr taskData = (ptPWMStructPtr) theTask->taskData;
 	int * enablePtr =(int *)modData;
 	unsigned int enableBit;
-	if (taskData->channel ==0){
-		enableBit = PWM0_ENABLE;
-	}else{
+	if (taskData->channel & 1){
 		enableBit = PWM1_ENABLE;
+	}else{
+		enableBit = PWM0_ENABLE;
 	}
 	if (*enablePtr == 0){
 		*(taskData -> ctlRegister) &= ~enableBit; // clear enable bit
@@ -317,7 +317,26 @@ void PWM_thread::setClock (float PWMFreq){
 /* ******************** ThreadMaker with Integer pulse duration, delay, and number of pulses timing description inputs ********************
  Last Modified:
 2018/08/06 by Jamie Boyd - Initial Version, copied and modified from GPIO thread maker */
-PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode, int enable, int * arrayData, unsigned int nData, unsigned int  durUsecs, unsigned int nPulses, int accuracyLevel) {
+PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode, int enable, unsigned int updateFreq, int * arrayData, unsigned int nData, unsigned int  durUsecs, unsigned int nPulses, int accuracyLevel) {
+	
+	
+	// ensure peripherals for PWM controller are mapped
+	int mapResult = PWM_thread::mapPeripherals ();
+	if (mapResult){
+		printf ("Could not map peripherals for PWM access with return code %d\n.", mapResult);
+		return nullptr;
+	}
+	
+	// set clock for PWM from variables
+	if (PWM_thread::PWMfreq != updateFreq){
+		PWM_thread::setClock (updateFreq);
+		if (PWM_thread::PWMfreq == -1){
+			printf ("Could not set clock for PWM with frequency = %d and range = %d.\n", updateFreq, PWM_thread::PWMrange);
+			return nullptr;
+		}
+		printf ("PWM update frequency = %.3f\n", PWM_thread::PWMfreq);
+	}
+	// set bit for channel in use
 	unsigned int chanBit = (1<<(channel & 1));
 	if (PWM_thread::PWMchans & chanBit){
 #if beVerbose
@@ -357,7 +376,24 @@ PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode, int enable, int
 /* ******************** ThreadMaker with floating point frequency and duration timing description inputs ********************
  Last Modified:
 2018/08/06 by Jamie Boyd - Initial Version, copied and modified from GPIO thread maker */
-PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode,  int enable, int * arrayData, unsigned int nData, float frequency, float trainDuration, int accuracyLevel) {
+PWM_thread * PWM_thread::PWM_threadMaker (int channel, int mode,  int enable, unsigned int updateFreq,  int * arrayData, unsigned int nData, float frequency, float trainDuration, int accuracyLevel) {
+	
+	// ensure peripherals for PWM controller are mapped
+	int mapResult = PWM_thread::mapPeripherals ();
+	if (mapResult){
+		printf ("Could not map peripherals for PWM access with return code %d\n.", mapResult);
+		return nullptr;
+	}
+	
+	// set clock for PWM from variables
+	if (PWM_thread::PWMfreq != updateFreq){
+		PWM_thread::setClock (updateFreq);
+		if (PWM_thread::PWMfreq == -1){
+			printf ("Could not set clock for PWM with frequency = %d and range = %d.\n", updateFreq, PWM_thread::PWMrange);
+			return nullptr;
+		}
+		printf ("PWM update frequency = %.3f\n", PWM_thread::PWMfreq);
+	}
 	unsigned int chanBit = (1<<channel);
 	if (PWM_thread::PWMchans & chanBit){
 #if beVerbose

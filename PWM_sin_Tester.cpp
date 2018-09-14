@@ -1,16 +1,17 @@
 #include "PWM_sin_thread.h"
 
 // need to initialize C++ static class fields in this way
-float PWM_thread::PWMfreq =0; // this will be set when clock is initialized
+float PWM_thread::PWMfreq =0; // this will be changed when clock is initialized
 int PWM_thread::PWMchans=0; // this will track channels active, bitwise, 0,1,2, or 3
 int PWM_thread::PWMrange =PWM_SIN_RANGE;  // PWM clock counts per output value, sets precision of output, we keep same for both channels
 
 
 int main(int argc, char **argv){
 	
-	int PWMchan = 2; // channel to use, 0 or 1for channel, plus 2 to play over audio
+	int PWMchan = 3; // channel to use, 0 or 1for channel, plus 2 to play over audio
 	int enabledAtStart = 1;
 	unsigned int initialFreq = 100;
+	/*
 	// map peripherals for PWM controller
 	int mapResult = PWM_thread::mapPeripherals ();
 	if (mapResult){
@@ -25,6 +26,7 @@ int main(int argc, char **argv){
 		return 1;
 	}
 	printf ("PWM update frequency = %.3f\n", PWM_thread::PWMfreq);
+	*/
 	// make the thread 
 	PWM_sin_thread * myPWM = PWM_sin_thread::PWM_sin_threadMaker (PWMchan, enabledAtStart, initialFreq);
 	if (myPWM == nullptr){
@@ -32,25 +34,36 @@ int main(int argc, char **argv){
 		return 1;
 	}
 	
-	
-	//myPWM->setEnable (0, 1);
 	myPWM->startInfiniteTrain ();
+	for (double frequency = 100; frequency < 18000; frequency *= 1.122462048309373){
+		myPWM->waitOnBusy (0.1);
+		myPWM->setFrequency ((unsigned int)frequency, 1);
+		printf ("frequency = %.3f\n", frequency);
+	}
+	myPWM->waitOnBusy (0.1);
+	myPWM->stopInfiniteTrain ();
+	/*
 	myPWM->waitOnBusy (2);
-	myPWM->setFrequency (200, 0);
+	myPWM->setFrequency (400, 01;
 	myPWM->waitOnBusy (2);
-	myPWM->setFrequency (400, 0);
+	myPWM->setFrequency (800, 1);
 	myPWM->waitOnBusy (2);
-	myPWM->setFrequency (800, 0);
+	myPWM->setFrequency (1600, 1);
 	myPWM->waitOnBusy (2);
-	myPWM->setFrequency (1600, 0);
+	myPWM->setEnable (0, 1);
 	myPWM->waitOnBusy (2);
-	myPWM->setFrequency (3200, 0);
+	myPWM->setEnable (1, 1);
 	myPWM->waitOnBusy (2);
-	myPWM->setFrequency (6400, 0);
+	myPWM->setFrequency (3200, 1);
 	myPWM->waitOnBusy (2);
-	myPWM->setFrequency (12800, 0);
+	myPWM->setFrequency (6400, 1);
+	myPWM->waitOnBusy (2);
+	myPWM->setFrequency (12800, 1);
+	myPWM->waitOnBusy (2);
+	myPWM->setFrequency (25600, 1);
 	myPWM->waitOnBusy (2);
 	myPWM->stopInfiniteTrain ();
+	*/
 	
 	return 0; // 
 }

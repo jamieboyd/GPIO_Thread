@@ -40,6 +40,25 @@ int ptPWM_setFrequencyCallback (void * modData, taskParams * theTask){
 returns a pointer to a new PWM_sin_thread object.  */
 PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channel, int enable, unsigned int initialFreq){
 	
+	
+	// ensure peripherals for PWM controller are mapped
+	int mapResult = PWM_thread::mapPeripherals ();
+	if (mapResult){
+		printf ("Could not map peripherals for PWM access with return code %d\n.", mapResult);
+		return nullptr;
+	}
+	
+	// set clock for PWM from variables
+	if (PWM_thread::PWMfreq != PWM_SIN_UPDATE_FREQ){
+		PWM_thread::setClock (PWM_SIN_UPDATE_FREQ);
+		if (PWM_thread::PWMfreq == -1){
+			printf ("Could not set clock for PWM with frequency = %d and range = %d.\n", PWM_SIN_UPDATE_FREQ, PWM_thread::PWMrange);
+			return nullptr;
+		}
+		printf ("PWM update frequency = %.3f\n", PWM_thread::PWMfreq);
+	}
+	
+	
 	// set channel bit in the class field for channels in use, or exit if already in use
 	unsigned int chanBit = channel & 1; // will be 0 or 1
 	if (PWM_thread::PWMchans & chanBit){

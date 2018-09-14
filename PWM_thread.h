@@ -31,7 +31,7 @@ typedef struct ptPWMinitStruct{
 
 /* ******************** Custom Data Struct for PWM ***************************
 last modified:
-2018/09/12 by Jamie Boyd - added freq for use by sine wave subclass
+2018/09/12 by Jamie Boyd - added note that channel includes info on which pins to use
 2018/08/07 byJamie Boyd - updating for pulsedThread subclass threading
 2017/02/17 by Jamie Boyd - initial version */
 typedef struct ptPWMStruct{
@@ -81,8 +81,8 @@ class PWM_thread : public pulsedThread{
 	};
 	~PWM_thread ();
 	/* Static ThreadMakers make an initStruct and call a constructor with it, returning a pointer to a new PWM_thread */
-	static PWM_thread * PWM_threadMaker (int channel, int mode, int enable, int * arrayData, unsigned int nData, unsigned int  durUsecs, unsigned int nPulses, int accuracyLevel);
-	static PWM_thread * PWM_threadMaker (int channel, int mode,  int enable, int * arrayData, unsigned int nData, float frequency, float trainDuration, int accuracyLevel);
+	static PWM_thread * PWM_threadMaker (int channel, int mode, int enable, unsigned int updateFreq, int * arrayData, unsigned int nData, unsigned int  durUsecs, unsigned int nPulses, int accuracyLevel);
+	static PWM_thread * PWM_threadMaker (int channel, int mode,  int enable, unsigned int updateFreq, int * arrayData, unsigned int nData, float frequency, float trainDuration, int accuracyLevel);
 	// maps the GPIO, PWM, and PWMclock perip[herals. DO this before anything else
 	static int mapPeripherals ();
 	// sets PWM clock for given frequency and range, do this before enabling either PWM channel to start output

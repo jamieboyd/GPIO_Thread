@@ -1,7 +1,7 @@
 #include "PWM_thread.h"
 
 // need to initialize C++ static class fields in this way
-float PWM_thread::PWMfreq =0; // this will be set when clock is initialized
+float PWM_thread::PWMfreq = 0; // this will be set when clock is initialized
 int PWM_thread::PWMchans=0; // this will track channels active, bitwise, 0,1,2, or 3
 int PWM_thread::PWMrange =1000;  // PWM clock counts per output value, sets precision of output, we keep same for both channels
 
@@ -29,23 +29,8 @@ int main(int argc, char **argv){
 	
 	// PWM settings - this is about as fast as you can go; the clock it uses is the 500MHz PLL D with the integer divider being 2.
 	float threadFreq = 250e3;
-	int PWMchan = 2; // channel to use, 0 or 1for channel, plus 2 to play over audio
+	int PWMchan = 3; // channel to use, 0 or 1for channel, plus 2 to play over audio
 	int PWMmode = PWM_BALANCED; //PWM_BALANCED for LEDs/Analog out or PWM_MARK_SPACE for servos	
-	
-	// map peripherals for PWM controller
-	int mapResult = PWM_thread::mapPeripherals ();
-	if (mapResult){
-		printf ("Could not map peripherals for PWM access with return code %d\n.", mapResult);
-		return 1;
-	}
-	
-	// set clock for PWM from variables
-	PWM_thread::setClock (threadFreq);
-	if (PWM_thread::PWMfreq == -1){
-		printf ("Could not set clock for PWM with frequency = %.3f and range = %d.\n", threadFreq, PWM_thread::PWMrange);
-		return 1;
-	}
-	printf ("PWM update frequency = %.3f\n", PWM_thread::PWMfreq);
 	
 	// make sine wave array data for 1 Hz sine wave
 	unsigned int arraySize = (unsigned int)(threadFreq);
@@ -57,7 +42,7 @@ int main(int argc, char **argv){
 	}
 	
 	// make the thread to do infinite train
-	PWM_thread * myPWM = PWM_thread::PWM_threadMaker (PWMchan, PWMmode, 1, dataArray, arraySize, threadFreq, (float) 0, 2);
+	PWM_thread * myPWM = PWM_thread::PWM_threadMaker (PWMchan, PWMmode, 1, threadFreq, dataArray, arraySize, threadFreq, (float) 0, 2);
 	if (myPWM == nullptr){
 		printf ("thread maker failed to make a thread.\n");
 		return 1;
