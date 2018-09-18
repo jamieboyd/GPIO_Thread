@@ -127,6 +127,7 @@ Values for setting some registers need to be ORed with this magic number, the cl
 #define PWM_CLOCK_BASE (BCM_PERI_BASE + 0x101000)
 /*Frequency of oscillators that we use as source for things like PWM clock*/
 #define PI_CLOCK_RATE 19.2e6	//19.2 Mhz
+#define HDMI_CLOCK_RATE 216e06 // 216 Mhz HDMI auxillary
 #define PLLD_CLOCK_RATE 500e6	// 500 MHz phase locked loop D 
 
 extern bcm_peripheralPtr PWMClockperi;

@@ -277,15 +277,28 @@ void PWM_thread::setClock (float PWMFreq){
 	float clockFreq = PWMFreq * PWM_thread::PWMrange;
 	unsigned int clockRate ;
 	int clockSrc ;
+	
 	if (clockFreq < (PI_CLOCK_RATE/4)){
 		clockRate = PI_CLOCK_RATE;
 		clockSrc = 1;
 		printf ("Using PWM clock source oscillator at 19.2 MHz.\n");
 	}else{
-		clockRate = PLLD_CLOCK_RATE;
-		clockSrc = 6;
-		printf ("Using PWM clock source PLL D at 500 MHz.\n");
+		if (clockFreq < (HDMI_CLOCK_RATE/4)){
+			clockRate = HDMI_CLOCK_RATE;
+			clockSrc = 7;
+			printf ("Using HDMI Auxillary clock source at 216 MHz.\n");
+		}else{
+			if (clockFreq < (PLLD_CLOCK_RATE/2)){
+				clockRate = PLLD_CLOCK_RATE;
+				clockSrc = 6;
+				printf ("Using PWM clock source PLL D at 500 MHz.\n");
+			}else{
+				printf ("Requested PWN frequency %.3f is too high.\n", clockFreq);
+				return ;
+			}
+		}
 	}
+	
 	int integerDivisor = clockRate/clockFreq; // Divisor Value for clock, clock source freq/Divisor = PWM hz
 	if (integerDivisor > 4095){ // max divisor is 4095 - need to select larger range or higher frequency
 		printf ("Calculated integer divisor, %d, is greater than 4095, the max divisor, you need to select a larger range or higher frequency\n", integerDivisor);

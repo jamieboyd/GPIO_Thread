@@ -11,7 +11,7 @@ the clock it uses is the 500MHz PLL D with the integer divider being 2.  Could g
 a smaller range; these values work well for audio frequencies
 */
 
-const unsigned int  PWM_SIN_UPDATE_FREQ = 250e3;
+const unsigned int  PWM_SIN_UPDATE_FREQ = 21.6e3;
 const unsigned int PWM_SIN_RANGE = 1000;
 const double PHI = 6.2831853071794;
 
