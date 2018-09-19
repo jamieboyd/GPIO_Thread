@@ -110,7 +110,7 @@ volatile unsigned int * usePWMClockPeri (void){
 	// map PWM clock peripheral, if needed
 	int errCode =0;
  	if (PWMClockperi ==nullptr) {
-  		PWMClockperi = new bcm_peripheral {PWM_CLOCK_BASE};
+  		PWMClockperi = new bcm_peripheral {CM_PWMBASE};
   		errCode = map_peripheral (PWMClockperi, IFACE_DEV_MEM);
   		if (errCode){
 			PWMClockperi = nullptr;

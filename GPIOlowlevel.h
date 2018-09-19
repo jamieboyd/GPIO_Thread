@@ -3,6 +3,7 @@
 
 /* ********************** Low Level access to Raspberry Pi GPIO Peripherals ************************ 
 last modified:
+2018/09/18 by Jamie Boyd - PWM constants improved
 2018/02/01 by Jamie Boyd - renaming some files for gitHub
 2017/10/11 by Jamie Boyd - reorganizing by peripheral, and working on I2C
 2017/05/02 by Jamie Boyd - added I2C
@@ -79,7 +80,6 @@ extern int GPIOperi_users;
 volatile unsigned int * useGpioPeri (void);
 void unUseGPIOperi (void);
 
-
 /* **************************************************PWM Periperal**********************************************************
 PWM_BASE is defined by 0x20C000 offset from the base peripheral addresss */
 #define PWM_BASE			(BCM_PERI_BASE + 0x20C000)
@@ -93,7 +93,7 @@ PWM_BASE is defined by 0x20C000 offset from the base peripheral addresss */
 #define PWM_RNG2		0x20	// PWM Channel 2 Range
 #define PWM_DAT2		0x24	// PWM Channel 2 Data
 
-/* ******************************* Defined Control Register (PWM_CTL) Bits *******************************************/
+/* ******************************* Defined Bits for Control Register (PWM_CTL) *******************************************/
 #define PWM_MSEN2	0x8000	//  bit 15, when set, run channel 2 in Mark/Space mode, when cleared run in balanced mode
 #define PWM_USEF2	0x2000	// bit 13, when set, use FIFO for input for channel 2, when cleared, use data register
 #define PWM_POLA2	0x1000	// bit 12, when set, output of channel 2 is reversed
@@ -110,7 +110,7 @@ PWM_BASE is defined by 0x20C000 offset from the base peripheral addresss */
 #define PWM_MODE1	0x2		// bit 1, when set, channel 1 uses serializer mode. when clear, channel 1 uses PWM mode
 #define PWM_PWEN1	0x1		// bit 0, when set, channel 1 is enabled, when cleared, channel 1 is not transmitting
 
-/* ******************************* Defined Status Register (PWM_STA) Bits *******************************************/
+/* ******************************* Defined Bits for Status Register (PWM_STA) *******************************************/
 #define PWM_STA4		0x1000	// bit 12, channel 4 state, if set, channel is transmitting, if clear, channel is not transmitting. There is no channel 4?
 #define PWM_STA3		0x800	// bit 11, channel 3 state, if set, channel is transmitting, if clear, channel is not transmitting. There is no channel 3?
 #define PWM_STA2		0x400	// bit 10, channel 2 state, if set, channel is transmitting, if clear, channel is not transmitting. 
@@ -122,9 +122,8 @@ PWM_BASE is defined by 0x20C000 offset from the base peripheral addresss */
 #define PWM_GAPO1	0x10	// bit 4, flag set when gap occurred writing to FIFO on channel 1.
 #define PWM_RERR1	0x8		// bit 3, FIFO read error flag
 #define PWM_WERR1	0x4		// bit 2, FIFO write error flag
-#defne PWM_EMPT1	0x2		// bit 1, FIFO empty flag
+#define PWM_EMPT1	0x2		// bit 1, FIFO empty flag
 #define PWM_FULL1		0x1		// bit 0, FIFO full flag
-
 
 #define PWM_MARK_SPACE 0
 #define PWM_BALANCED 1
@@ -136,10 +135,10 @@ void unUsePWMperi (void);
 
 /* ************************************************* Clock Manager - Audio Clock (PWM) control *********************************************************
 /* CM_PWMCTL is defined by 0x101000 offset from the base peripheral addresss */
-#define CM_PWMCTL	(BCM_PERI_BASE + 0x101000)
-
+#define CM_PWMBASE	(BCM_PERI_BASE + 0x101000)
 /* ********************CLock manager Divisor register address defined by an offset to CM_PWMCTL *************/
-#define CM_PWMDIV	(CM_PWMCTL + 0x4)          // PWM Divisor
+#define CM_PWMCNTL		0x0		// PWM clock control
+#define CM_PWMDIV		0x4		// PWM Divisor
 
 /* ******************************* Defined Clock Manager Control Register (CM_PWMCTL) Bits *******************************************/
 #define CM_PASSWD	0x5A000000 	// bits 31-24, some values need to be ORed with this magic number, the clock manager password */
@@ -148,9 +147,10 @@ void unUsePWMperi (void);
 #define CM_MASH2		0x400		// bit 10, 2-stage mash
 #define CM_MASH3		0x600		// bits 9 and 10 set, 3 stage mash
 #define CM_FLIP		0x100		// bit 8, if set, inverts clock generator output
-#define CM_BUSY		0x90		// bit 7, indicates if the clock generator is running
+#define CM_BUSY		0x80		// bit 7, indicates if the clock generator is running
 #define CM_KILL		0x20		//  bit 5, when set, stops and resets the clock generator
-#define CM_ENAB		0x10		// bit 4, requests the clock to start or stop, BUSY flag will go low when final cycle is completed
+#define CM_ENAB		0x10		// bit 4, setting with OR requests the clock to start, BUSY flag will go high when final cycle is completed
+#define CM_DISAB	0xffffffef	// bit 4, unsetting with AND requests the clock to stop, BUSY flag will go low when final cycle is completed
 #define CM_SRCOSC		0x1			// use Pi's on board oscillator as input for clock source at 19.2 Mhz
 #define CM_SRCPLL		0x6			// use Pi's Phase Locked Loop D as  input for clock source at 500 MHz 
 #define CM_SRCHDMI	0x7			// use HDMI auxillary clock as nput for clock source at 216 Mhz
