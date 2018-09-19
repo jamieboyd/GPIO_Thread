@@ -4,6 +4,7 @@
 /* ********************* PWM Initialization callback function ****************************************
 Initializes a single channel, either 0 or 1 
 last modified:
+2018/09/18 by Jamie Boyd - channels and outputs modifications
 2018/09/04 by Jamie Boyd - debugging
 2018/08/07 by Jamie Boyd - modified for pulsedThread subclassing
 2017/02/20 by Jamie Boyd - initial version  */
@@ -31,7 +32,7 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 	taskData->startPos =0;
 	taskData->arrayPos =0;
 	taskData->stopPos =taskData->nData;
-	// set up PWM channel 0 or 1 by writing to control register and range register
+	// set up PWM channel 0 and/or 1 by writing to control register and range register
 	// some register address offsets and bits vary by chanel
 	unsigned int dataRegisterOffset;
 	unsigned int rangeRegisterOffset;
@@ -100,13 +101,23 @@ int ptPWM_Init (void * initDataP, void *  &taskDataP){
 /* *********************************** PWM Hi function (no low function) ******************************
 gets the next value from the array to be output and writes it to the data register
 Last Modified:
+108/09/18 by Jamie Boyd- updated for two channel 1 thread
 2018/08/07 by Jamie Boyd -updated for pusledThread subclass */
 void ptPWM_Hi (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
-	*(taskData->dataRegister) = taskData->arrayData[taskData->arrayPos];
-	taskData->arrayPos += 1;
-	if (taskData->arrayPos == taskData->stopPos){
-		taskData->arrayPos = taskData->startPos;
+	if (taskData->channel & 1){
+		*(taskData->dataRegister0) = taskData->arrayData0[taskData->arrayPos0];
+			taskData->arrayPos0 += 1;
+		if (taskData->arrayPos0 == taskData->stopPos0){
+			taskData->arrayPos0 = taskData->startPos0;
+		}
+	}
+	if (taskData->channel & 2){
+		*(taskData->dataRegister1) = taskData->arrayData1[taskData->arrayPos1];
+			taskData->arrayPos1 += 1;
+		if (taskData->arrayPos1 == taskData->stopPos1){
+			taskData->arrayPos1 = taskData->startPos1;
+		}
 	}
 }
 
@@ -262,55 +273,64 @@ Last Modified: 2018/08/06 by Jamie Boyd - first version */
 }
 
 
+	// configire a sleeper, we should not have to so this, but testing suggests we do
+	//struct timespec sleeper ;
+	//sleeper.tv_sec  = 0 ;
+	//sleeper.tv_nsec = 110e3L ;
+
+
+
 /* ************************************sets PWM clock to give new PWM frequency******************************************************
 The PWM frequency is 1/(time taken to output a single value) which is determined by range and clock frequency
 This PWM frequency is only accurate for the given PWMrange The two PWM channels could use different ranges, and thus have different PWM frequencies
-even though they use the same PWM clock. We don't do that here; we use the same range for both channels, saved in a class variable
+even though they use the same PWM clock. We don't do that here; we use the same range for both channels, saved in a variable
 Returns new clock frequency, else returns -1 if the requested PWM frequency, PWMrange combination caused the clock 
 divisor to exceed the maximum settable value of 4095 
 Last Modified: 
-2018/09/04 by Jamie Boyd - removed return value, freq saved in static field
+2018/09/04 by Jamie Boyd - removed return value, freq saved in field
 2018/08/06 by Jamie Boyd- modified for pulsedThread subclassing*/
-void PWM_thread::setClock (float PWMFreq){
+void PWM_thread::setClock (float PWMFreq,  int PWMrange){
 	
-	 // clock must be this fast in Hz to output PWM_thread::PWMrange ticks in 1/PWMFreq seconds
-	float clockFreq = PWMFreq * PWM_thread::PWMrange;
-	unsigned int clockRate ;
+	 // clock must be this fast in Hz to output PWMrange ticks in 1/PWMFreq seconds
+	float clockFreq = PWMFreq * PWMrange;
+	unsigned int clockRate;
 	int clockSrc ;
-	
 	if (clockFreq < (PI_CLOCK_RATE/4)){
 		clockRate = PI_CLOCK_RATE;
-		clockSrc = 1;
-		printf ("Using PWM clock source oscillator at 19.2 MHz.\n");
+		clockSrc = CM_SRCOSC;
+		printf ("PWM clock manager is using PWM clock source oscillator at 19.2 MHz.\n");
 	}else{
 		if (clockFreq < (HDMI_CLOCK_RATE/4)){
 			clockRate = HDMI_CLOCK_RATE;
-			clockSrc = 7;
-			printf ("Using HDMI Auxillary clock source at 216 MHz.\n");
+			clockSrc = CM_SRCHDMI;
+			printf ("PWM clock manager is using HDMI Auxillary clock source at 216 MHz.\n");
 		}else{
 			if (clockFreq < (PLLD_CLOCK_RATE/2)){
 				clockRate = PLLD_CLOCK_RATE;
-				clockSrc = 6;
-				printf ("Using PWM clock source PLL D at 500 MHz.\n");
+				clockSrc = CM_SRCPLL;
+				printf ("PWM clock manager is using PWM clock source PLL D at 500 MHz.\n");
 			}else{
-				printf ("Requested PWN frequency %.3f is too high.\n", clockFreq);
+				printf ("Requested PWM clock frequency %.3f  and range %.3f is too high.\n", PWMFreq, PWMrange);
 				return ;
 			}
 		}
 	}
-	
+	// configure MASH
 	int integerDivisor = clockRate/clockFreq; // Divisor Value for clock, clock source freq/Divisor = PWM hz
 	if (integerDivisor > 4095){ // max divisor is 4095 - need to select larger range or higher frequency
 		printf ("Calculated integer divisor, %d, is greater than 4095, the max divisor, you need to select a larger range or higher frequency\n", integerDivisor);
 		return ;
 	}
-#if beVerbose
-	printf ("Calculated integer divisor is %d.\n", integerDivisor);
-#endif
 	int fractionalDivisor = ((clockRate/clockFreq) - integerDivisor) * 4096;
-	unsigned int PWM_CTLstate = *(PWMperi->addr + PWM_CTL); // save state of PWM_CTL register
-	*(PWMperi->addr + PWM_CTL) = 0;  // Turn off PWM.
-	*(PWMClockperi->addr + PWMCLK_CNTL) =(*(PWMClockperi->addr  + PWMCLK_CNTL) &~0x10)|BCM_PASSWORD; // Turn off PWM clock enable flag.
+#if beVerbose
+	printf ("Calculated integer divisor is %d and fractional divisor is %d.\n", integerDivisor, fractionalDivisor);
+#endif	
+	 // save current  state of PWM_CTL register and zero register to turn off PWM
+	unsigned int PWM_CTLstate = *(PWMperi->addr + PWM_CTL);
+	*(PWMperi->addr + PWM_CTL) = 0; 
+	// Turn off PWM clock enable flag.
+	*(PWMClockperi->addr + PWMCLK_CNTL) =(*(PWMClockperi->addr  + PWMCLK_CNTL) &~0x10)|BCM_PASSWORD; 
+	nanosleep (&sleeper, NULL) ; // added a wait here
 	while(*(PWMClockperi->addr + PWMCLK_CNTL)&0x80); // Wait for clock busy flag to turn off.
 #if beVerbose
 	printf ("PWM Clock Busy flag turned off.\n");
