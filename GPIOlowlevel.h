@@ -97,17 +97,17 @@ PWM_BASE is defined by 0x20C000 offset from the base peripheral addresss */
 /* ******************************* Defined Bits for Control Register (PWM_CTL) *******************************************/
 #define PWM_MSEN2	0x8000	//  bit 15, when set, run channel 2 in Mark/Space mode, when cleared run in balanced mode
 #define PWM_USEF2	0x2000	// bit 13, when set, use FIFO for input for channel 2, when cleared, use data register
-#define PWM_POLA2		0x1000	// bit 12, when set, output of channel 2 is reversed
+#define PWM_POLA2	0x1000	// bit 12, when set, output of channel 2 is reversed
 #define PWM_SBIT2		0x800	// bit 11, when set, channel 2 output is high when PWM is not transmitting, when cleared, output is low when not transmitting
-#define PWM_RPTL2		0x400	// bit 10, when set, transmission interrupts when FIFO is empty, when cleared, last data is transmitted
+#define PWM_RPTL2		0x400	// bit 10, when set, last data is transmitted when FIFO is empty, when cleared, transmission is interrupted
 #define PWM_MODE2	0x200	// bit 9, when set, channel 2 uses serializer mode. when clear, channel 2 uses PWM mode
 #define PWM_PWEN2	0x100	// bit 8, when set, channel 2 is enabled, when cleared, channel 2 is not transmitting
 #define PWM_MSEN1	0x80	// bit 7, when set, run channel 1 in Mark/Space mode, when cleared run in balanced mode
 #define PWM_CLRF1		0x40	// bit 6, when set, clears the FIFO used by both channels, one shot, when cleared, has no effect
 #define PWM_USEF1	0x20	// bit 5, use FIFO for input for channel 1, when cleared, use data register
-#define PWM_POLA1		0x10	// bit 4, when set, output of channel 1 is reversed
+#define PWM_POLA1	0x10	// bit 4, when set, output of channel 1 is reversed
 #define PWM_SBIT1		0x8		// bit 3, when set, channel 1 output is high when PWM is not transmitting, when cleared, output is low when not transmitting
-#define PWM_RPTL1		0x4		// bit 2 when set, transmission interrupts when FIFO is empty, when cleared, last data is transmitted
+#define PWM_RPTL1		0x4		// bit 2 when set, last data is transmitted when FIFO is empty, when cleared, transmission is interrupted
 #define PWM_MODE1	0x2		// bit 1, when set, channel 1 uses serializer mode. when clear, channel 1 uses PWM mode
 #define PWM_PWEN1	0x1		// bit 0, when set, channel 1 is enabled, when cleared, channel 1 is not transmitting
 
@@ -124,7 +124,7 @@ PWM_BASE is defined by 0x20C000 offset from the base peripheral addresss */
 #define PWM_RERR1	0x8		// bit 3, FIFO read error flag
 #define PWM_WERR1	0x4		// bit 2, FIFO write error flag
 #define PWM_EMPT1	0x2		// bit 1, FIFO empty flag
-#define PWM_FULL1	0x1		// bit 0, FIFO full flag
+#define PWM_FULL1		0x1		// bit 0, FIFO full flag
 
 #define PWM_MARK_SPACE 0
 #define PWM_BALANCED 1
@@ -139,8 +139,8 @@ CM_PWMCTL is defined by 0x101000 offset from the base peripheral addresss */
 #define CM_PWMBASE	(BCM_PERI_BASE + 0x101000)
 /* ********************CLock manager Divisor register address defined by an offset to CM_PWMCTL *************/
 
-#define CM_PWMCTL		0x28		// PWM clock control
-#define CM_PWMDIV		0x29		// PWM Divisor
+#define CM_PWMCTL	0x28		// PWM clock control
+#define CM_PWMDIV	0x29		// PWM Divisor
 
 /* ******************************* Defined Clock Manager Control Register (CM_PWMCTL) Bits *******************************************/
 #define CM_PASSWD	0x5A000000 	// bits 31-24, some values need to be ORed with this magic number, the clock manager password */
@@ -158,7 +158,7 @@ CM_PWMCTL is defined by 0x101000 offset from the base peripheral addresss */
 #define CM_SRCHDMI	0x7			// use HDMI auxillary clock as nput for clock source at 216 Mhz
 
 /* ******************************* Defined Divisor Register (CM_PWMDIV) Bits *******************************************/
-#define CM_DIVI		12			// integer part of divisor, from 23-12 bits, need to shift left 12 bits. Fractional from 0 to 11
+#define CM_DIVI		12			// integer part of divisor, from 23-12 bits, need to shift left 12 bits. Fractional from 0 to 11, AND with 4096
 
 /*Frequency of oscillators that we use as source for things like PWM clock*/
 #define PI_CLOCK_RATE 19.2e6	//19.2 Mhz
