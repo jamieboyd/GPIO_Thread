@@ -10,10 +10,11 @@ int main(int argc, char **argv){
 	// PWM settings
 	float PWMfreq = 40e03;
 	unsigned int PWMrange = 500;
+	float toneFreq = 200;  // tone, in Hz, that will play over the audio if directed to the speakers
 	// PWM channel settings
 	int channel = 1;
-	int onAudio =0;
-	int mode = PWM_MARK_SPACE;
+	int audioOnly =1;
+	int mode = PWM_BALANCED; //PWM_MARK_SPACE;
 	int enable = 0;
 	int polarity = 0;
 	int offState =0;
@@ -28,7 +29,7 @@ int main(int argc, char **argv){
 	printf ("thread maker made a thread.\n");
 	//printf ("Actual PWM update frequency = %.3f.\n", myPWM->PWMfreq);
 	// make sine wave array data 
-	unsigned int arraySize = (unsigned int)(PWMfreq/200);
+	unsigned int arraySize = (unsigned int)(PWMfreq/toneFreq);
 	int * dataArray = new int [arraySize];
 	const double phi = 6.2831853071794;
 	double offset = PWMrange/2;
@@ -37,7 +38,7 @@ int main(int argc, char **argv){
 	}
 	//printf ("data at 0 =%d, 1 = %d, 2 = %d, 3 = %d, 4 = %d\n", dataArray [0],  dataArray [1], dataArray [2], dataArray [3], dataArray [4]);      
 	// add the channel to the thread
-	myPWM->addChannel (channel, onAudio, mode, enable, polarity, offState, dataArray, arraySize);
+	myPWM->addChannel (channel, audioOnly, mode, enable, polarity, offState, dataArray, arraySize);
 	// enable the PWM to output
 	myPWM->setEnable (1, channel, 0);
 	//myPWM->setPolarity (1, 1,0);

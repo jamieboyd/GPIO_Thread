@@ -58,14 +58,12 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 		taskData->startPos1 =0;
 		taskData->stopPos1 = chanAddPtr->nData;
 		// set up GPIO
-		if (chanAddPtr->onAudio ){
-			taskData->onAudio1 =1;
-			INP_GPIO(GPIOperi ->addr, 40);           // Set GPIO 40to input to clear bits
-			SET_GPIO_ALT(GPIOperi ->addr, 40, 0);     // Set GPIO 40 to Alt0 function PWM0
+		if (chanAddPtr->audioOnly ){
+			taskData->audioOnly1 =1;
 		}else{
 			INP_GPIO(GPIOperi ->addr, 18);           // Set GPIO 18 to input to clear bits
 			SET_GPIO_ALT(GPIOperi ->addr, 18, 5);     // Set GPIO 18 to Alt5 function PWM0
-			taskData->onAudio1 =0;
+			taskData->audioOnly1 =0;
 		}
 		// set bits and offsets appropriately for channel 1
 		dataRegisterOffset = PWM_DAT1;
@@ -83,14 +81,12 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 			taskData->startPos1 =0;
 			taskData->stopPos1 = chanAddPtr->nData;
 			// set up GPIO
-			if (chanAddPtr->onAudio){
-				taskData->onAudio2 = 1;
-				INP_GPIO(GPIOperi ->addr, 41);           // Set GPIO 41 to input to clear bits
-				SET_GPIO_ALT(GPIOperi ->addr, 41, 0);     // Set GPIO 41 to Alt0 function PWM1
+			if (chanAddPtr->audioOnly){
+				taskData->audioOnly2 = 1;
 			}else{
 				INP_GPIO(GPIOperi ->addr, 19);           // Set GPIO 19 to input to clear bits
 				SET_GPIO_ALT(GPIOperi->addr, 19, 5);     // Set GPIO 19 to Alt5 function PWM1
-				taskData->onAudio2 =0;
+				taskData->audioOnly2 =0;
 			}
 			// set bits and offsets appropriately for channel 2
 			dataRegisterOffset = PWM_DAT2;
@@ -604,14 +600,14 @@ Last Modified:
 2018/08/07 by Jamie Boyd - Initial Version */
 PWM_thread::~PWM_thread (){
 	if (PWMchans & 1){
-		if (onAudio1 == 0){
+		if (audioOnly1 == 0){
 			INP_GPIO(GPIOperi->addr,18);
 			OUT_GPIO(GPIOperi->addr,18);
 			GPIO_CLR(GPIOperi->addr, (1 << 18));
 		}
 	}
 	if (PWMchans & 2){
-		if (onAudio2 == 0){
+		if (audioOnly2 == 0){
 			INP_GPIO(GPIOperi->addr,19);
 			OUT_GPIO(GPIOperi->addr,19);
 			GPIO_CLR(GPIOperi->addr, (1 << 19));
@@ -627,11 +623,11 @@ Makes and fills ptPWMchanStruct and calls ptPWM_addChannelCallback
 Last Modified:
 2018/09/20 by Jamie Boyd - made call to modCustom non-locking, so best not add channels while thread is running
 2018/09/19 by Jamie Boyd - initial version */
-int PWM_thread::addChannel (int channel, int onAudio, int mode, int enable, int polarity, int offState, int * arrayData, unsigned int nData){
+int PWM_thread::addChannel (int channel, int audioOnly, int mode, int enable, int polarity, int offState, int * arrayData, unsigned int nData){
 	
 	ptPWMchanAddStructPtr addStructPtr = new ptPWMchanAddStruct;
 	addStructPtr->channel = channel;
-	addStructPtr->onAudio = onAudio;
+	addStructPtr->audioOnly = audioOnly;
 	addStructPtr->mode = mode;
 	addStructPtr->enable = enable;
 	addStructPtr->polarity = polarity;
@@ -644,7 +640,7 @@ int PWM_thread::addChannel (int channel, int onAudio, int mode, int enable, int 
 	}
 	if (channel == 1){
 		PWMchans |= 1;
-		onAudio1 = onAudio;
+		audioOnly1 = audioOnly;
 		mode1 = mode;
 		enabled1 = enable;
 		polarity1 = polarity;
@@ -652,7 +648,7 @@ int PWM_thread::addChannel (int channel, int onAudio, int mode, int enable, int 
 	}else{
 		if (channel == 2){
 			PWMchans |= 2;
-			onAudio2 = onAudio;
+			audioOnly2 = audioOnly;
 			mode2 = mode;
 			enabled2 = enable;
 			polarity2 = polarity;

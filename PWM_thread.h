@@ -34,12 +34,12 @@ typedef struct ptPWMStruct{
 	int enable1;  // 1 if channel is enabled, 0 if not enabled
 	int polarity1; // 1 for reversed output polarity, 0 for normal, default is 0
 	int offState1; // 0 for low level when PWM is not enabled, 1 for high level when PWM is enabled
-	int onAudio1; // set if output is directed to audio GPIO 40, not GPIO 18
+	int audioOnly1; // set if output is directed to audio GPIO 40, not GPIO 18
 	int mode2; //MARK_SPACE for servos or BALANCED for analog
 	int enable2;  // 1 if channel is enabled, 0 if not enabled
 	int polarity2; // 1 for reversed output polarity, 0 for normal, default is 0
 	int offState2; // 0 for low level when PWM is not enabled, 1 for high level when PWM is enabled
-	int onAudio2; // set if output is directed to audio GPIO 41, not GPIO 19
+	int audioOnly2; // set if output is directed to audio GPIO 41, not GPIO 19
 	// calculated register addresses, used for customDataMod functions
 	volatile unsigned int * ctlRegister; // address of PWM control register
 	volatile unsigned int * statusRegister; // address of status register
@@ -65,7 +65,7 @@ last modified:
 2018/09/19 by Jamie Boyd - initial version */
 typedef struct ptPWMchanAddStruct{
 	int channel; // 1 for channel 1, or 2 for channel 2
-	int onAudio; // set to do outputs on audio pins, not GPIO 18 or 19
+	int audioOnly; // set to do outputs on audio pins, not GPIO 18 or 19
 	int mode; //MARK_SPACE for servos or BALANCED for analog
 	int enable; // 1 to start PWMing immediately, 0 to start in un-enabled state
 	int polarity; 
@@ -112,7 +112,7 @@ class PWM_thread : public pulsedThread{
 	static PWM_thread * PWM_threadMaker (float pwmFreq, unsigned int pwmRange, unsigned int durUsecs, unsigned int nPulses, int accuracyLevel);
 	static PWM_thread * PWM_threadMaker (float pwmFreq, unsigned int pwmRange,  float frequency, float trainDuration, int accuracyLevel);
 	// configures one of the channels, 1 or 2, for output on the PWM. returns 0 for success, 1 for failure
-	int addChannel (int channel, int onAudio, int mode, int enable, int polarity, int offState, int * arrayData, unsigned int nData);
+	int addChannel (int channel, int audioOnly, int mode, int enable, int polarity, int offState, int * arrayData, unsigned int nData);
 	// mod functions for enabling PWM output, setting polarity, and 
 	int setEnable (int enableState, int channel, int isLocking);
 	int setPolarity (int polarityP, int channel, int isLocking);
@@ -129,12 +129,12 @@ class PWM_thread : public pulsedThread{
 	int polarity1; // 0 for normal polarity, 1 for reversed
 	int offState1; // 0 for low when not enabled, 1 for high when enabled
 	int enabled1; // 0 for not enabled, 1 for enabled
-	int onAudio1; // 0 for GPIO 18, 1 for default output over audio
+	int audioOnly1; // 0 for GPIO 18, 1 for default output over audio
 	int mode2;
 	int polarity2; // 0 for normal polarity, 1 for reversed
 	int offState2; // 0 for low when not enabled, 1 for high when enabled
 	int enabled2; // 0 for not enabled, 1 for enabled
-	int onAudio2; // 0 for GPIO 19, 1 for default output over audio	
+	int audioOnly2; // 0 for GPIO 19, 1 for default output over audio	
 };
 
 #endif
