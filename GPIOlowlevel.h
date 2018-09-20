@@ -134,10 +134,10 @@ volatile unsigned int * usePWMPeri (void);
 void unUsePWMperi (void);
 
 /* ************************************************* Clock Manager - Audio Clock (PWM) control *********************************************************
-/* CM_PWMCTL is defined by 0x101000 offset from the base peripheral addresss */
+CM_PWMCTL is defined by 0x101000 offset from the base peripheral addresss */
 #define CM_PWMBASE	(BCM_PERI_BASE + 0x101000)
 /* ********************CLock manager Divisor register address defined by an offset to CM_PWMCTL *************/
-#define CM_PWMCNTL		0x0		// PWM clock control
+#define CM_PWMCTL		0x0		// PWM clock control
 #define CM_PWMDIV		0x4		// PWM Divisor
 
 /* ******************************* Defined Clock Manager Control Register (CM_PWMCTL) Bits *******************************************/
@@ -150,7 +150,7 @@ void unUsePWMperi (void);
 #define CM_BUSY		0x80		// bit 7, indicates if the clock generator is running
 #define CM_KILL		0x20		//  bit 5, when set, stops and resets the clock generator
 #define CM_ENAB		0x10		// bit 4, setting with OR requests the clock to start, BUSY flag will go high when final cycle is completed
-#define CM_DISAB	0xffffffef	// bit 4, unsetting with AND requests the clock to stop, BUSY flag will go low when final cycle is completed
+#define CM_DISAB		0xffffffef		// bit 4, unsetting with AND requests the clock to stop, BUSY flag will go low when final cycle is completed
 #define CM_SRCOSC		0x1			// use Pi's on board oscillator as input for clock source at 19.2 Mhz
 #define CM_SRCPLL		0x6			// use Pi's Phase Locked Loop D as  input for clock source at 500 MHz 
 #define CM_SRCHDMI	0x7			// use HDMI auxillary clock as nput for clock source at 216 Mhz

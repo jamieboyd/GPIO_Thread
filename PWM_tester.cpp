@@ -1,9 +1,5 @@
 #include "PWM_thread.h"
 
-// need to initialize C++ static class fields in this way
-float PWM_thread::PWMfreq = 0; // this will be set when clock is initialized
-int PWM_thread::PWMchans=0; // this will track channels active, bitwise, 0,1,2, or 3
-int PWM_thread::PWMrange =1000;  // PWM clock counts per output value, sets precision of output, we keep same for both channels
 
 
 /* ************************************ custom thread func *******************************************************************
@@ -14,48 +10,49 @@ WIth
 Last Modified:
 2018/09/12 by Jamie Boyd - initial version for testing
 */
-unsigned int OutFreq = 110;  // we will pass this as a paramater to a modFunction when we do it for real 
-void freqFunc (void * taskDataP){
-	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
-	*(taskData->dataRegister) = taskData-> arrayData[taskData->arrayPos];
-	taskData->arrayPos += OutFreq ; //taskDataP->freq;
-	if (taskData->arrayPos >= taskData->nData){
-		taskData->arrayPos = taskData->arrayPos % (taskData->nData);
-	}
-}
 
 
 int main(int argc, char **argv){
+	// PWM settings
+	float PWMfreq = 100e3; 
+	unsigned int PWMrange = 1024;
+	// PWM channel settings
+	int channel = 1;
+	int onAudio =1;
+	int mode = PWM_MARK_SPACE;
+	int enable = 0;
+	int polarity = 0;
+	int offState = 0;
 	
-	// PWM settings - this is about as fast as you can go; the clock it uses is the 500MHz PLL D with the integer divider being 2.
-	float threadFreq = 250e3;
-	int PWMchan = 3; // channel to use, 0 or 1for channel, plus 2 to play over audio
-	int PWMmode = PWM_BALANCED; //PWM_BALANCED for LEDs/Analog out or PWM_MARK_SPACE for servos	
+	// make a thread for continuous output, at 5x slower frequency as thread 
+	PWM_thread * myPWM  = PWM_thread::PWM_threadMaker (PWMfreq, PWMrange, (PWMfreq/5), 0, 2);
 	
-	// make sine wave array data for 1 Hz sine wave
-	unsigned int arraySize = (unsigned int)(threadFreq);
-	int * dataArray = new int [arraySize];
-	const double phi = 6.2831853071794;
-	double offset = PWM_thread::PWMrange/2;
-	for (unsigned int ii=0; ii< arraySize; ii +=1){
-		dataArray [ii] = (unsigned int) (offset - offset * cos (phi *((double) ii/ (double) arraySize)));
-	}
-	
-	// make the thread to do infinite train
-	PWM_thread * myPWM = PWM_thread::PWM_threadMaker (PWMchan, PWMmode, 1, threadFreq, dataArray, arraySize, threadFreq, (float) 0, 2);
 	if (myPWM == nullptr){
 		printf ("thread maker failed to make a thread.\n");
 		return 1;
 	}
-	// install a custom function for frequency control
-	myPWM->setHighFunc (&freqFunc); // sets the function that is called on high part of cycle
-	
-	//myPWM->setEnable (0, 1);
+	printf ("thread maker made a thread.\n");
+	printf ("Actual PWM update frequency = %.3f.\n", myPWM->PWMfreq);
+	// make sine wave array data 
+	unsigned int arraySize = (unsigned int)(PWMfreq/100);
+	int * dataArray = new int [arraySize];
+	const double phi = 6.2831853071794;
+	double offset = PWMrange/2;
+	for (unsigned int ii=0; ii< arraySize; ii +=1){
+		dataArray [ii] = (unsigned int) (offset - offset * cos (phi *((double) ii/ (double) arraySize)));
+	}
+	printf ("data at 0 =%d, 1 = %d, 2 = %d, 3 = %d, 4 = %d\n", dataArray [0],  dataArray [1], dataArray [2], dataArray [3], dataArray [4]);      
+	// add the channel to the thread
+	myPWM->addChannel (channel, onAudio, mode, enable, polarity, offState, dataArray, arraySize);
+	// enable the PWM to output
+	myPWM->setEnable (1, channel, 1);
+	// start the thread doing an infinite train for 10 seconds
 	myPWM->startInfiniteTrain ();
 	myPWM->waitOnBusy (10);
 	myPWM->stopInfiniteTrain ();
-	
-	return 0; // 
+	delete myPWM;
+	delete dataArray;
+	return 0;
 }
 
 

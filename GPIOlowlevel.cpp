@@ -126,7 +126,7 @@ void unUsePWMClockperi (void){
 	if (PWMClockperi_users > 0){
 		PWMClockperi_users -= 1;
 		if (PWMClockperi_users == 0){
-			*(PWMClockperi->addr  + PWMCLK_CNTL) =(*(PWMClockperi->addr  + PWMCLK_CNTL) &~0x10)|BCM_PASSWORD; // Turn off clock enable flag.
+			*(PWMClockperi->addr  + CM_PWMCTL) =  ((*PWMClockperi->addr + CM_PWMCTL) & CM_DISAB) | CM_PASSWD; 
 			unmap_peripheral (PWMClockperi);
 			delete (PWMClockperi);
 		}

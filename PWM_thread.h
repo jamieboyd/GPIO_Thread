@@ -67,7 +67,7 @@ typedef struct ptPWMchanAddStruct{
 	int mode; //MARK_SPACE for servos or BALANCED for analog
 	int enable; // 1 to start PWMing immediately, 0 to start in un-enabled state
 	int polarity; 
-	int offstate;
+	int offState;
 	int * arrayData; // array of PWM values for thread to cycle through, 0 to range, for channel
 	unsigned int nData; // number of points in data array for channel 
 }ptPWMchanAddStruct, *ptPWMchanAddStructPtr;
@@ -85,6 +85,7 @@ typedef struct ptPWMArrayModStruct{
 	unsigned int stopPos;	// where to end in the array
 	unsigned int arrayPos;	// current position in array, as it is iterated through
 	int * arrayData; //data for the array
+	unsigned int nData; // size of data array
 }ptPWMArrayModStruct, *ptPWMArrayModStructPtr;
 
 
@@ -104,10 +105,10 @@ class PWM_thread : public pulsedThread{
 	// maps the GPIO, PWM, and PWMclock peripherals.  Do this before doing anything else
 	static int mapPeripherals ();
 	// sets PWM clock for given frequency and range. Do this before making a PWM_thread, because thread makers need to kknow range and freq
-	static float setClock (float PWMFreq, int PWMrange);
+	static float setClock (float PWMFreq, unsigned int PWMrange);
 	// Static ThreadMakers make an initStruct and call a constructor with it, returning a pointer to a new PWM_thread
-	static PWM_thread * PWM_threadMaker (unsigned int pwmRange, float pwmFreq, unsigned int durUsecs, unsigned int nPulses, int accuracyLevel);
-	static PWM_thread * PWM_threadMaker (unsigned int pwmRange, float pwmFreq, float frequency, float trainDuration, int accuracyLevel);
+	static PWM_thread * PWM_threadMaker (float pwmFreq, unsigned int pwmRange, unsigned int durUsecs, unsigned int nPulses, int accuracyLevel);
+	static PWM_thread * PWM_threadMaker (float pwmFreq, unsigned int pwmRange,  float frequency, float trainDuration, int accuracyLevel);
 	// configures one of the channels, 1 or 2, for output on the PWM. returns 0 for success, 1 for failure
 	int addChannel (int channel, int onAudio, int mode, int enable, int polarity, int offState, int * arrayData, unsigned int nData);
 	// mod functions for enabling PWM output, setting polarity, and 
