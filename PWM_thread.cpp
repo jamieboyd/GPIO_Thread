@@ -55,6 +55,8 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 		// set array data
 		taskData->arrayData1 = chanAddPtr->arrayData;
 		taskData->nData1 = chanAddPtr->nData;
+		taskData->startPos1 =0;
+		taskData->stopPos1 = chanAddPtr->nData;
 		// set up GPIO
 		if (chanAddPtr->onAudio ){
 			taskData->onAudio1 =1;
@@ -78,6 +80,8 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 			// set array data
 			taskData->arrayData2 = chanAddPtr->arrayData;
 			taskData->nData2 = chanAddPtr->nData;
+			taskData->startPos1 =0;
+			taskData->stopPos1 = chanAddPtr->nData;
 			// set up GPIO
 			if (chanAddPtr->onAudio){
 				taskData->onAudio2 = 1;
@@ -100,34 +104,44 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 			return 1;
 		}
 	}
+	// instead of constantly writing to register, copy the register into a variable, then modify the variable
+	// and write tot he register just one at the end
+	unsigned int registerVal = *(PWMperi ->addr + PWM_CTL);
 	// set up PWM channel 1 or 2 by writing to control register
 	// set mode
 	if (chanAddPtr->mode == PWM_MARK_SPACE){
-		*(PWMperi ->addr + PWM_CTL) |= modeBit; // put PWM in MS Mode
+		registerVal |= modeBit; // put PWM in MS Mode
 	}else{
-		*(PWMperi ->addr + PWM_CTL) &= ~(modeBit);  // clear MS mode bit for Balanced Mode
+		registerVal &= ~(modeBit);  // clear MS mode bit for Balanced Mode
 	}
 	// set polarity
 	if (chanAddPtr->polarity == 0){
-		*(PWMperi ->addr + PWM_CTL) &= ~polarityBit;  // clear reverse polarity bit
+		registerVal &= ~polarityBit;  // clear reverse polarity bit
 	}else{
-		*(PWMperi ->addr + PWM_CTL) |= polarityBit;  // set reverse polarity bit
+		registerVal |= polarityBit;  // set reverse polarity bit
 	}
 	// set off state, whether PWM output is hi or low when not transmitting data
 	if (chanAddPtr->offState == 0){
-		*(PWMperi ->addr + PWM_CTL) &= ~offStateBit; // clear OFFstate bit for low
+		registerVal &= ~offStateBit; // clear OFFstate bit for low
 	}else{
-		*(PWMperi ->addr + PWM_CTL) |= offStateBit; // set OFFstate bit for hi
+		registerVal|= offStateBit; // set OFFstate bit for hi
 	}
 // set initial enable state
 	if (chanAddPtr->enable){
 		// set initial PWM value first so we have something to put out
 		*(PWMperi->addr + dataRegisterOffset) = chanAddPtr->arrayData[0]; 
-		*(PWMperi->addr + PWM_CTL) |= enableBit;
+		registerVal |= enableBit;
 	}else{
-		*(PWMperi ->addr + PWM_CTL) &= ~enableBit;
+		registerVal&= ~enableBit;
 	}
+	// finally, copy registerVal back to the register
+	*(PWMperi ->addr + PWM_CTL)=registerVal;
+#if beVerbose
+	printf ("PWM Data register for channel %d contains %d.\n",chanAddPtr->channel , *(PWMperi->addr + dataRegisterOffset));
+	printf ("PWM Control Register = 0x%x.\n", *(PWMperi ->addr + PWM_CTL));
+#endif
 	delete chanAddPtr;
+	
 	return 0;
 }
 
@@ -257,30 +271,28 @@ int ptPWM_setOffStateCallback (void * modData, taskParams * theTask){
 /* *************************** Sets Array start/end limits, current position, or changes array **********************************
 modData is a ptPWMArrayModStruct structure of modBits, startPos, stopPos, arrayPos, and array data
 last modified:
+2018/08/20 by Jamie Boyd - cleaned up, fixed up
 2018/08/08 by Jamie Boyd - initial version */
 int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask){
 	ptPWMStructPtr taskData = (ptPWMStructPtr) theTask->taskData;
 	ptPWMArrayModStructPtr modDataPtr = (ptPWMArrayModStructPtr) modData;
-	if ((modDataPtr->modBits) & 1){
-		// check array data being changed
+	// channel 1
+	if ((modDataPtr->channel) & 1){
+		// check if array data is being changed
 		if ((modDataPtr->modBits) & 8){
 			taskData->arrayData1 = modDataPtr->arrayData;
 			taskData->nData1 = modDataPtr->nData;
 		}
-		// check startPos
-		if ((modDataPtr->channel) & 1){
-			if (modDataPtr->startPos >= 0){
-				if (modDataPtr->startPos < taskData->nData1 -1){
-					taskData ->startPos1 = modDataPtr->startPos;
-				}else{
-					taskData ->startPos1 = taskData->nData1-1;
-				}
+		// check for changing start pos or changing array data
+		if ((modDataPtr->modBits) & 9){
+			if (modDataPtr->startPos < taskData->nData1 -1){
+				taskData ->startPos1 = modDataPtr->startPos;
 			}else{
-				taskData ->startPos1 = 0;
+				taskData ->startPos1 = taskData->nData1-1;
 			}
 		}
-		// check stop position
-		if ((modDataPtr->modBits) & 2){
+		// check stop position or changing array data
+		if ((modDataPtr->modBits) & 10){
 			if (modDataPtr->stopPos > 0){
 				if (modDataPtr->stopPos  < taskData->nData1){
 					taskData -> stopPos1 = modDataPtr->stopPos;
@@ -291,42 +303,48 @@ int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask){
 				taskData ->stopPos1 =1;
 			}
 		}
-		// check current array position
+		// make sure start position <= stop position if data or positions changed
+		if ((modDataPtr->modBits) & 11){
+			if (taskData ->startPos1 > taskData->stopPos1){
+				unsigned int temp = taskData ->startPos1;
+				taskData ->startPos1 = taskData->stopPos1;
+				taskData->stopPos1 = temp;
+			}
+		}
+		// check current array position, anything we changed could affect it
 		if ((modDataPtr->modBits) & 4){
-			if (modDataPtr-> arrayPos >= taskData -> startPos1){
-				if (modDataPtr-> arrayPos < taskData -> stopPos1){
-					taskData -> arrayPos1 = modDataPtr-> arrayPos;
-				}else{
-					taskData -> arrayPos1 = taskData->nData1-1;
-				}
-			}else{
-				taskData -> arrayPos1 =0;
+			taskData-> arrayPos1 = modDataPtr-> arrayPos ;
+		}
+		if (taskData->arrayPos1 < taskData->startPos1){
+			taskData->arrayPos1 = taskData->startPos1;
+		}else{
+			if (taskData->arrayPos1 >= taskData->stopPos1){
+				taskData->arrayPos1 = taskData->stopPos1 -1;
 			}
 		}
 		// update output
 		*(taskData->dataRegister1) = taskData->arrayData1[taskData-> arrayPos1];
+#if beVerbose
+		printf ("start pos = %d, end pos = %d, nData = %d.\n",taskData->startPos1, taskData->stopPos1, taskData->nData1);
+#endif
 	}
-	// check channel 2
-	if ((modDataPtr->modBits) & 2){
-		// check array data being changed
+	// channel 2
+	if ((modDataPtr->channel) & 2){
+		// check if array data is being changed
 		if ((modDataPtr->modBits) & 8){
 			taskData->arrayData2 = modDataPtr->arrayData;
-			taskData->nData2 = modDataPtr->nData;
+			taskData->nData2= modDataPtr->nData;
 		}
-		// check startPos
-		if ((modDataPtr->channel) & 1){
-			if (modDataPtr->startPos >= 0){
-				if (modDataPtr->startPos < taskData->nData2 -1){
-					taskData ->startPos2 = modDataPtr->startPos;
-				}else{
-					taskData ->startPos2 = taskData->nData1-1;
-				}
+		// check for changing start pos or changing array data
+		if ((modDataPtr->modBits) & 9){
+			if (modDataPtr->startPos < taskData->nData2 -1){
+				taskData ->startPos2 = modDataPtr->startPos;
 			}else{
-				taskData ->startPos2 = 0;
+				taskData ->startPos2 = taskData->nData2-1;
 			}
 		}
 		// check stop position
-		if ((modDataPtr->modBits) & 2){
+		if ((modDataPtr->modBits) & 10){
 			if (modDataPtr->stopPos > 0){
 				if (modDataPtr->stopPos  < taskData->nData2){
 					taskData -> stopPos2 = modDataPtr->stopPos;
@@ -337,16 +355,23 @@ int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask){
 				taskData ->stopPos2 =1;
 			}
 		}
-		// check current array position
+		// make sure start position <= stop position
+		if ((modDataPtr->modBits) & 11){
+			if (taskData ->startPos2 > taskData->stopPos2){
+				unsigned int temp = taskData ->startPos2;
+				taskData ->startPos2 = taskData->stopPos2;
+				taskData->stopPos2 = temp;
+			}
+		}
+		// check current array position, anything we changed could affect it
 		if ((modDataPtr->modBits) & 4){
-			if (modDataPtr-> arrayPos >= taskData -> startPos2){
-				if (modDataPtr-> arrayPos < taskData -> stopPos2){
-					taskData -> arrayPos2 = modDataPtr-> arrayPos;
-				}else{
-					taskData -> arrayPos2 = taskData->nData2-1;
-				}
-			}else{
-				taskData -> arrayPos2 =0;
+			taskData-> arrayPos2 = modDataPtr-> arrayPos ;
+		}
+		if (taskData->arrayPos2 < taskData->startPos2){
+			taskData->arrayPos2 = taskData->startPos2;
+		}else{
+			if (taskData->arrayPos2 >= taskData->stopPos2){
+				taskData->arrayPos2 = taskData->stopPos2 -1;
 			}
 		}
 		// update output
@@ -392,15 +417,7 @@ Last Modified: 2018/08/06 by Jamie Boyd - first version */
 	return 0;
 }
 
-
-	// configire a sleeper, we should not have to so this, but testing suggests we do
-	//struct timespec sleeper ;
-	//sleeper.tv_sec  = 0 ;
-	//sleeper.tv_nsec = 110e3L ;
-// nanosleep (&sleeper, NULL) ; // added a wait here
-
-
-/* ************************************sets PWM clock to give new PWM frequency******************************************************
+/* ************************************sets PWM clock to give requested PWM frequency******************************************************
 The PWM frequency is 1/(time taken to output a single value) which is determined by range and PWM clock frequency
 The PWM range is the number of clock ticks needed to output a single value, i.e., the number of bits in the inputs
 This PWM frequency is only accurate for the given PWMrange The two PWM channels could use different ranges, and thus have different PWM frequencies
@@ -415,9 +432,12 @@ Last Modified:
 float PWM_thread::setClock (float PWMFreq, unsigned int PWMrange){
 	// clock must be this fast in Hz to output PWMrange ticks in 1/PWMFreq seconds
 	unsigned int clockFreq = PWMFreq * PWMrange;
+#if beVerbose
+	printf ("Requested PWM frequency = %.3f and range = %d, for a clock frequecy of %d.\n",  PWMFreq, PWMrange, clockFreq);
+#endif
 	// Choose the right clock source for the frequency, and divide it down. With MASH =2, mininum integer divider is 3
-	int clockSrc; 
-	unsigned int clockSrcRate;
+	unsigned int clockSrc =0; 
+	unsigned int clockSrcRate =0;
 	unsigned int mash = CM_MASH2; // start with 2 stage MASH, minimum divisir is 3
 	// take it from the top, to use fastest source that we can
 	if (clockFreq > (PLLD_CLOCK_RATE/2)){
@@ -444,6 +464,7 @@ float PWM_thread::setClock (float PWMFreq, unsigned int PWMrange){
 					clockSrcRate = HDMI_CLOCK_RATE;
 #if beVerbose
 					printf ("PWM clock manager is using HDMI Auxillary clock source at 216 MHz.\n");
+#endif
 				}else{
 					if (clockFreq > (PI_CLOCK_RATE/4095)){
 						clockSrc = CM_SRCOSC;
@@ -452,35 +473,34 @@ float PWM_thread::setClock (float PWMFreq, unsigned int PWMrange){
 						printf ("PWM clock manager is using PWM clock source oscillator at 19.2 MHz.\n");
 #endif						
 					}else{
-						printf ("Calculated integer divisor, %d, is greater than 4095, the max divisor, you need to select a larger range or higher frequency\n", integerDivisor);
+						printf ("Calculated integer divisor, %d, is greater than 4095, the max divisor, you need to select a larger range or higher frequency\n", (int)(PI_CLOCK_RATE/clockFreq));
 						return -2;
 					}
-				}
-#endif					
+				}					
 			}
 		}
 	}
 	// configure clock dividers
-	int integerDivisor = clockSrcRate/clockFreq; // Divisor Value for clock, clock source freq/Divisor = PWM hz
-	int fractionalDivisor = ((clockSrcRate/clockFreq) - integerDivisor) * 4096;
+	unsigned int integerDivisor = clockSrcRate/clockFreq; // Divisor Value for clock, clock source freq/Divisor = PWM hz
+	unsigned int fractionalDivisor = ((float)(clockSrcRate/clockFreq) - integerDivisor) * 4096;
+	float actualClockRate = (clockSrcRate/(integerDivisor + (fractionalDivisor/4095)));
 #if beVerbose
-	printf ("Calculated integer divisor is %d and fractional divisor is %d.\n", integerDivisor, fractionalDivisor);
-	printf ("PWM clock is busy=%d\n", (*(PWMClockperi->addr + CM_PWMCTL) & CM_BUSY));
+	printf ("Calculated integer divisor is %d and fractional divisor is %d for a clock rate of %.3f.\n", integerDivisor, fractionalDivisor, actualClockRate);
 #endif	
 	 // zero PWM_CTL register to turn off PWM (do this before configuring any channels, because you lose channel configuration information)
 	*(PWMperi->addr + PWM_CTL) = 0; 
 	// Turn off PWM clock enable flag and wait for clock busy flag to turn off
-	*(PWMClockperi->addr + CM_PWMCTL) =  ((*PWMClockperi->addr + CM_PWMCTL) & ~CM_ENAB) | CM_PASSWD; 
+	*(PWMClockperi->addr + CM_PWMCTL) =  ((*PWMClockperi->addr + CM_PWMCTL) & CM_DISAB) | CM_PASSWD; 
 	while(*(PWMClockperi->addr + CM_PWMCTL) & CM_BUSY);
 #if beVerbose
 	printf ("PWM Clock Busy flag turned off.\n");
 #endif
 	// configure clock divider REM writing to clock manager registers requires ORing with clock manager password
-	*(PWMClockperi->addr + CM_PWMDIV) = (5<<CM_DIVI) | CM_PASSWD;// (integerDivisor<<CM_DIVI)|(fractionalDivisor & 4095)|CM_PASSWD;
+	*(PWMClockperi->addr + CM_PWMDIV) = (integerDivisor<<CM_DIVI)|(fractionalDivisor & 4095)|CM_PASSWD;
 	 // configure PWM clock with selected src, with a 2-stage or 1-stage MASH as selected above
-	*(PWMClockperi->addr + CM_PWMCTL) = CM_PASSWD | 0x206; //mash | clockSrc | CM_PASSWD;
+	*(PWMClockperi->addr + CM_PWMCTL) = mash | clockSrc | CM_PASSWD;
 	// enable clock
-	*(PWMClockperi->addr + CM_PWMCTL) = CM_PASSWD | 0x216; //mash | clockSrc | CM_PASSWD | CM_ENAB ;
+	*(PWMClockperi->addr + CM_PWMCTL) = mash | clockSrc | CM_PASSWD | CM_ENAB ;
 	while(!(*(PWMClockperi->addr + CM_PWMCTL) & CM_BUSY)); // Wait for clock busy flag to turn on.
 #if beVerbose
 	printf ("PWM Clock Busy flag turned on again.\n");
@@ -489,7 +509,7 @@ float PWM_thread::setClock (float PWMFreq, unsigned int PWMrange){
 	*(PWMperi ->addr + PWM_RNG1) = PWMrange; // set range for channel 1
 	*(PWMperi ->addr + PWM_RNG2) = PWMrange; // set range for channel 2
 	// calculate and return actual PWM frequency
-	return (clockSrcRate/(integerDivisor + (fractionalDivisor/4095)))/PWMrange;
+	return actualClockRate/PWMrange;
 }
 
 /* *************************************** Static ThreadMakers **************************************************************
@@ -515,7 +535,7 @@ PWM_thread * PWM_thread::PWM_threadMaker (float PWMFreq, unsigned int PWMrange, 
 		return nullptr;
 	}
 #if beVerbose
-		printf ("PWM update frequency = %.3f\n", setFrequency);
+		printf ("Calculated PWM update frequency = %.3f\n", setFrequency);
 #endif
 	// call PWM_thread constructor with no init data, which calls pulsedThread constructor
 	int errCode =0;
@@ -605,6 +625,7 @@ PWM_thread::~PWM_thread (){
 /* ********************************** Configures a PWM Channel ***************************************************
 Makes and fills ptPWMchanStruct and calls ptPWM_addChannelCallback
 Last Modified:
+2018/09/20 by Jamie Boyd - made call to modCustom non-locking, so best not add channels while thread is running
 2018/09/19 by Jamie Boyd - initial version */
 int PWM_thread::addChannel (int channel, int onAudio, int mode, int enable, int polarity, int offState, int * arrayData, unsigned int nData){
 	
@@ -617,7 +638,7 @@ int PWM_thread::addChannel (int channel, int onAudio, int mode, int enable, int 
 	addStructPtr->offState = offState;
 	addStructPtr->arrayData = arrayData;
 	addStructPtr->nData = nData;
-	int errVal = modCustom (&ptPWM_addChannelCallback, (void *)addStructPtr, 1); 
+	int errVal = modCustom (&ptPWM_addChannelCallback, (void *)addStructPtr, 0); 
 	if (errVal){
 		return errVal;
 	}
@@ -696,4 +717,34 @@ int PWM_thread::setOffState (int offStateP, int channel, int isLocking){
 	return returnVal;
 }
 
+/* *************************************************** Sets array sub-range to use ********************************
+Last Modified:
+2018/09/20 by Jamie Boyd - initial version */
+int PWM_thread::setArraySubrange (unsigned int startPos, unsigned int stopPos, int channel, int isLocking){
 
+	ptPWMArrayModStructPtr arrayMod = new ptPWMArrayModStruct;
+	arrayMod->startPos = startPos;
+	arrayMod->stopPos = stopPos;
+	arrayMod->channel = channel;
+	arrayMod->modBits = 3; // 1 for start plus 2 for stop
+	int returnVal = modCustom (&ptPWM_ArrayModCalback, (void *) arrayMod, isLocking);
+	return returnVal;
+}
+
+int PWM_thread::setArrayPos (unsigned int arrayPos, int channel, int isLocking){
+
+	ptPWMArrayModStructPtr arrayMod = new ptPWMArrayModStruct;
+	arrayMod->arrayPos = arrayPos;
+	arrayMod->modBits = 4;
+	int returnVal = modCustom (&ptPWM_ArrayModCalback, (void *) arrayMod, isLocking);
+	return returnVal;
+}
+
+int PWM_thread::setNewArray (int * arrayData, unsigned int nData, int channel, int isLocking){
+	ptPWMArrayModStructPtr arrayMod = new ptPWMArrayModStruct;
+	arrayMod->arrayData = arrayData;
+	arrayMod->nData = nData;
+	arrayMod->modBits = 8;
+	int returnVal = modCustom (&ptPWM_ArrayModCalback, (void *) arrayMod, isLocking);
+	return returnVal;
+}

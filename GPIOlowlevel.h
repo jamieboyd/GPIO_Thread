@@ -138,13 +138,9 @@ void unUsePWMperi (void);
 CM_PWMCTL is defined by 0x101000 offset from the base peripheral addresss */
 #define CM_PWMBASE	(BCM_PERI_BASE + 0x101000)
 /* ********************CLock manager Divisor register address defined by an offset to CM_PWMCTL *************/
-<<<<<<< Local Changes
-#define CM_PWMCTL		40		// PWM clock control
-#define CM_PWMDIV		41		// PWM Divisor
-=======
-#define CM_PWMCTL	0x28		// PWM clock control
+
+#define CM_PWMCTL		0x28		// PWM clock control
 #define CM_PWMDIV		0x29		// PWM Divisor
->>>>>>> External Changes
 
 /* ******************************* Defined Clock Manager Control Register (CM_PWMCTL) Bits *******************************************/
 #define CM_PASSWD	0x5A000000 	// bits 31-24, some values need to be ORed with this magic number, the clock manager password */

@@ -117,6 +117,9 @@ class PWM_thread : public pulsedThread{
 	int setEnable (int enableState, int channel, int isLocking);
 	int setPolarity (int polarityP, int channel, int isLocking);
 	int setOffState (int offStateP, int channel, int isLocking);
+	int setArraySubrange (unsigned int startPos, unsigned int stopPos, int channel, int isLocking);
+	int setArrayPos (unsigned int arrayPos, int channel, int isLocking);
+	int setNewArray (int * arrayData, unsigned int nData, int channel, int isLocking);
 	// data members
 	float PWMfreq;
 	int PWMrange;
