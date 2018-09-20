@@ -41,7 +41,9 @@ typedef struct ptPWMStruct{
 	int offState2; // 0 for low level when PWM is not enabled, 1 for high level when PWM is enabled
 	int onAudio2; // set if output is directed to audio GPIO 41, not GPIO 19
 	// calculated register addresses, used for customDataMod functions
-	volatile unsigned int *  ctlRegister; // address offset of PWM control register
+	volatile unsigned int * ctlRegister; // address of PWM control register
+	volatile unsigned int * statusRegister; // address of status register
+	volatile unsigned int * FIFOregister; // address of FIFO
 	volatile unsigned int * dataRegister1; // address of register to write data to
 	volatile unsigned int * dataRegister2; // address of register to write data to
 	// data for outputting

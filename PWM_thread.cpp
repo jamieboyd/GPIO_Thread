@@ -25,6 +25,8 @@ int ptPWM_Init (void * initDataP, void * &taskDataP){
 	taskData->channels = 0;
 	// save ctl and data register addresses in task data for easy access
 	taskData->ctlRegister = PWMperi->addr + PWM_CTL;
+	taskData->statusRegister = PWMperi->addr + PWM_STA;
+	taskData->FIFOregister = PWMperi->addr + PWM_FIF;
 	taskData->dataRegister1 = PWMperi->addr + PWM_DAT1;
 	taskData->dataRegister2 = PWMperi->addr + PWM_DAT2;
 	return 0; 
@@ -60,7 +62,7 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 			SET_GPIO_ALT(GPIOperi ->addr, 40, 0);     // Set GPIO 40 to Alt0 function PWM0
 		}else{
 			INP_GPIO(GPIOperi ->addr, 18);           // Set GPIO 18 to input to clear bits
-			SET_GPIO_ALT(GPIOperi ->addr, 18, 0);     // Set GPIO 18 to Alt5 function PWM0
+			SET_GPIO_ALT(GPIOperi ->addr, 18, 5);     // Set GPIO 18 to Alt5 function PWM0
 			taskData->onAudio1 =0;
 		}
 		// set bits and offsets appropriately for channel 1
@@ -83,7 +85,7 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 				SET_GPIO_ALT(GPIOperi ->addr, 41, 0);     // Set GPIO 41 to Alt0 function PWM1
 			}else{
 				INP_GPIO(GPIOperi ->addr, 19);           // Set GPIO 19 to input to clear bits
-				SET_GPIO_ALT(GPIOperi ->addr, 19, 0);     // Set GPIO 19 to Alt5 function PWM1
+				SET_GPIO_ALT(GPIOperi->addr, 19, 5);     // Set GPIO 19 to Alt5 function PWM1
 				taskData->onAudio2 =0;
 			}
 			// set bits and offsets appropriately for channel 2
@@ -416,47 +418,50 @@ float PWM_thread::setClock (float PWMFreq, unsigned int PWMrange){
 	// Choose the right clock source for the frequency, and divide it down. With MASH =2, mininum integer divider is 3
 	int clockSrc; 
 	unsigned int clockSrcRate;
-	unsigned int mash = CM_MASH2;
-	if (clockFreq < (PI_CLOCK_RATE/3)){
-		clockSrc = CM_SRCOSC;
-		clockSrcRate = PI_CLOCK_RATE;
-#if beVerbose
-		printf ("PWM clock manager is using PWM clock source oscillator at 19.2 MHz.\n");
-#endif
+	unsigned int mash = CM_MASH2; // start with 2 stage MASH, minimum divisir is 3
+	// take it from the top, to use fastest source that we can
+	if (clockFreq > (PLLD_CLOCK_RATE/2)){
+		printf ("Requested PWM frequency %.3f and range %d require PWM clock rate of %.3f.\n", PWMFreq, PWMrange, (PWMFreq * PWMrange));
+		printf ("Highest available PWM clock rate using PLL D with MASH=1 is %.3f.\n", (PLLD_CLOCK_RATE/2));
 	}else{
-		if (clockFreq < (HDMI_CLOCK_RATE/3)){
-			clockSrc = CM_SRCHDMI;
-			clockSrcRate = HDMI_CLOCK_RATE;
-#if beVerbose
-			printf ("PWM clock manager is using HDMI Auxillary clock source at 216 MHz.\n");
-#endif
-		}else{
+		if (clockFreq > (PLLD_CLOCK_RATE/3)){
+			mash = CM_MASH1;
 			clockSrc = CM_SRCPLL;
 			clockSrcRate = PLLD_CLOCK_RATE;
-			if (clockFreq < (PLLD_CLOCK_RATE/3)){
+#if beVerbose
+			printf ("PWM clock manager is using PWM clock source PLL D at 500 MHz with MASH =1.\n");
+#endif
+		}else{
+			if (clockFreq > (PLLD_CLOCK_RATE/4095)){
+				clockSrc = CM_SRCPLL;
+				clockSrcRate = PLLD_CLOCK_RATE;
 #if beVerbose
 				printf ("PWM clock manager is using PWM clock source PLL D at 500 MHz with MASH =2.\n");
 #endif
 			}else{
-				if (clockFreq < (PLLD_CLOCK_RATE/2)){
-					mash = CM_MASH1;
+				if (clockFreq > (HDMI_CLOCK_RATE/4095)){
+					clockSrc = CM_SRCHDMI;
+					clockSrcRate = HDMI_CLOCK_RATE;
 #if beVerbose
-					printf ("PWM clock manager is using PWM clock source PLL D at 500 MHz with MASH =1.\n");
-#endif
+					printf ("PWM clock manager is using HDMI Auxillary clock source at 216 MHz.\n");
 				}else{
-					printf ("Requested PWM frequency %.3f and range %d require PWM clock rate of %.3f.\n", PWMFreq, PWMrange, (PWMFreq * PWMrange));
-					printf ("Highest available PWM clock rate using PLL D with MASH=1 is %.3f.\n", (PLLD_CLOCK_RATE/2));
-					return -1;
+					if (clockFreq > (PI_CLOCK_RATE/4095)){
+						clockSrc = CM_SRCOSC;
+						clockSrcRate = PI_CLOCK_RATE;
+#if beVerbose
+						printf ("PWM clock manager is using PWM clock source oscillator at 19.2 MHz.\n");
+#endif						
+					}else{
+						printf ("Calculated integer divisor, %d, is greater than 4095, the max divisor, you need to select a larger range or higher frequency\n", integerDivisor);
+						return -2;
+					}
 				}
+#endif					
 			}
 		}
 	}
 	// configure clock dividers
 	int integerDivisor = clockSrcRate/clockFreq; // Divisor Value for clock, clock source freq/Divisor = PWM hz
-	if (integerDivisor > 4095){ // max divisor is 4095 - need to select larger range or higher frequency
-		printf ("Calculated integer divisor, %d, is greater than 4095, the max divisor, you need to select a larger range or higher frequency\n", integerDivisor);
-		return -2;
-	}
 	int fractionalDivisor = ((clockSrcRate/clockFreq) - integerDivisor) * 4096;
 #if beVerbose
 	printf ("Calculated integer divisor is %d and fractional divisor is %d.\n", integerDivisor, fractionalDivisor);

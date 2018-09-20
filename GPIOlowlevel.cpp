@@ -126,7 +126,7 @@ void unUsePWMClockperi (void){
 	if (PWMClockperi_users > 0){
 		PWMClockperi_users -= 1;
 		if (PWMClockperi_users == 0){
-			*(PWMClockperi->addr  + CM_PWMCTL) =  ((*PWMClockperi->addr + CM_PWMCTL) & CM_DISAB) | CM_PASSWD; 
+			*(PWMClockperi->addr  + CM_PWMCTL) = ((*PWMClockperi->addr + CM_PWMCTL) & CM_DISAB) | CM_PASSWD; 
 			unmap_peripheral (PWMClockperi);
 			delete (PWMClockperi);
 		}

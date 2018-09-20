@@ -85,18 +85,19 @@ PWM_BASE is defined by 0x20C000 offset from the base peripheral addresss */
 #define PWM_BASE			(BCM_PERI_BASE + 0x20C000)
 /* ********************PWM control registers addresses defined by an offset to PWM_BASE. *************/
 #define PWM_CTL		0x0          // PWM Control
-#define PWM_STA		0x4		// PWM status
-#define PWM_DMAC		0x8		// PWM DMA configuration
-#define PWM_RNG1		0x10        // PWM Channel 1 Range
-#define PWM_DAT1		0x14	// PWM Channel 1 Data
-#define PWM_FIF		0x18	//PWM FIFO input, for both channels
-#define PWM_RNG2		0x20	// PWM Channel 2 Range
-#define PWM_DAT2		0x24	// PWM Channel 2 Data
+#define PWM_STA		0x1		// PWM status
+#define PWM_DMAC		0x2		// PWM DMA configuration
+#define PWM_RNG1		0x4        // PWM Channel 1 Range
+#define PWM_DAT1		0x5		// PWM Channel 1 Data
+#define PWM_FIF		0x6	//PWM FIFO input, for both channels
+#define PWM_RNG2		0x8	// PWM Channel 2 Range
+#define PWM_DAT2		0x9	// PWM Channel 2 Data
+
 
 /* ******************************* Defined Bits for Control Register (PWM_CTL) *******************************************/
 #define PWM_MSEN2	0x8000	//  bit 15, when set, run channel 2 in Mark/Space mode, when cleared run in balanced mode
 #define PWM_USEF2	0x2000	// bit 13, when set, use FIFO for input for channel 2, when cleared, use data register
-#define PWM_POLA2	0x1000	// bit 12, when set, output of channel 2 is reversed
+#define PWM_POLA2		0x1000	// bit 12, when set, output of channel 2 is reversed
 #define PWM_SBIT2		0x800	// bit 11, when set, channel 2 output is high when PWM is not transmitting, when cleared, output is low when not transmitting
 #define PWM_RPTL2		0x400	// bit 10, when set, transmission interrupts when FIFO is empty, when cleared, last data is transmitted
 #define PWM_MODE2	0x200	// bit 9, when set, channel 2 uses serializer mode. when clear, channel 2 uses PWM mode
@@ -104,7 +105,7 @@ PWM_BASE is defined by 0x20C000 offset from the base peripheral addresss */
 #define PWM_MSEN1	0x80	// bit 7, when set, run channel 1 in Mark/Space mode, when cleared run in balanced mode
 #define PWM_CLRF1		0x40	// bit 6, when set, clears the FIFO used by both channels, one shot, when cleared, has no effect
 #define PWM_USEF1	0x20	// bit 5, use FIFO for input for channel 1, when cleared, use data register
-#define PWM_POLA1	0x10	// bit 4, when set, output of channel 1 is reversed
+#define PWM_POLA1		0x10	// bit 4, when set, output of channel 1 is reversed
 #define PWM_SBIT1		0x8		// bit 3, when set, channel 1 output is high when PWM is not transmitting, when cleared, output is low when not transmitting
 #define PWM_RPTL1		0x4		// bit 2 when set, transmission interrupts when FIFO is empty, when cleared, last data is transmitted
 #define PWM_MODE1	0x2		// bit 1, when set, channel 1 uses serializer mode. when clear, channel 1 uses PWM mode
@@ -123,7 +124,7 @@ PWM_BASE is defined by 0x20C000 offset from the base peripheral addresss */
 #define PWM_RERR1	0x8		// bit 3, FIFO read error flag
 #define PWM_WERR1	0x4		// bit 2, FIFO write error flag
 #define PWM_EMPT1	0x2		// bit 1, FIFO empty flag
-#define PWM_FULL1		0x1		// bit 0, FIFO full flag
+#define PWM_FULL1	0x1		// bit 0, FIFO full flag
 
 #define PWM_MARK_SPACE 0
 #define PWM_BALANCED 1
@@ -137,8 +138,13 @@ void unUsePWMperi (void);
 CM_PWMCTL is defined by 0x101000 offset from the base peripheral addresss */
 #define CM_PWMBASE	(BCM_PERI_BASE + 0x101000)
 /* ********************CLock manager Divisor register address defined by an offset to CM_PWMCTL *************/
-#define CM_PWMCTL		0x0		// PWM clock control
-#define CM_PWMDIV		0x4		// PWM Divisor
+<<<<<<< Local Changes
+#define CM_PWMCTL		40		// PWM clock control
+#define CM_PWMDIV		41		// PWM Divisor
+=======
+#define CM_PWMCTL	0x28		// PWM clock control
+#define CM_PWMDIV		0x29		// PWM Divisor
+>>>>>>> External Changes
 
 /* ******************************* Defined Clock Manager Control Register (CM_PWMCTL) Bits *******************************************/
 #define CM_PASSWD	0x5A000000 	// bits 31-24, some values need to be ORed with this magic number, the clock manager password */
