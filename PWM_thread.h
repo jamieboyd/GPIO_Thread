@@ -77,7 +77,6 @@ typedef struct ptPWMchanAddStruct{
 	unsigned int nData; // number of points in data array for channel 
 }ptPWMchanAddStruct, *ptPWMchanAddStructPtr;
 
-
 /* **************custom struct for callback changing PWM array settings *****************************
 Used to modify which section of the array to currently use, or set current position in the array, or change array 
 last modified:
@@ -92,6 +91,19 @@ typedef struct ptPWMArrayModStruct{
 	int * arrayData; //data for the array
 	unsigned int nData; // size of data array
 }ptPWMArrayModStruct, *ptPWMArrayModStructPtr;
+
+/* **************custom struct for returning info about a PWM channel *****************************
+Contains data for channel configurtation 
+last modified:
+2018/09/21 by Jamie Boyd - initial version */
+typedef struct ptPWMchanInfoStruct{
+	int audioOnly; // set to do outputs on audio pins only, not GPIO 18 or 19
+	int useFIFO; // set to use a FIFO, clear to use data register. If using FIFO, thread must be fast enough to keep up with PWM update
+	int mode; //MARK_SPACE for servos or BALANCED for analog
+	int enable; // 1 to start PWMing immediately, 0 to start in un-enabled state
+	int polarity; 
+	int offState;
+}ptPWMchanInfoStruct, *ptPWMchanInfoStructPtr;
 
 
 /* ********************************************* PWM_thread class *********************************************
@@ -123,11 +135,15 @@ class PWM_thread : public pulsedThread{
 	int setArraySubrange (unsigned int startPos, unsigned int stopPos, int channel, int isLocking);
 	int setArrayPos (unsigned int arrayPos, int channel, int isLocking);
 	int setNewArray (int * arrayData, unsigned int nData, int channel, int isLocking);
+	float getFrequency (void);
+	unsigned int getRange (void);
+	int getChannels (void);
+	ptPWMchanInfoStructPtr getChannelInfo (int theChannel);
 	// data members
-	float PWMfreq;
-	int PWMrange;
-	int PWMchans; // bitwise pwm channels in use, 1 for channel 0, 2 for channel 1
 	protected:
+	float PWMfreq;
+	unsigned int PWMrange;
+	int PWMchans; // bitwise pwm channels in use, 1 for channel 0, 2 for channel 1
 	int mode1; // 0 for PWM_BALANCED, 1 for MARK_SPACE
 	int polarity1; // 0 for normal polarity, 1 for reversed
 	int offState1; // 0 for low when not enabled, 1 for high when enabled

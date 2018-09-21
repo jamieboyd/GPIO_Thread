@@ -697,8 +697,9 @@ int PWM_thread::addChannel (int channel, int audioOnly, int useFIFO, int mode, i
 	return 0;
 }
 
-/* ****************************** utility functions - setters and getters *************************
-******************************* sets Enable State ************************************
+/* ******************************* Setters of PWM channel Configuration and Data *********************************
+
+******************************* sets Enable State **************************************************************
 Last Modified:
 2018/09/19 by Jamie Boyd - added channel parameter
 2018/08/08 by Jamie Boyd - Initial Version  */
@@ -714,7 +715,6 @@ int PWM_thread::setEnable (int enableState, int channel, int isLocking){
 	int returnVal = modCustom (&ptPWM_setEnableCallback, (void *) newEnableVal, isLocking);
 	return returnVal;
 }
-
 
 /* ****************************** sets Polarity ************************************
 Last Modified:
@@ -766,6 +766,9 @@ int PWM_thread::setArraySubrange (unsigned int startPos, unsigned int stopPos, i
 	return returnVal;
 }
 
+/* **********************************Sets position in the array to be output next ************************
+Last Modified:
+2018/09/20 by Jamie Boyd - initial version */
 int PWM_thread::setArrayPos (unsigned int arrayPos, int channel, int isLocking){
 
 	ptPWMArrayModStructPtr arrayMod = new ptPWMArrayModStruct;
@@ -775,6 +778,9 @@ int PWM_thread::setArrayPos (unsigned int arrayPos, int channel, int isLocking){
 	return returnVal;
 }
 
+/* **********************************Sets a new array of data to be output next ************************
+Last Modified:
+2018/09/20 by Jamie Boyd - initial version */
 int PWM_thread::setNewArray (int * arrayData, unsigned int nData, int channel, int isLocking){
 	ptPWMArrayModStructPtr arrayMod = new ptPWMArrayModStruct;
 	arrayMod->arrayData = arrayData;
@@ -782,4 +788,67 @@ int PWM_thread::setNewArray (int * arrayData, unsigned int nData, int channel, i
 	arrayMod->modBits = 8;
 	int returnVal = modCustom (&ptPWM_ArrayModCalback, (void *) arrayMod, isLocking);
 	return returnVal;
+}
+
+/* ******************************* Getters of PWM Channel Configuration information *****************************
+
+*********************************** Returns PWM Frequency ******************************************************
+The rate in Hz at which the PWM value is refreshed from the data register or from the FIFO
+Last Modified:
+2018/09/21 by Jamie Boyd - initial version */
+float PWM_thread::getFrequency (void){
+	return PWMfreq;
+}
+
+/*********************************** Returns PWM Range ******************************************************
+The same PWM range is used by both channels
+Last Modified:
+2018/09/21 by Jamie Boyd - initial version */
+unsigned int PWM_thread::PWM_thread::getRange (void){
+	return PWMrange;
+}
+
+int PWM_thread::getChannels (void);{
+	return PWMchans;
+}
+
+/* ************************* Returns a structure containing information about a channel **********************
+returns a nullPtr if the channel is not 1 or 2, or if the channel has not been added
+The calling function is reponsible for deleting the returned ptPWMchanInfoStructPtr, if not null
+Last Modified:
+2018/09/21 by Jamie Boyd - initial version */
+ptPWMchanInfoStructPtr PWM_thread::getChannelInfo (int theChannel){
+	ptPWMchanInfoStructPtr infoPtr = nullptr;
+	// check if theChannel is 1 or 2
+	if (!((theChannel ==1) || (theChannel ==2))){
+#if beVerbose
+		printf ("The requested channel, %d, does not existl; Channel must be either 1or 2.\n", theChannel);
+#endif
+		return infoPtr;
+	}
+	// check that channel has been configured
+	if (!(PWMchans & chan)){
+#if beVerbose
+		printf ("The requested channel, %d, has not been configured.\n", theChannel);
+#endif
+		return infoPtr
+	}
+	// now we know we have a channel we allocate some memory
+	infoPtr = new ptPWMchanInfoStruct;
+	if (channel == 1){
+		infoPtr->audioOnly = audioOnly1;
+		infoPtr->useFIFO = useFIFO1;
+		infoPtr->mode = mode1;
+		infoPtr->enable = enable1;
+		infoPtr->polarity = polarity1;
+		infoPtr->offState = offState1;
+	}else{
+		infoPtr->audioOnly = audioOnly2;
+		infoPtr->useFIFO = useFIFO2;
+		infoPtr->mode = mode2;
+		infoPtr->enable = enable2;
+		infoPtr->polarity = polarity2;
+		infoPtr->offState = offState2;
+	}
+	return infoPtr;
 }
