@@ -22,13 +22,28 @@ int main(int argc, char **argv){
 	// Turn off PWM.
 	*(PWMperi->addr + PWM_CTL) = 0; 
 	// Turn off enable flag.
-	*(PWMClockperi->addr + CM_PWMCTL) = ((*PWMClockperi->addr + CM_PWMCTL) & ~0x10)|0x5a000000;
-	while(*(PWMClockperi->addr + CM_PWMCTL) & 0x80); // Wait for busy flag to turn off.
+	unsigned int clockSrc = CM_SRCPLL;
+	unsigned int clockSrcRate = 500E06;
+	unsigned int reqClockFreq =400000;
+	unsigned int integerDivisor = clockSrcRate/reqClockFreq; // Divisor Value for clock, clock source freq/Divisor = PWM hz
+	unsigned int fractionalDivisor = ((float)(clockSrcRate/reqClockFreq) - integerDivisor) * 4096;
+	float actualClockRate = (clockSrcRate/(integerDivisor + (fractionalDivisor/4095)));
+	
+	unsigned int mash = CM_MASH2; // start with 2 stage MASH, minimum divisir is 3
+
+	printf ("Calculated integer divisor is %d and fractional divisor is %d for a clock rate of %.3f.\n", integerDivisor, fractionalDivisor, actualClockRate);
+
+	
+	*(PWMClockperi->addr + CM_PWMCTL) = ((*PWMClockperi->addr + CM_PWMCTL) & CM_DISAB) | CM_PASSWD; ;
+	while(*(PWMClockperi->addr + CM_PWMCTL) & CM_BUSY); // Wait for busy flag to turn off.
 	printf ("busy flag turned off.\n");
-	*(PWMClockperi->addr + CM_PWMDIV) = 0x5a000000|(500<<12); // Configure divider register, int divider = 500, fraction =0
-	*(PWMClockperi->addr + CM_PWMCTL)=0x5a000206; // Source=PLLD (500 MHz), 1-stage MASH.
-	*(PWMClockperi->addr + CM_PWMCTL)=0x5a000216; // Enable clock..
-	while(!(*(PWMClockperi->addr + CM_PWMCTL) & 0x80)); // Wait for busy flag to turn on.
+	// Configure divider register
+	*(PWMClockperi->addr + CM_PWMDIV) =(integerDivisor<<CM_DIVI)|(fractionalDivisor & 4095)|CM_PASSWD;
+	// set Source and MASH in control register
+	*(PWMClockperi->addr + CM_PWMCTL)= mash | clockSrc | CM_PASSWD;
+	// set enable flag to enable clock
+	*(PWMClockperi->addr + CM_PWMCTL) |= CM_ENAB | CM_PASSWD;
+	while(!(*(PWMClockperi->addr + CM_PWMCTL) & CM_BUSY)); // Wait for busy flag to turn on.
 	printf ("busy flag turn on again.\n");
 	*(PWMperi->addr + PWM_RNG1)=100;
 	*(PWMperi->addr + PWM_DAT1)=10;
@@ -75,7 +90,7 @@ int main(int argc, char **argv){
 }
 
 /*
-// g++ -O3 -std=gnu++11 -Wall GPIOlowlevel.cpp PWM_no_sleep.cpp -o PWMnoSleep
+g++ -O3 -std=gnu++11 -Wall GPIOlowlevel.cpp PWM_no_sleep.cpp -o PWMnoSleep
 
 	// PWM clock and pWM control
 	#define PWMCTL (*(volatile uint32_t *)0x2020c000)
