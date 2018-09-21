@@ -19,9 +19,20 @@ int main(int argc, char **argv){
 	int polarity = 0;
 	int offState =0;
 	int useFIFO=1;
-	
-	// make a thread for continuous output, at 5x slower frequency as thread 
-	PWM_thread * myPWM  = PWM_thread::PWM_threadMaker (PWMfreq, PWMrange, (PWMfreq/10), 0, 1);
+	float pulsedThreadFreq;
+	int accMode;
+	// make a thread for continuous output. Do thread at same speed as PWM frequency when writing to the data register
+	// WHen using a FIFO, thread can go 10x slower because as long as we get back before the FIFO is empty, all is good
+	// When using a FIFO, the data output rate is set by PWMfreq, not by the thread frequency, so we can use
+	// a less demanding but lower precision thread timing mode with the FIFO.  
+	if (useFIFO){
+		pulsedThreadFreq = PWMfreq/10;
+		accMode = ACC_MODE_SLEEPS_AND_SPINS;
+	}else{
+		pulsedThreadFreq = PWMfreq;
+		accMode = ACC_MODE_SLEEPS_AND_OR_SPINS;
+	}
+	PWM_thread * myPWM  = PWM_thread::PWM_threadMaker (PWMfreq, PWMrange, pulsedThreadFreq, 0, accMode);
 	
 	if (myPWM == nullptr){
 		printf ("thread maker failed to make a thread.\n");
