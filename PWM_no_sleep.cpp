@@ -112,7 +112,7 @@ int main(int argc, char **argv){
 	
 	
 	
-	
+	Relatedly, here is how to set up the GPIO clock to output a clock signal on one of the GPIO pins, if you want to play with the FM transmission tricks or something:
 	
 	
 	#define CM_GP0CTL (*(volatile uint32_t *)0x20101070)
@@ -126,4 +126,7 @@ int main(int argc, char **argv){
 	while(!(CM_GP0CTL&0x80)); // Wait for busy flag to turn on.
 
 	SetGPIOAlternateMode(4,0);
+
+This code sets the clock to 50 MHz. Adjust the divider as needed.
+
 */
