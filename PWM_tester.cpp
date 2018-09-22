@@ -9,8 +9,8 @@ Last Modified:
 int main(int argc, char **argv){
 	// PWM settings
 	float PWMfreq = 100e03;
-	unsigned int PWMrange = 500;
-	float toneFreq = 24000;  // tone, in Hz, that will play over the audio if directed to the speakers
+	unsigned int PWMrange = 1000;
+	float toneFreq = 16000;  // tone, in Hz, that will play over the audio if directed to the speakers
 	// PWM channel settings
 	int channel = 1;
 	int audioOnly =0;

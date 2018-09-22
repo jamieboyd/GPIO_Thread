@@ -107,8 +107,8 @@ static PyObject* ptPWM_addChannel (PyObject *self, PyObject *args) {
 	arrayData = static_cast <int *>(buffer.buf); // Now we have a pointer to the array from the passed in buffer
 	nData = (unsigned int) buffer.len/buffer.itemsize;
 	PyBuffer_Release (&buffer); // we don't need the buffer object as we have a pointer to the array start, which is all we care about
-	// get pointer to pulsedThread
-	pulsedThread * threadPtr = static_cast<pulsedThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	// get pointer to PWM_thread
+	PWM_thread * threadPtr = static_cast<PWM_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
 	// Call thread's addChannel function and retiurn the result
 	return Py_BuildValue("i", threadPtr ->addChannel (channel, audioOnly, useFIFO, mode, enable, polarity, offState, arrayData, nData));
 }
@@ -127,8 +127,8 @@ static PyObject* ptPWM_setEnable(PyObject *self, PyObject *args) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object, enable state, channel, and isLocking.");
 		return NULL;
 	}
-	// get pointer to pulsedThread
-	pulsedThread * threadPtr = static_cast<pulsedThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	// get pointer to PWM_thread
+	PWM_thread * threadPtr = static_cast<PWM_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
 	// Call thread's enableState function and return the result
 	return Py_BuildValue("i", threadPtr ->setEnable(enableState, channel, isLocking));
 }
@@ -146,8 +146,8 @@ static PyObject* ptPWM_setpolarity(PyObject *self, PyObject *args) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object, polarity, channel, and isLocking.");
 		return NULL;
 	}
-	// get pointer to pulsedThread
-	pulsedThread * threadPtr = static_cast<pulsedThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	// get pointer to PWM_thread
+	PWM_thread * threadPtr = static_cast<PWM_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
 	// Call thread's setPolarity function and return the result
 	return Py_BuildValue("i", threadPtr ->setPolarity(polarity, channel, isLocking));
 }
@@ -165,8 +165,8 @@ static PyObject* ptPWM_setOffState(PyObject *self, PyObject *args) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object, offState, channel, and isLocking.");
 		return NULL;
 	}
-	// get pointer to pulsedThread
-	pulsedThread * threadPtr = static_cast<pulsedThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	// get pointer to PWM_thread
+	PWM_thread * threadPtr = static_cast<PWM_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
 	// Call thread's setoffState function and return the result
 	return Py_BuildValue("i", threadPtr ->setOffState(offState, channel, isLocking));
 }
@@ -185,8 +185,8 @@ static PyObject* ptPWM_setArrayPos(PyObject *self, PyObject *args) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object, arrayPos, channel, and isLocking.");
 		return NULL;
 	}
-	// get pointer to pulsedThread
-	pulsedThread * threadPtr = static_cast<pulsedThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	// get pointer to PWM_thread
+	PWM_thread * threadPtr = static_cast<PWM_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
 	// Call thread's setarrayPos function and return the result
 	return Py_BuildValue("i", threadPtr ->setArrayPos(arrayPos, channel, isLocking));
 }
@@ -205,8 +205,8 @@ static PyObject* ptPWM_setArraySubrange (PyObject *self, PyObject *args){
 		return NULL;
 	}
 	PWM_thread * threadPtr = static_cast<PWM_thread* > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
-	// get pointer to pulsedThread
-	pulsedThread * threadPtr = static_cast<pulsedThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	// get pointer to PWM_thread
+	PWM_thread * threadPtr = static_cast<PWM_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
 	// Call thread's setAraySubRange function and return the result
 	return Py_BuildValue("i", threadPtr ->setArraySubrange(startPos, stopPos, channel, isLocking));
 }
@@ -244,12 +244,36 @@ static PyObject* ptPWM_setArray(PyObject *self, PyObject *args){
 	arrayData = static_cast <int *>(buffer.buf); // Now we have a pointer to the array from the passed in buffer
 	nData = (unsigned int) buffer.len/buffer.itemsize;
 	PyBuffer_Release (&buffer); // we don't need the buffer object as we have a pointer to the array start, which is all we care about
-	// get pointer to pulsedThread
-	pulsedThread * threadPtr = static_cast<pulsedThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
-	// Call thread's setNewArray function and retiurn the result
+	// get pointer to PWM_thread
+	PWM_thread * threadPtr = static_cast<PWM_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	// Call thread's setNewArray function and return the result
 	return Py_BuildValue("i", threadPtr ->setNewArray (arrayData, nData, channel, isLocking));
 }
 
+
+/* ************************************************** Gets PWM frequency of PWM peripheral **************************************
+Last Modified:
+2018/09/21 by Jamie Boyd - initial version */
+static PyObject* ptPWM_getPWMFreq (PyObject *self, PyObject *PyPtr){
+	PWM_thread * threadPtr = static_cast<PWM_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	return Py_BuildValue("f", threadPtr ->getPWMFreq());
+}
+
+/* ************************************************** Gets PWM range of PWM peripheral **************************************
+Last Modified:
+2018/09/21 by Jamie Boyd - initial version */
+static PyObject* ptPWM_getPWMRange (PyObject *self, PyObject *PyPtr){
+	PWM_thread * threadPtr = static_cast<PWM_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	return Py_BuildValue("I", threadPtr ->getPWMRange ());
+}
+
+/* ************************************************** Gets configured channels of PWM peripheral **************************************
+Last Modified:
+2018/09/21 by Jamie Boyd - initial version */
+static PyObject* ptPWM_getChannels (PyObject *self, PyObject *PyPtr){
+	PWM_thread * threadPtr = static_cast<PWM_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	return Py_BuildValue("i", threadPtr ->getChannels ());
+}
 
 /* Module method table - those starting with ptPWM are defined here, those starting with pulsedThread are defined in pyPulsedThread.h*/
 static PyMethodDef ptPWMMethods[] = {
@@ -258,25 +282,39 @@ static PyMethodDef ptPWMMethods[] = {
 	{"doTask", pulsedThread_doTask, METH_O, "(PyCapsule) Tells the pulsedThread object to do whatever task it was configured for"},
 	{"doTasks", pulsedThread_doTasks, METH_VARARGS, "(PyCapsule, nTasks) Tells the pulsedThread object to do whatever task it was configured for nTasks times"},
 	{"unDoTasks", pulsedThread_unDoTasks, METH_O, "(PyCapsule) Tells the pulsedThread object to stop doing however many task it was asked to do"},
+	{"startTrain", pulsedThread_startTrain, METH_O, "(PyCapsule) Tells a pulsedThread object configured as an infinite train to start"},
+	{"stopTrain", pulsedThread_stopTrain, METH_O, "(PyCapsule) Tells a pulsedThread object configured as an infinite train to stop"},
 	//{"modDelay", pulsedThread_modDelay, METH_VARARGS, "(PyCapsule, newDelaySecs) changes the delay period of a pulse or LOW period of a train"},
 	{"modDur", pulsedThread_modDur, METH_VARARGS, "(PyCapsule, newDurationSecs) changes the delay period of a pulse or HIGH period of a train"},
+	{"modTrainLength", pulsedThread_modTrainLength, METH_VARARGS, "(PyCapsule, newTrainLength) changes the number of pulses of a train"},
+	{"modTrainDur", pulsedThread_modTrainDur, METH_VARARGS, "(PyCapsule, newTrainDurSecs) changes the total duration of a train"},
+	{"modTrainFreq", pulsedThread_modFreq, METH_VARARGS, "(PyCapsule, newTrainFequency) changes the frequency of a train"},
+	//{"modTrainDuty", pulsedThread_modDutyCycle, METH_VARARGS, "(PyCapsule, newTrainDutyCycle) changes the duty cycle of a train"},
 	//{"getPulseDelay", pulsedThread_getPulseDelay, METH_O, "(PyCapsule) returns pulse delay, in seconds"},
 	{"getPulseDuration", pulsedThread_getPulseDuration, METH_O, "(PyCapsule) returns pulse duration, in seconds"},
+	{"getPulseNumber", pulsedThread_getPulseNumber, METH_O, "(PyCapsule) returns number of pulses in a train, 1 for a single pulse, or 0 for an infinite train"},
+	{"getTrainDuration", pulsedThread_getTrainDuration, METH_O, "(PyCapsule) returns duration of a train, in seconds"},
+	{"getTrainFrequency", pulsedThread_getTrainFrequency, METH_O, "(PyCapsule) returns frequency of a train, in Hz"},
+	//{"getTrainDutyCycle", pulsedThread_getTrainDutyCycle, METH_O, "(PyCapsule) returns duty cycle of a train, between 0 and 1"},
 	{"unsetEndFunc", pulsedThread_UnSetEndFunc, METH_O, "(PyCapsule) un-sets any end function set for this pulsed thread"},
 	{"hasEndFunc", pulsedThread_hasEndFunc, METH_O, "(PyCapsule) Returns the endFunc status (installed or not installed) for this pulsed thread"},
 	{"setEndFuncObj", pulsedThread_SetPythonEndFuncObj, METH_VARARGS, "(PyCapsule, PythonObj, int mode) sets a Python object to provide endFunction for pulsedThread"},
-	//{"setArrayEndFunc", pulsedThread_setArrayFunc, METH_VARARGS, "(PyCapsule, Python float array, endFuncType, isLocking) sets pulsedThread endFunc to set frequency (type 0) or duty cycle (type 1) from a Python float array"},
-	//{"cosDutyCycleArray", pulsedThread_cosineDutyCycleArray, METH_VARARGS, "(Python float array, pointsPerCycle, offset, scaling) fills passed-in array with cosine values of given period, with applied scaling and offset expected to range between 0 and 1"},
-	
+	{"setTaskFuncObj", pulsedThread_SetPythonTaskObj, METH_VARARGS, "(PyCapsule, PythonObj) sets a Python object to provide LoFunc and HiFunc for pulsedThread"},
+	{"setArrayEndFunc", pulsedThread_setArrayFunc, METH_VARARGS, "(PyCapsule, Python float array, endFuncType, isLocking) sets pulsedThread endFunc to set frequency (type 0) or duty cycle (type 1) from a Python float array"},
+	{"cosDutyCycleArray", pulsedThread_cosineDutyCycleArray, METH_VARARGS, "(Python float array, pointsPerCycle, offset, scaling) fills passed-in array with cosine values of given period, with applied scaling and offset expected to range between 0 and 1"},
+		
 	{"newDelayDur", ptPWM_delayDur, METH_VARARGS, "(pwmFreq, pwmRange, durUsecs, nPulses, accuracyLevel) Creates and configures new PWM task"},
 	{"newFreqDuty", ptPWM_freqDuty, METH_VARARGS, "(pwmFreq, pwmRange, trainFreq , trainDuration) Creates and configures new PWM task"},
 	{"addChannel", ptPWM_addChannel,METH_VARARGS, "(PyCapsule,channel, audioOnly, useFIFO, mode, enable, polarity, offState, dataArray)"},
 	{"setEnable", ptPWM_setEnable, METH_VARARGS, "(PyCapsule, enableState, channel, isLocking) Enables or disables the PWM channel"},
-	{"setpolarity", ptPWM_setpolarity, METH_VARARGS, "(PyCapsule, polarity, channel, isLocking) Sets polarity of the PWM channel"},
+	{"setPolarity", ptPWM_setpolarity, METH_VARARGS, "(PyCapsule, polarity, channel, isLocking) Sets polarity of the PWM channel"},
 	{"setOffState", ptPWM_setOffState, METH_VARARGS, "(PyCapsule, offState, channel, isLocking) Sets offState of the PWM channel"},
 	{"setArrayPos", ptPWM_setArrayPos, METH_VARARGS, "(PyCapsule, arrayPos, channel, isLocking) Sets next position in array of data"},
-	{"setArraySubRange", ptPWM_setArraySubrange, METH_VARARGS, "(PyCapsule, startPos, stopPoschannel, isLocking) Selects subset of data"},
-	{"setArray", ptPWM_setArray, METH_VARARGS, "(PyCapsule, Array) Sets the array of data for pulsedThread to feed to PWM"},
+	{"setArraySubRange", ptPWM_setArraySubrange, METH_VARARGS, "(PyCapsule, startPos, stopPos, channel, isLocking) Selects subset of data"},
+	{"setArray", ptPWM_setArray, METH_VARARGS, "(PyCapsule,  array, channel, isLocking) Sets the array of data for pulsedThread to feed to PWM"},
+	{"getPWMFreq", ptPWM_getPWMFreq, METH_O, "(PyCapsule) returns the PWM update frequency"},
+	{"getPWMRange", ptPWM_getPWMRange, METH_O, "(PyCapsule) returns the PWM range"},
+	{"getChannels", ptPWM_getChannels, METH_O, "(PyCapsule) returns a bit-wise number indicating which PWM channels are configured"},
 	{ NULL, NULL, 0, NULL}
   };
 

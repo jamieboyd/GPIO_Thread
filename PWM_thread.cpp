@@ -796,19 +796,19 @@ int PWM_thread::setNewArray (int * arrayData, unsigned int nData, int channel, i
 The rate in Hz at which the PWM value is refreshed from the data register or from the FIFO
 Last Modified:
 2018/09/21 by Jamie Boyd - initial version */
-float PWM_thread::getFrequency (void){
+float PWM_thread::getPWMFreq (void){
 	return PWMfreq;
 }
 
-/*********************************** Returns PWM Range ******************************************************
+/* ********************************** Returns PWM Range ******************************************************
 The same PWM range is used by both channels
 Last Modified:
 2018/09/21 by Jamie Boyd - initial version */
-unsigned int PWM_thread::PWM_thread::getRange (void){
+unsigned int PWM_thread::PWM_thread::getPWMRange (void){
 	return PWMrange;
 }
 
-int PWM_thread::getChannels (void);{
+int PWM_thread::getChannels (void){
 	return PWMchans;
 }
 
@@ -827,26 +827,26 @@ ptPWMchanInfoStructPtr PWM_thread::getChannelInfo (int theChannel){
 		return infoPtr;
 	}
 	// check that channel has been configured
-	if (!(PWMchans & chan)){
+	if (!(PWMchans & theChannel)){
 #if beVerbose
 		printf ("The requested channel, %d, has not been configured.\n", theChannel);
 #endif
-		return infoPtr
+		return infoPtr;
 	}
 	// now we know we have a channel we allocate some memory
 	infoPtr = new ptPWMchanInfoStruct;
-	if (channel == 1){
+	if (theChannel == 1){
 		infoPtr->audioOnly = audioOnly1;
 		infoPtr->useFIFO = useFIFO1;
 		infoPtr->mode = mode1;
-		infoPtr->enable = enable1;
+		infoPtr->enable = enabled1;
 		infoPtr->polarity = polarity1;
 		infoPtr->offState = offState1;
 	}else{
 		infoPtr->audioOnly = audioOnly2;
 		infoPtr->useFIFO = useFIFO2;
 		infoPtr->mode = mode2;
-		infoPtr->enable = enable2;
+		infoPtr->enable = enabled2;
 		infoPtr->polarity = polarity2;
 		infoPtr->offState = offState2;
 	}

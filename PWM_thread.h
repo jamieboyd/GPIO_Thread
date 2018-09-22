@@ -135,8 +135,8 @@ class PWM_thread : public pulsedThread{
 	int setArraySubrange (unsigned int startPos, unsigned int stopPos, int channel, int isLocking);
 	int setArrayPos (unsigned int arrayPos, int channel, int isLocking);
 	int setNewArray (int * arrayData, unsigned int nData, int channel, int isLocking);
-	float getFrequency (void);
-	unsigned int getRange (void);
+	float getPWMFreq (void);
+	unsigned int getPWMRange (void);
 	int getChannels (void);
 	ptPWMchanInfoStructPtr getChannelInfo (int theChannel);
 	// data members
@@ -149,11 +149,13 @@ class PWM_thread : public pulsedThread{
 	int offState1; // 0 for low when not enabled, 1 for high when enabled
 	int enabled1; // 0 for not enabled, 1 for enabled
 	int audioOnly1; // 0 for GPIO 18, 1 for default output over audio
+	int useFIFO1;
 	int mode2;
 	int polarity2; // 0 for normal polarity, 1 for reversed
 	int offState2; // 0 for low when not enabled, 1 for high when enabled
 	int enabled2; // 0 for not enabled, 1 for enabled
-	int audioOnly2; // 0 for GPIO 19, 1 for default output over audio	
+	int audioOnly2; // 0 for GPIO 19, 1 for default output over audio
+	int useFIFO2;
 };
 
 #endif
