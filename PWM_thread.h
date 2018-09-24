@@ -115,10 +115,10 @@ last modified:
 class PWM_thread : public pulsedThread{
 	public:
 	/* constructors, one with unsigned ints for pulse delay and duration times in microseconds and number of pulses */
-	PWM_thread (unsigned int durUsecs, unsigned int nPulses, int accLevel , int &errCode) : pulsedThread (0, durUsecs, nPulses, nullptr, &ptPWM_Init, nullptr, &ptPWM_Reg, accLevel, errCode) {
+	PWM_thread (unsigned int durUsecs, unsigned int nPulses, int accLevel , int &errCode) : pulsedThread (0, durUsecs, nPulses, nullptr, &ptPWM_Init, nullptr, &ptPWM_REG, accLevel, errCode) {
 	};
 	/* and the the other constructor with floats for frequency, duty cycle, and train duration */
-	PWM_thread (float frequency, float trainDuration, int accLevel, int &errCode) : pulsedThread (frequency, 1, trainDuration, nullptr, &ptPWM_Init, nullptr, &ptPWM_Reg, accLevel, errCode){
+	PWM_thread (float frequency, float trainDuration, int accLevel, int &errCode) : pulsedThread (frequency, 1, trainDuration, nullptr, &ptPWM_Init, nullptr, &ptPWM_REG, accLevel, errCode){
 	};
 	~PWM_thread ();
 	// maps the GPIO, PWM, and PWMclock peripherals.  Do this before doing anything else
@@ -131,7 +131,7 @@ class PWM_thread : public pulsedThread{
 	// configures one of the channels, 1 or 2, for output on the PWM. returns 0 for success, 1 for failure
 	int addChannel (int channel, int audioOnly, int mode, int enable, int polarity, int offState, int * arrayData, unsigned int nData);
 	// set whether PWM is using FIFO, both channels are done the same way, either both are FIFO or neither is
-	int setFIFO (int FIFOstate, int repeatLast, int isLocking);
+	int setFIFO (int FIFOstate, int isLocking);
 	// mod functions for enabling PWM output, setting polarity, and array modifications
 	int setEnable (int enableState, int channel, int isLocking);
 	int setPolarity (int polarityP, int channel, int isLocking);

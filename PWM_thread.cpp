@@ -181,7 +181,7 @@ void ptPWM_FIFO_1 (void * taskDataP){
 checks the FULL bit and feeds the FIFO from channel 2 array till it is full
 Last Modified:
 2018/09/24 - by Jamie Boyd - initial version */
-void ptPWM_Hi_FIFO_2 (void * taskDataP){
+void ptPWM_FIFO_2 (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
 	while (!(*(taskData->statusRegister) & PWM_FULL1)){
 		*(taskData->FIFOregister) = taskData->arrayData2[taskData->arrayPos2];
@@ -196,7 +196,7 @@ void ptPWM_Hi_FIFO_2 (void * taskDataP){
 checks the FULL bit and feeds the FIFO from array for channels 1 and 2 alternately till it is full
 Last Modified:
 2018/09/24 - by Jamie Boyd - initial version */
-void ptPWM_Hi_FIFO_dual (void * taskDataP){
+void ptPWM_FIFO_dual (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
 	while (!(*(taskData->statusRegister) & PWM_FULL1)){
 		if (taskData->chanFIFO==1){
@@ -204,13 +204,13 @@ void ptPWM_Hi_FIFO_dual (void * taskDataP){
 			if (taskData->arrayPos1 == taskData->stopPos1){
 				taskData->arrayPos1 = taskData->startPos1;
 			}
-			taskData->chanFIFO==2;
+			taskData->chanFIFO=2;
 		}else{
 			*(taskData->FIFOregister) = taskData->arrayData2[taskData->arrayPos2];
 			if (taskData->arrayPos2 == taskData->stopPos2){
 				taskData->arrayPos2 = taskData->startPos2;
 			}
-			taskData->chanFIFO==1;
+			taskData->chanFIFO=1;
 		}
 	}	
 }
@@ -231,28 +231,34 @@ Last Modified:
 int ptPWM_setFIFOCallback (void * modData, taskParams * theTask){
 	ptPWMStructPtr taskData = (ptPWMStructPtr) theTask->taskData;
 	int * useFIFOPtr =(int *)modData;
-	if (*useFIFOPtr & 1){
+	if (*useFIFOPtr){
 		taskData->useFIFO = 1;
 		*(PWMperi ->addr + PWM_CTL) |= PWM_USEF1;
 		*(PWMperi ->addr + PWM_CTL) |= PWM_USEF2;
-		if  (*useFIFOPtr & 2){
-			*(PWMperi ->addr + PWM_CTL) |= PWM_RPTL1;
-			*(PWMperi ->addr + PWM_CTL) |= PWM_RPTL2;
-		}else{
+		if (taskData->channels ==3){ 
+			theTask->hiFunc = &ptPWM_FIFO_dual;
+			// can't use repeat last when both channels are active
 			*(PWMperi ->addr + PWM_CTL) &= ~PWM_RPTL1;
 			*(PWMperi ->addr + PWM_CTL) &= ~PWM_RPTL2;
+		}else{
+			if (taskData->channels ==  2){
+				theTask->hiFunc =  &ptPWM_FIFO_2;
+			}else{
+				theTask->hiFunc =  &ptPWM_FIFO_1;
+			}
+			*(PWMperi ->addr + PWM_CTL) |=  PWM_RPTL1;
+			*(PWMperi ->addr + PWM_CTL) |= PWM_RPTL2;
 		}
-		
-		ptPWM_setFIFOCallback
-		
 	}else{
 		taskData->useFIFO =0;
+		theTask->hiFunc = &ptPWM_REG;
 		*(PWMperi ->addr + PWM_CTL) &= ~PWM_USEF1;
 		*(PWMperi ->addr + PWM_CTL) &= ~PWM_USEF2;
 	}	
 	delete useFIFOPtr;
 	return 0;
 }
+
 
 /* ****************** Callback to enable or disable PWM output on one or both channels ***********************
 modData is a pointer to an int, bit 0 set for channel 1, bit 1 set for channel 2
@@ -458,7 +464,8 @@ int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask){
 	return 0;
 }
 
-/* *****************************************************************************************************
+/* ***********************************************************************PWM_thread.cpp:636:27: error: 'FIFOstate' was not declared in this scope
+******************************
 
 ********************************** PWM_thread Static Class Methods *************************************
 Call these 2 methods before making a PWM_thread object. In this order:
@@ -626,7 +633,8 @@ PWM_thread * PWM_thread::PWM_threadMaker (float PWMFreq, unsigned int PWMrange, 
 	}
 	// set custom task delete function
 	newPWM_thread->setTaskDataDelFunc (&ptPWM_delTask);
-	newPWM_thread->setFIFO (useFIFO, 1,0);
+	// set FIFO state
+	newPWM_thread->useFIFO = useFIFO;
 	// set fields for freq, range, and channels, and FIFO
 	newPWM_thread->PWMfreq = setFrequency;
 	newPWM_thread->PWMrange = PWMrange;
@@ -668,7 +676,7 @@ PWM_thread * PWM_thread::PWM_threadMaker (float pwmFreq, unsigned int pwmRangeP,
 	// set custom task delete function
 	newPWM_thread->setTaskDataDelFunc (&ptPWM_delTask);
 	// set FIFO use
-	newPWM_thread->setFIFO (useFIFO, 1,0);
+	newPWM_thread->useFIFO = useFIFO;
 	// set fields for freq, range, and channels
 	newPWM_thread->PWMfreq = setFrequency;
 	newPWM_thread->PWMrange = pwmRangeP;
@@ -707,20 +715,13 @@ PWM_thread::~PWM_thread (){
 if both channels are being used, they either both use the FIFO, or both use their respective data registers
 Last Modified:
 2018/09/23 by Jamie Boyd - intial verison */
-int PWM_thread::setFIFO (int FIFOstate, int repeatLast, int isLocking){
+int PWM_thread::setFIFO (int FIFOstate, int isLocking){
 	useFIFO = FIFOstate;
 	int * useFIFOVal = new int;
-	* useFIFOVal = FIFOState + 2 * repeatLast;
-	int returnVal = modCustom (&ptPWM_setFIFOCallback, (void *) useFIFOVal, isLocking);
-	if (!(returnVal)){
-		if (FIFOState){
-			if (PWMchans == 3){
-				setHighFunc (&ptPWM_sin_func)
-			}
-		setHighFunc (&ptPWM_sin_func)
-	}
-	return returnVal;
+	* useFIFOVal = FIFOstate;
+	return modCustom (&ptPWM_setFIFOCallback, (void *) useFIFOVal, isLocking);
 }
+
 
 /* ********************************** Configures a PWM Channel ***************************************************
 Makes and fills ptPWMchanStruct and calls ptPWM_addChannelCallback
@@ -762,17 +763,7 @@ int PWM_thread::addChannel (int channel, int audioOnly, int mode, int enable, in
 	}
 	// set hi func
 	if (useFIFO){
-		if (PWMchans == 3){
-			setHighFunc (&ptPWM_FIFO_dual);
-		}else{
-			if (PWMchans == 2){
-				setHighFunc (&ptPWM_FIFO_2);
-			}else{
-				setHighFunc (&ptPWM_FIFO_1);
-			}
-		}
-	}else{
-		setHighFunc (&ptPWM_REG);
+		setFIFO (useFIFO, 0);
 	}
 	return 0;
 }

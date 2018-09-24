@@ -8,9 +8,9 @@ Last Modified:
 
 int main(int argc, char **argv){
 	// PWM settings
-	float PWMfreq = 100e03;
+	float PWMfreq = 80e03;
 	unsigned int PWMrange = 1000;
-	float toneFreq = 16000;  // tone, in Hz, that will play over the audio if directed to the speakers
+	float toneFreq = 20000;  // tone, in Hz, that will play over the audio if directed to the speakers
 	// PWM channel settings
 	int channel = 1;
 	int audioOnly =0;
@@ -32,7 +32,7 @@ int main(int argc, char **argv){
 		pulsedThreadFreq = PWMfreq;
 		accMode = ACC_MODE_SLEEPS_AND_OR_SPINS;
 	}
-	PWM_thread * myPWM  = PWM_thread::PWM_threadMaker (PWMfreq, PWMrange, pulsedThreadFreq, 0, accMode);
+	PWM_thread * myPWM  = PWM_thread::PWM_threadMaker (PWMfreq, PWMrange, useFIFO,  pulsedThreadFreq, 0, accMode);
 	
 	if (myPWM == nullptr){
 		printf ("thread maker failed to make a thread.\n");
@@ -50,14 +50,14 @@ int main(int argc, char **argv){
 	}
 	//printf ("data at 0 =%d, 1 = %d, 2 = %d, 3 = %d, 4 = %d\n", dataArray [0],  dataArray [1], dataArray [2], dataArray [3], dataArray [4]);      
 	// add the channel to the thread
-	myPWM->addChannel (channel, audioOnly, useFIFO, mode, enable, polarity, offState, dataArray, arraySize);
+	myPWM->addChannel (channel, audioOnly, mode, enable, polarity, offState, dataArray, arraySize);
 	// enable the PWM to output
 	myPWM->setEnable (1, channel, 0);
 	//myPWM->setPolarity (1, 1,0);
 	//myPWM->setOffState (1,1,0);
 	// start the thread doing an infinite train for 10 seconds
 	myPWM->startInfiniteTrain ();
-	myPWM->waitOnBusy (10);
+	myPWM->waitOnBusy (15);
 	myPWM->stopInfiniteTrain ();
 	/*
 	myPWM->setEnable (0, channel, 0);
