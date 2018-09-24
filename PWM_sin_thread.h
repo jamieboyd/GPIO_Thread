@@ -5,15 +5,14 @@
 
 
 /* *********************** PWM_sin_thread ********************************************************
-Subclasses PWM_thread with goal of outputting a sine wave at user-settable frequency.
-To that end, range is set to 1000 and frequency is 250k. This is about as fast as you can go; 
-the clock it uses is the 500MHz PLL D with the integer divider being 2.  Could get faster update with
-a smaller range; these values work well for audio frequencies
+Subclasses PWM_thread with goal of outputting a cleanish sine wave at user-settable frequency.
+To that end, range is set to 1000 and PWM update frequency is 100 kHz.
+
+The pulsedThread is configured as an infinite train. Because we use the FIFO for PWM data,
+we can set the thread update rate 10X slower than PWM update frequency, and we can use the 
+less intensive ACC_MODE_SLEEPS_AND_SPINS thread timing mode.
 */
 
-const unsigned int  PWM_SIN_UPDATE_FREQ = 21.6e3;
-const unsigned int PWM_SIN_RANGE = 1000;
-const double PHI = 6.2831853071794;
 
 
 /* *********************** Forward declare functions used by thread *************************/
@@ -24,14 +23,12 @@ int ptPWM_setFrequencyCallback (void * modData, taskParams * theTask);
 /* ********************************************* PWM_sin_thread class *********************************************
 superclass is PWM_thread. Modified to continuously output a sine wave of user-set frequency, from 1Hz to 25 KHz, in steps of 1 Hz
 last modified:
+2018/09/21 by Jamie Boyd - updated for separate channels, and using FIFO 
 2018/09/12 by Jamie Boyd - initial verison */
 class PWM_sin_thread : public PWM_thread{
 	public:
-	/* constructor, we will call the superclass constructor with float  times in microseconds and number of pulses */
-	PWM_sin_thread (void * initData, int &errCode) : PWM_thread ((float)PWM_SIN_UPDATE_FREQ, 0, initData, ACC_MODE_SLEEPS_AND_OR_SPINS, errCode) {
-	};
 	/* Static thread maker makes and fill an init struct, calls constructor, and return a pointer to a new PWM_sin_thread */
-	static PWM_sin_thread * PWM_sin_threadMaker (int channel, int enable, unsigned int initialFreq);
+	static PWM_sin_thread * PWM_sin_threadMaker (void);
 	// sets the frequency to output
 	int setFrequency (unsigned int newFrequency, int isLocking);
 	protected:

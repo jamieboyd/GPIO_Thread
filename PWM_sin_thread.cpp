@@ -1,5 +1,9 @@
 #include "PWM_sin_thread.h"
 
+static const unsigned int PWM_UPDATE_FREQ = 100e03; // The PWM output is updated at this frequency
+static const float THREAD_UPDATE_FREQ = 10e03; // pulsed thread update frequency, slower than PWM update
+static const unsigned int PWM_RANGE = 1000; // data for sine wave ranges from 0 to 999
+static const double PHI = 6.2831853071794;  // this is just pi * 2, used for making a sin wave
 
 /* ******************************************  PWM_sin_thread  functions for pulsedThread *****************************************
 
@@ -14,12 +18,53 @@ Last Modified:
 2018/09/13 by Jamie Boyd - original verison*/
 void ptPWM_sin_func (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
+	
 	*(taskData->dataRegister) = taskData-> arrayData[taskData->arrayPos];
-	taskData->arrayPos += taskData->startPos;  // startPos is hijacked to use  for frequency, so we can use same structs as superclass. 
+	taskData->arrayPos += taskData->startPos;  // startPos is hijacked to use for frequency, so we can use same structs as base class. 
 	if (taskData->arrayPos >= taskData->nData){
 		taskData->arrayPos = taskData->arrayPos % (taskData->nData);
 	}
 }
+
+
+void ptPWM_Hi (void * taskDataP){
+	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
+	if (taskData->useFIFO){
+		while (!(*(taskData->statusRegister)  & PWM_FULL1)){
+			if (taskData->channels & 1){
+				*(taskData->FIFOregister) = taskData->arrayData1[taskData->arrayPos1];
+				taskData->arrayPos1 += 1;
+				if (taskData->arrayPos1 == taskData->stopPos1){
+					taskData->arrayPos1 = taskData->startPos1;
+				}
+			}
+			if (taskData->channels & 2){
+				*(taskData->FIFOregister) = taskData->arrayData2[taskData->arrayPos2];
+				taskData->arrayPos2 += 1;
+				if (taskData->arrayPos2 == taskData->stopPos2){
+					taskData->arrayPos2 = taskData->startPos2;
+				}
+			}
+		}
+	}else{
+		if (taskData->channels & 1){
+			*(taskData->dataRegister1) = taskData->arrayData1[taskData->arrayPos1];
+			taskData->arrayPos1 += 1;
+			if (taskData->arrayPos1 == taskData->stopPos1){
+			taskData->arrayPos1 = taskData->startPos1;
+			}
+		}
+		if (taskData->channels & 2){
+			*(taskData->dataRegister2) = taskData->arrayData2[taskData->arrayPos2];
+			taskData->arrayPos2 += 1;
+			if (taskData->arrayPos2 == taskData->stopPos2){
+			taskData->arrayPos2 = taskData->startPos2;
+			}
+		}
+	}
+}
+
+
 
 /* *************************** Sets frequency of sine wave to be output ***************
 modData is a pointer to an unsigned int, the frequency in Hz, to be next output, and outputs it
@@ -38,8 +83,19 @@ int ptPWM_setFrequencyCallback (void * modData, taskParams * theTask){
 
 
  ********************************************* PWM_sin_threadMaker***********************************************************
-returns a pointer to a new PWM_sin_thread object.  */
-PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channel, int enable, unsigned int initialFreq){
+returns a pointer to a new PWM_sin_thread object, made by making a regular PWM_thread with required settings and recasting it
+to a PWM_sin_thread and then installing the sine wave outputting hi func
+Last Modified:
+2018/09/22 by Jamie Boyd - updated to use FIFO for PWM and better channel organization
+2018/09/13 by Jamie Boyd - initial version */
+PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (){
+	
+	float pwmFreq, unsigned int pwmRange,  float frequency, float trainDuration, int accuracyLevel
+	PWM_sin_thread * new_pwm_sin = (PWM_sin_thread *)PWM_thread::PWM_threadMaker(PWM_UPDATE_FREQ, PWM_RANGE, THREAD_UPDATE_FREQ, kINFINITETRAIN,ACC_MODE_SLEEPS_AND_SPINS);
+	// install PWM_sin_thread custom function to replace PWM_Thread
+	new_pwm_sin->setHighFunc (&ptPWM_sin_func); // sets the function that is called on high part of cycle
+	
+	
 	
 	
 	// ensure peripherals for PWM controller are mapped

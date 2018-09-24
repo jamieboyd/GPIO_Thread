@@ -11,18 +11,12 @@ last modified:
 2018/08/07 by Jamie Boyd - modified for pulsedThread subclassing
 2017/02/20 by Jamie Boyd - initial version  */
 int ptPWM_Init (void * initDataP, void * &taskDataP){
-#if beVerbose
-		printf ("ptPWM_Init called.\n");
-#endif
-	// initDataP in this case is NULL, we don't use it
 	// taskDataP is a pointer that needs to be allocated to taskCustomData
 	ptPWMStructPtr taskData = new ptPWMStruct;
 	taskDataP = taskData;
-#if beVerbose
-		printf ("ptPWM_Init: taskDataP initialized\n");
-#endif
-	// start with channels at 0
+	// start with channels at 0, and NOT using FIFO
 	taskData->channels = 0;
+	taskData->useFIFO = 0;
 	// save ctl and data register addresses in task data for easy access
 	taskData->ctlRegister = PWMperi->addr + PWM_CTL;
 	taskData->statusRegister = PWMperi->addr + PWM_STA;
@@ -50,8 +44,6 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 	unsigned int enableBit;
 	unsigned int polarityBit;
 	unsigned int offStateBit;
-	unsigned int useFIFObit;
-	unsigned int repeatFIFObit;
 	if (chanAddPtr->channel == 1){
 		// set channel 1 in taskData
 		taskData->channels |= 1;
@@ -60,7 +52,6 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 		taskData->nData1 = chanAddPtr->nData;
 		taskData->startPos1 =0;
 		taskData->stopPos1 = chanAddPtr->nData;
-		taskData->useFIFO1=chanAddPtr->useFIFO;
 		// set up GPIO
 		if (chanAddPtr->audioOnly ){
 			taskData->audioOnly1 =1;
@@ -75,8 +66,6 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 		enableBit = PWM_PWEN1;
 		polarityBit = PWM_POLA1;
 		offStateBit = PWM_SBIT1;
-		useFIFObit = PWM_USEF1;
-		repeatFIFObit = PWM_RPTL1;
 	}else{
 		if (chanAddPtr->channel == 2){
 			// set channel 2 in taskData
@@ -86,7 +75,6 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 			taskData->nData2 = chanAddPtr->nData;
 			taskData->startPos1 =0;
 			taskData->stopPos1 = chanAddPtr->nData;
-			taskData->useFIFO2=chanAddPtr->useFIFO;
 			// set up GPIO
 			if (chanAddPtr->audioOnly){
 				taskData->audioOnly2 = 1;
@@ -101,8 +89,6 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 			enableBit = PWM_PWEN2;
 			polarityBit = PWM_POLA2;
 			offStateBit = PWM_SBIT2;
-			useFIFObit = PWM_USEF2;
-			repeatFIFObit = PWM_RPTL2;
 		}else{
 			printf ("The PWM channel to be configured, %d, does not exist/n", chanAddPtr->channel);
 			delete chanAddPtr;
@@ -131,14 +117,6 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 	}else{
 		registerVal |= offStateBit; // set OFFstate bit for hi
 	}
-	// set FIFO status
-	if (chanAddPtr->useFIFO){
-		registerVal |= useFIFObit;
-		registerVal |= repeatFIFObit;
-	}else{
-		registerVal &= ~useFIFObit;
-		registerVal &= ~repeatFIFObit;
-	}
 	// set initial enable state
 	if (chanAddPtr->enable){
 		// set initial PWM value first so we have something to put out
@@ -149,65 +127,131 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 	}
 	// finally, copy registerVal back to the register
 	*(PWMperi ->addr + PWM_CTL)=registerVal;
+	
+	
 #if beVerbose
 	printf ("PWM Data register for channel %d contains %d.\n",chanAddPtr->channel , *(PWMperi->addr + dataRegisterOffset));
 	printf ("PWM Control Register = 0x%x.\n", *(PWMperi ->addr + PWM_CTL));
 #endif
 	delete chanAddPtr;
-	
 	return 0;
 }
 
-/* *********************************** PWM Hi function (no low function) ******************************
-gets the next value from the array to be output and writes it to the data register
+/* *********************************** PWM Hi function (no low function) when using data registers ******************************
+gets the next value from the array to be output and writes it to the data register for 1, 
 Last Modified:
+2018/09/24 - by Jamie Boyd - breaking out FIFO hi func
 2018/09/21 by Jamie Boyd - adding FIFO
 2018/09/18 by Jamie Boyd- updated for two channel 1 thread
 2018/08/07 by Jamie Boyd -updated for pusledThread subclass */
-void ptPWM_Hi (void * taskDataP){
+void ptPWM_REG (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
-	if (taskData->useFIFO1){
-		while (!(*(taskData->statusRegister)  & PWM_FULL1)){
-			if (taskData->channels & 1){
-				*(taskData->FIFOregister) = taskData->arrayData1[taskData->arrayPos1];
-				taskData->arrayPos1 += 1;
-				if (taskData->arrayPos1 == taskData->stopPos1){
-					taskData->arrayPos1 = taskData->startPos1;
-				}
-			}
-			if (taskData->channels & 2){
-				*(taskData->FIFOregister) = taskData->arrayData2[taskData->arrayPos2];
-				taskData->arrayPos2 += 1;
-				if (taskData->arrayPos2 == taskData->stopPos2){
-					taskData->arrayPos2 = taskData->startPos2;
-				}
-			}
-		}
-	}else{
-		if (taskData->channels & 1){
-			*(taskData->dataRegister1) = taskData->arrayData1[taskData->arrayPos1];
-			taskData->arrayPos1 += 1;
-			if (taskData->arrayPos1 == taskData->stopPos1){
+	if (taskData->enable1){
+		*(taskData->dataRegister1) = taskData->arrayData1[taskData->arrayPos1];
+		taskData->arrayPos1 += 1;
+		if (taskData->arrayPos1 == taskData->stopPos1){
 			taskData->arrayPos1 = taskData->startPos1;
-			}
 		}
-		if (taskData->channels & 2){
-			*(taskData->dataRegister2) = taskData->arrayData2[taskData->arrayPos2];
-			taskData->arrayPos2 += 1;
-			if (taskData->arrayPos2 == taskData->stopPos2){
+	}
+	if (taskData->enable2){
+		*(taskData->dataRegister2) = taskData->arrayData2[taskData->arrayPos2];
+		taskData->arrayPos2 += 1;
+		if (taskData->arrayPos2 == taskData->stopPos2){
 			taskData->arrayPos2 = taskData->startPos2;
-			}
+		}
+	}
+}
+/* *********************************** PWM Hi function when using FIFO fir channel 1 ******************************
+checks the FULL bit and feeds the FIFO from channel 1 array till it is full
+Last Modified:
+2018/09/24 - by Jamie Boyd - initial version */
+void ptPWM_FIFO_1 (void * taskDataP){
+	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
+	
+	while (!(*(taskData->statusRegister) & PWM_FULL1)){
+		*(taskData->FIFOregister) = taskData->arrayData1[taskData->arrayPos1];
+		taskData->arrayPos1 += 1;
+		if (taskData->arrayPos1 == taskData->stopPos1){
+			taskData->arrayPos1 = taskData->startPos1;
 		}
 	}
 }
 
-/* ****************************** PWN Custom delete Function *****************************************************
+/* *********************************** PWM Hi function when using FIFO for channel 2 ******************************
+checks the FULL bit and feeds the FIFO from channel 2 array till it is full
+Last Modified:
+2018/09/24 - by Jamie Boyd - initial version */
+void ptPWM_Hi_FIFO_2 (void * taskDataP){
+	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
+	while (!(*(taskData->statusRegister) & PWM_FULL1)){
+		*(taskData->FIFOregister) = taskData->arrayData2[taskData->arrayPos2];
+		taskData->arrayPos2 += 1;
+		if (taskData->arrayPos2 == taskData->stopPos2){
+			taskData->arrayPos2 = taskData->startPos2;
+		}
+	}
+}
+
+/* *********************************** PWM Hi function when using FIFO with both channels ******************************
+checks the FULL bit and feeds the FIFO from array for channels 1 and 2 alternately till it is full
+Last Modified:
+2018/09/24 - by Jamie Boyd - initial version */
+void ptPWM_Hi_FIFO_dual (void * taskDataP){
+	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
+	while (!(*(taskData->statusRegister) & PWM_FULL1)){
+		if (taskData->chanFIFO==1){
+			*(taskData->FIFOregister) = taskData->arrayData1[taskData->arrayPos1];
+			if (taskData->arrayPos1 == taskData->stopPos1){
+				taskData->arrayPos1 = taskData->startPos1;
+			}
+			taskData->chanFIFO==2;
+		}else{
+			*(taskData->FIFOregister) = taskData->arrayData2[taskData->arrayPos2];
+			if (taskData->arrayPos2 == taskData->stopPos2){
+				taskData->arrayPos2 = taskData->startPos2;
+			}
+			taskData->chanFIFO==1;
+		}
+	}	
+}
+
+/* ****************************** PWM Custom delete Function *****************************************************
 deletes the custom data structure, that's it.  Thread does not "own" array data - whover made the thread deletes that array
 Last Modified:
 2018/08/07 by Jamie Boyd -updated for pusledThread subclass */
 void ptPWM_delTask (void * taskData){
 	ptPWMStructPtr pwmTaskPtr = (ptPWMStructPtr) taskData;
 	delete pwmTaskPtr;
+}
+
+/* ************************ callback to turn on or off use of FIFO vs data registers *********************
+modData is a pointer to an int, 0 to use dataRegisters, 1 to use FIFO for either or both channels
+Last Modified:
+2018/09/23 by Jamie Boyd - initial version */
+int ptPWM_setFIFOCallback (void * modData, taskParams * theTask){
+	ptPWMStructPtr taskData = (ptPWMStructPtr) theTask->taskData;
+	int * useFIFOPtr =(int *)modData;
+	if (*useFIFOPtr & 1){
+		taskData->useFIFO = 1;
+		*(PWMperi ->addr + PWM_CTL) |= PWM_USEF1;
+		*(PWMperi ->addr + PWM_CTL) |= PWM_USEF2;
+		if  (*useFIFOPtr & 2){
+			*(PWMperi ->addr + PWM_CTL) |= PWM_RPTL1;
+			*(PWMperi ->addr + PWM_CTL) |= PWM_RPTL2;
+		}else{
+			*(PWMperi ->addr + PWM_CTL) &= ~PWM_RPTL1;
+			*(PWMperi ->addr + PWM_CTL) &= ~PWM_RPTL2;
+		}
+		
+		ptPWM_setFIFOCallback
+		
+	}else{
+		taskData->useFIFO =0;
+		*(PWMperi ->addr + PWM_CTL) &= ~PWM_USEF1;
+		*(PWMperi ->addr + PWM_CTL) &= ~PWM_USEF2;
+	}	
+	delete useFIFOPtr;
+	return 0;
 }
 
 /* ****************** Callback to enable or disable PWM output on one or both channels ***********************
@@ -415,6 +459,7 @@ int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask){
 }
 
 /* *****************************************************************************************************
+
 ********************************** PWM_thread Static Class Methods *************************************
 Call these 2 methods before making a PWM_thread object. In this order:
 1) map the peripherals
@@ -553,7 +598,7 @@ Last Modified:
 2018/08/06 by Jamie Boyd - Initial Version, copied and modified from GPIO thread maker */
 
 // ***************** Integer pulse duration and number of pulses timing description inputs ************************************
-PWM_thread * PWM_thread::PWM_threadMaker (float PWMFreq, unsigned int PWMrange, unsigned int durUsecs, unsigned int nPulses, int accuracyLevel) {
+PWM_thread * PWM_thread::PWM_threadMaker (float PWMFreq, unsigned int PWMrange, int useFIFO, unsigned int durUsecs, unsigned int nPulses, int accuracyLevel) {
 	
 	// ensure peripherals for PWM controller are mapped
 	int mapResult = PWM_thread::mapPeripherals ();
@@ -581,7 +626,8 @@ PWM_thread * PWM_thread::PWM_threadMaker (float PWMFreq, unsigned int PWMrange, 
 	}
 	// set custom task delete function
 	newPWM_thread->setTaskDataDelFunc (&ptPWM_delTask);
-	// set fields for freq, range, and channels
+	newPWM_thread->setFIFO (useFIFO, 1,0);
+	// set fields for freq, range, and channels, and FIFO
 	newPWM_thread->PWMfreq = setFrequency;
 	newPWM_thread->PWMrange = PWMrange;
 	newPWM_thread->PWMchans = 0;
@@ -590,7 +636,7 @@ PWM_thread * PWM_thread::PWM_threadMaker (float PWMFreq, unsigned int PWMrange, 
 }
 
 // *************** floating point frequency and trainDuration timing description inputs *****************************
-PWM_thread * PWM_thread::PWM_threadMaker (float pwmFreq, unsigned int pwmRangeP,  float frequency, float trainDuration, int accuracyLevel){
+PWM_thread * PWM_thread::PWM_threadMaker (float pwmFreq, unsigned int pwmRangeP, int useFIFO, float frequency, float trainDuration, int accuracyLevel){
 	// ensure peripherals for PWM controller are mapped
 	
 	int mapResult = PWM_thread::mapPeripherals ();
@@ -621,6 +667,8 @@ PWM_thread * PWM_thread::PWM_threadMaker (float pwmFreq, unsigned int pwmRangeP,
 	}
 	// set custom task delete function
 	newPWM_thread->setTaskDataDelFunc (&ptPWM_delTask);
+	// set FIFO use
+	newPWM_thread->setFIFO (useFIFO, 1,0);
 	// set fields for freq, range, and channels
 	newPWM_thread->PWMfreq = setFrequency;
 	newPWM_thread->PWMrange = pwmRangeP;
@@ -655,18 +703,36 @@ PWM_thread::~PWM_thread (){
 	unUsePWMClockperi();
 }
 
+/* ************************************ SetsPWM peripheral to use either the FIFO or the data registers *************************** 
+if both channels are being used, they either both use the FIFO, or both use their respective data registers
+Last Modified:
+2018/09/23 by Jamie Boyd - intial verison */
+int PWM_thread::setFIFO (int FIFOstate, int repeatLast, int isLocking){
+	useFIFO = FIFOstate;
+	int * useFIFOVal = new int;
+	* useFIFOVal = FIFOState + 2 * repeatLast;
+	int returnVal = modCustom (&ptPWM_setFIFOCallback, (void *) useFIFOVal, isLocking);
+	if (!(returnVal)){
+		if (FIFOState){
+			if (PWMchans == 3){
+				setHighFunc (&ptPWM_sin_func)
+			}
+		setHighFunc (&ptPWM_sin_func)
+	}
+	return returnVal;
+}
+
 /* ********************************** Configures a PWM Channel ***************************************************
 Makes and fills ptPWMchanStruct and calls ptPWM_addChannelCallback
 Last Modified:
 2018/09/20 by Jamie Boyd - added option to use a FIFO
 2018/09/20 by Jamie Boyd - made call to modCustom non-locking, so best not add channels while thread is running
 2018/09/19 by Jamie Boyd - initial version */
-int PWM_thread::addChannel (int channel, int audioOnly, int useFIFO, int mode, int enable, int polarity, int offState, int * arrayData, unsigned int nData){
+int PWM_thread::addChannel (int channel, int audioOnly, int mode, int enable, int polarity, int offState, int * arrayData, unsigned int nData){
 	
 	ptPWMchanAddStructPtr addStructPtr = new ptPWMchanAddStruct;
 	addStructPtr->channel = channel;
 	addStructPtr->audioOnly = audioOnly;
-	addStructPtr->useFIFO = useFIFO;
 	addStructPtr->mode = mode;
 	addStructPtr->enable = enable;
 	addStructPtr->polarity = polarity;
@@ -693,6 +759,20 @@ int PWM_thread::addChannel (int channel, int audioOnly, int useFIFO, int mode, i
 			polarity2 = polarity;
 			offState2 = offState;
 		}
+	}
+	// set hi func
+	if (useFIFO){
+		if (PWMchans == 3){
+			setHighFunc (&ptPWM_FIFO_dual);
+		}else{
+			if (PWMchans == 2){
+				setHighFunc (&ptPWM_FIFO_2);
+			}else{
+				setHighFunc (&ptPWM_FIFO_1);
+			}
+		}
+	}else{
+		setHighFunc (&ptPWM_REG);
 	}
 	return 0;
 }
@@ -837,14 +917,12 @@ ptPWMchanInfoStructPtr PWM_thread::getChannelInfo (int theChannel){
 	infoPtr = new ptPWMchanInfoStruct;
 	if (theChannel == 1){
 		infoPtr->audioOnly = audioOnly1;
-		infoPtr->useFIFO = useFIFO1;
 		infoPtr->mode = mode1;
 		infoPtr->enable = enabled1;
 		infoPtr->polarity = polarity1;
 		infoPtr->offState = offState1;
 	}else{
 		infoPtr->audioOnly = audioOnly2;
-		infoPtr->useFIFO = useFIFO2;
 		infoPtr->mode = mode2;
 		infoPtr->enable = enabled2;
 		infoPtr->polarity = polarity2;
