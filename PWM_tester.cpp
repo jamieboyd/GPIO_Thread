@@ -51,12 +51,10 @@ int main(int argc, char **argv){
 	//printf ("data at 0 =%d, 1 = %d, 2 = %d, 3 = %d, 4 = %d\n", dataArray [0],  dataArray [1], dataArray [2], dataArray [3], dataArray [4]);      
 	// add the channel to the thread
 	myPWM->addChannel (channel, audioOnly, mode, enable, polarity, offState, dataArray, arraySize);
-	// enable the PWM to output
-	myPWM->setEnable (1, channel, 0);
-	//myPWM->setPolarity (1, 1,0);
-	//myPWM->setOffState (1,1,0);
 	// start the thread doing an infinite train for 10 seconds
 	myPWM->startInfiniteTrain ();
+	// enable the PWM to output
+	myPWM->setEnable (1, channel, 0);
 	myPWM->waitOnBusy (15);
 	myPWM->stopInfiniteTrain ();
 	/*
@@ -75,7 +73,7 @@ int main(int argc, char **argv){
 	myPWM->stopInfiniteTrain ();
 	myPWM->setEnable (0, channel, 0);
 	*/
-	usleep (200);
+	usleep (200); // just to be sure train is stopped
 	delete myPWM;
 	delete dataArray;
 	return 0;

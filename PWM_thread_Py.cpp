@@ -1,6 +1,6 @@
 #include <pyPulsedThread.h>
-#include "PWM_thread.h"
-
+//#include "PWM_thread.h"
+#include "PWM_sin_thread.h"
 
 /* ************ Python C module using PWM_thread to do PWM output from Python ******************************
 USes the PWM peripheral to output data from PWM channel 1 appearing on the audio Right channel, 
@@ -31,7 +31,7 @@ Last Modified;
 	unsigned int durUsecs;
 	unsigned int nPulses;
 	int accuracyLevel;
-	if (!PyArg_ParseTuple(args,"fIiIIi", &pwmFreq, &pwmRange, &useFIFO, &durUsecs, &nPulses, &accuracyLevel)) {
+	if (!PyArg_ParseTuple(args,"fIiIIi", &pwmFreq, &pwmRange, &useFIFO, &durUsecs, &nPulses, &accuracyLevel)){
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse inputs for PWM frequency, PWM range, pulse useconds, number of pulses, and thread accuracy.");
 		return NULL;
 	}
@@ -63,6 +63,16 @@ static PyObject* ptPWM_freqDuty (PyObject *self, PyObject *args) {
 	PWM_thread * threadObj = PWM_thread::PWM_threadMaker (pwmFreq, pwmRange, useFIFO, trainFreq, trainDur, accuracyLevel);
 	if (threadObj == nullptr){
 		PyErr_SetString (PyExc_RuntimeError, "PWM_threadMaker was not able to make a PWM object");
+		return NULL;
+	}else{
+		return PyCapsule_New (static_cast <void *>(threadObj), "pulsedThread", ptPWM_del);
+	}
+}
+
+static PyObject* ptPWM_sin (PyObject *self, PyObject *noargs) {
+	PWM_sin_thread * threadObj = PWM_thread::PWM_sin_threadMaker ();
+	if (threadObj == nullptr){
+		PyErr_SetString (PyExc_RuntimeError, "PWM_sin threadMaker was not able to make a PWM_sin object");
 		return NULL;
 	}else{
 		return PyCapsule_New (static_cast <void *>(threadObj), "pulsedThread", ptPWM_del);
@@ -211,6 +221,21 @@ static PyObject* ptPWM_setArraySubrange (PyObject *self, PyObject *args){
 	return Py_BuildValue("i", threadPtr ->setArraySubrange(startPos, stopPos, channel, isLocking));
 }
 
+static PyObject* ptPWM_setSinFreq (PyObject *self, PyObject *args){
+	PyObject *PyPtr;
+	unsigned int newFrequency;
+	int channel;
+	int isLocking;
+	if (!PyArg_ParseTuple(args,"OIIii", &PyPtr, &newFrequency, &channel, &isLocking)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object, frequency, channel, and isLocking.");
+		return NULL;
+	}
+	// get pointer to PWM_sin_thread
+	PWM_thread * threadPtr = static_cast<PWM_sin_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	// Call thread's setFreq function and return the result
+	return Py_BuildValue("i", threadPtr ->setSinFrequency(newFrequenc, channel, isLocking));
+}
+
 /* **********************************Sets a new array of data to be output next ************************
 Last Modified:
 2018/09/21 by Jamie Boyd - initial version */
@@ -305,6 +330,7 @@ static PyMethodDef ptPWMMethods[] = {
 		
 	{"newDelayDur", ptPWM_delayDur, METH_VARARGS, "(pwmFreq, pwmRange, durUsecs, nPulses, accuracyLevel) Creates and configures new PWM task"},
 	{"newFreqDuty", ptPWM_freqDuty, METH_VARARGS, "(pwmFreq, pwmRange, trainFreq , trainDuration) Creates and configures new PWM task"},
+	{"newSin", ptPWM_sin, METH_NOARG, "(void) creates a new PWM_sin task."},
 	{"addChannel", ptPWM_addChannel,METH_VARARGS, "(PyCapsule,channel, audioOnly, mode, enable, polarity, offState, dataArray)"},
 	{"setEnable", ptPWM_setEnable, METH_VARARGS, "(PyCapsule, enableState, channel, isLocking) Enables or disables the PWM channel"},
 	{"setPolarity", ptPWM_setpolarity, METH_VARARGS, "(PyCapsule, polarity, channel, isLocking) Sets polarity of the PWM channel"},
@@ -312,6 +338,7 @@ static PyMethodDef ptPWMMethods[] = {
 	{"setArrayPos", ptPWM_setArrayPos, METH_VARARGS, "(PyCapsule, arrayPos, channel, isLocking) Sets next position in array of data"},
 	{"setArraySubRange", ptPWM_setArraySubrange, METH_VARARGS, "(PyCapsule, startPos, stopPos, channel, isLocking) Selects subset of data"},
 	{"setArray", ptPWM_setArray, METH_VARARGS, "(PyCapsule,  array, channel, isLocking) Sets the array of data for pulsedThread to feed to PWM"},
+	{"setSinFreq", ptPWM_setSinFreq, METH_VARARGS, "(PyCapsule,  sin Frequency, channel, isLocking) Sets the frequency of sine wave that a PWM_sin outputs "},
 	{"getPWMFreq", ptPWM_getPWMFreq, METH_O, "(PyCapsule) returns the PWM update frequency"},
 	{"getPWMRange", ptPWM_getPWMRange, METH_O, "(PyCapsule) returns the PWM range"},
 	{"getChannels", ptPWM_getChannels, METH_O, "(PyCapsule) returns a bit-wise number indicating which PWM channels are configured"},

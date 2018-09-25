@@ -161,13 +161,13 @@ void ptPWM_REG (void * taskDataP){
 		}
 	}
 }
+
 /* *********************************** PWM Hi function when using FIFO fir channel 1 ******************************
 checks the FULL bit and feeds the FIFO from channel 1 array till it is full
 Last Modified:
 2018/09/24 - by Jamie Boyd - initial version */
 void ptPWM_FIFO_1 (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
-	
 	while (!(*(taskData->statusRegister) & PWM_FULL1)){
 		*(taskData->FIFOregister) = taskData->arrayData1[taskData->arrayPos1];
 		taskData->arrayPos1 += 1;
@@ -201,12 +201,14 @@ void ptPWM_FIFO_dual (void * taskDataP){
 	while (!(*(taskData->statusRegister) & PWM_FULL1)){
 		if (taskData->chanFIFO==1){
 			*(taskData->FIFOregister) = taskData->arrayData1[taskData->arrayPos1];
+			taskData->arrayPos1 += 1;
 			if (taskData->arrayPos1 == taskData->stopPos1){
 				taskData->arrayPos1 = taskData->startPos1;
 			}
 			taskData->chanFIFO=2;
 		}else{
 			*(taskData->FIFOregister) = taskData->arrayData2[taskData->arrayPos2];
+			taskData->arrayPos2 += 1;
 			if (taskData->arrayPos2 == taskData->stopPos2){
 				taskData->arrayPos2 = taskData->startPos2;
 			}
@@ -272,13 +274,25 @@ int ptPWM_setEnableCallback (void * modData, taskParams * theTask){
 	if (*enablePtr & 4){ // we are enabling
 		if (*enablePtr & 1){
 			// set PWM value first so we are putting out current value
-			*(taskData->dataRegister1) = taskData->arrayData1[taskData->arrayPos1];
+			if (taskData->useFIFO){
+				if (*(taskData->statusRegister) & PWM_EMPT1){
+					*(taskData->FIFOregister) = taskData->arrayData1[taskData->arrayPos1];
+				}
+			}else{ //
+				*(taskData->dataRegister1) = taskData->arrayData1[taskData->arrayPos1];
+			}
 			*(taskData -> ctlRegister) |= PWM_PWEN1; // set enable bit
 			taskData->enable1 =1;
 		}
 		if (*enablePtr & 2){
 			// set PWM value first so we are putting out current value
-			*(taskData->dataRegister2) = taskData->arrayData2[taskData->arrayPos2];
+			if (taskData->useFIFO){
+				if (*(taskData->statusRegister) & PWM_EMPT1){
+					*(taskData->FIFOregister) = taskData->arrayData2[taskData->arrayPos2];
+				}
+			}else{ 
+				*(taskData->dataRegister2) = taskData->arrayData2[taskData->arrayPos2];
+			}
 			*(taskData -> ctlRegister) |= PWM_PWEN2; // set enable bit
 			taskData->enable2 =1;
 		}
@@ -377,7 +391,7 @@ int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask){
 		// check stop position or changing array data
 		if ((modDataPtr->modBits) & 10){
 			if (modDataPtr->stopPos > 0){
-				if (modDataPtr->stopPos  < taskData->nData1){
+				if (modDataPtr->stopPos < taskData->nData1){
 					taskData -> stopPos1 = modDataPtr->stopPos;
 				}else{
 					taskData ->stopPos1 = taskData->nData1;
@@ -406,7 +420,13 @@ int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask){
 			}
 		}
 		// update output
-		*(taskData->dataRegister1) = taskData->arrayData1[taskData-> arrayPos1];
+		if (taskData->useFIFO){
+			if (*(taskData->statusRegister) & PWM_EMPT1){
+				*(taskData->FIFOregister) = taskData->arrayData1[taskData->arrayPos1];
+			}
+		}else{
+			*(taskData->dataRegister1) = taskData->arrayData1[taskData-> arrayPos1];
+		}
 #if beVerbose
 		printf ("start pos = %d, end pos = %d, nData = %d.\n",taskData->startPos1, taskData->stopPos1, taskData->nData1);
 #endif
@@ -458,14 +478,19 @@ int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask){
 			}
 		}
 		// update output
-		*(taskData->dataRegister2) = taskData->arrayData2[taskData-> arrayPos2];
+		if (taskData->useFIFO){
+			if (*(taskData->statusRegister) & PWM_EMPT1){
+				*(taskData->FIFOregister) = taskData->arrayData2[taskData->arrayPos2];
+			}
+		}else{
+			*(taskData->dataRegister2) = taskData->arrayData2[taskData-> arrayPos2];
+		}
 	}
 	delete modDataPtr;
 	return 0;
 }
 
-/* ***********************************************************************PWM_thread.cpp:636:27: error: 'FIFOstate' was not declared in this scope
-******************************
+/* ******************************************* PWM_thread Class******************************
 
 ********************************** PWM_thread Static Class Methods *************************************
 Call these 2 methods before making a PWM_thread object. In this order:
@@ -567,7 +592,7 @@ float PWM_thread::setClock (float PWMFreq, unsigned int PWMrange){
 	}
 	// configure clock dividers
 	unsigned int integerDivisor = clockSrcRate/clockFreq; // Divisor Value for clock, clock source freq/Divisor = PWM hz
-	unsigned int fractionalDivisor = ((float)(clockSrcRate/clockFreq) - integerDivisor) * 4096;
+	unsigned int fractionalDivisor = (((float)clockSrcRate/(float)clockFreq) - integerDivisor) * 4096;
 	float actualClockRate = (clockSrcRate/(integerDivisor + (fractionalDivisor/4095)));
 #if beVerbose
 	printf ("Calculated integer divisor is %d and fractional divisor is %d for a clock rate of %.3f.\n", integerDivisor, fractionalDivisor, actualClockRate);
@@ -711,17 +736,6 @@ PWM_thread::~PWM_thread (){
 	unUsePWMClockperi();
 }
 
-/* ************************************ SetsPWM peripheral to use either the FIFO or the data registers *************************** 
-if both channels are being used, they either both use the FIFO, or both use their respective data registers
-Last Modified:
-2018/09/23 by Jamie Boyd - intial verison */
-int PWM_thread::setFIFO (int FIFOstate, int isLocking){
-	useFIFO = FIFOstate;
-	int * useFIFOVal = new int;
-	* useFIFOVal = FIFOstate;
-	return modCustom (&ptPWM_setFIFOCallback, (void *) useFIFOVal, isLocking);
-}
-
 
 /* ********************************** Configures a PWM Channel ***************************************************
 Makes and fills ptPWMchanStruct and calls ptPWM_addChannelCallback
@@ -729,7 +743,7 @@ Last Modified:
 2018/09/20 by Jamie Boyd - added option to use a FIFO
 2018/09/20 by Jamie Boyd - made call to modCustom non-locking, so best not add channels while thread is running
 2018/09/19 by Jamie Boyd - initial version */
-int PWM_thread::addChannel (int channel, int audioOnly, int mode, int enable, int polarity, int offState, int * arrayData, unsigned int nData){
+int PWM_thread::addChannel (int channel, int audioOnly, int PWMmode, int enable, int polarity, int offState, int * arrayData, unsigned int nData){
 	
 	ptPWMchanAddStructPtr addStructPtr = new ptPWMchanAddStruct;
 	addStructPtr->channel = channel;
@@ -747,7 +761,7 @@ int PWM_thread::addChannel (int channel, int audioOnly, int mode, int enable, in
 	if (channel == 1){
 		PWMchans |= 1;
 		audioOnly1 = audioOnly;
-		mode1 = mode;
+		PWMmode1 = PWMmode;
 		enabled1 = enable;
 		polarity1 = polarity;
 		offState1 = offState;
@@ -755,18 +769,32 @@ int PWM_thread::addChannel (int channel, int audioOnly, int mode, int enable, in
 		if (channel == 2){
 			PWMchans |= 2;
 			audioOnly2 = audioOnly;
-			mode2 = mode;
+			PWMmode2 = PWMmode;
 			enabled2 = enable;
 			polarity2 = polarity;
 			offState2 = offState;
 		}
 	}
-	// set hi func
-	if (useFIFO){
-		setFIFO (useFIFO, 0);
-	}
+	// set hi func and set fifo bits
+	setFIFO (useFIFO, 0);
+	/*
+	int * useFIFOVal = new int;
+	* useFIFOVal = useFIFO;
+	modCustom (&ptPWM_setFIFOCallback, (void *) useFIFOVal, 0);
+	*/
 	return 0;
 }
+
+/* ************************************ SetsPWM peripheral to use either the FIFO or the data registers *************************** 
+if both channels are being used, they either both use the FIFO, or both use their respective data registers
+Last Modified:
+2018/09/23 by Jamie Boyd - intial verison */
+virtual int PWM_thread::setFIFO (int FIFOstate, int isLocking){
+	useFIFO = FIFOstate;
+	int * useFIFOVal = new int;
+	* useFIFOVal = FIFOstate;
+	return modCustom (&ptPWM_setFIFOCallback, (void *) useFIFOVal, isLocking);
+} 
 
 /* ******************************* Setters of PWM channel Configuration and Data *********************************
 
@@ -845,6 +873,7 @@ int PWM_thread::setArrayPos (unsigned int arrayPos, int channel, int isLocking){
 	ptPWMArrayModStructPtr arrayMod = new ptPWMArrayModStruct;
 	arrayMod->arrayPos = arrayPos;
 	arrayMod->modBits = 4;
+	arrayMod->channel = channel;
 	int returnVal = modCustom (&ptPWM_ArrayModCalback, (void *) arrayMod, isLocking);
 	return returnVal;
 }
@@ -857,6 +886,7 @@ int PWM_thread::setNewArray (int * arrayData, unsigned int nData, int channel, i
 	arrayMod->arrayData = arrayData;
 	arrayMod->nData = nData;
 	arrayMod->modBits = 8;
+	arrayMod->channel = channel;
 	int returnVal = modCustom (&ptPWM_ArrayModCalback, (void *) arrayMod, isLocking);
 	return returnVal;
 }
@@ -908,13 +938,13 @@ ptPWMchanInfoStructPtr PWM_thread::getChannelInfo (int theChannel){
 	infoPtr = new ptPWMchanInfoStruct;
 	if (theChannel == 1){
 		infoPtr->audioOnly = audioOnly1;
-		infoPtr->mode = mode1;
+		infoPtr->PWMmode = PWMmode1;
 		infoPtr->enable = enabled1;
 		infoPtr->polarity = polarity1;
 		infoPtr->offState = offState1;
 	}else{
 		infoPtr->audioOnly = audioOnly2;
-		infoPtr->mode = mode2;
+		infoPtr->PWMmode = PWMmode2;
 		infoPtr->enable = enabled2;
 		infoPtr->polarity = polarity2;
 		infoPtr->offState = offState2;

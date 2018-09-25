@@ -101,7 +101,7 @@ last modified:
 2018/09/21 by Jamie Boyd - initial version */
 typedef struct ptPWMchanInfoStruct{
 	int audioOnly; // set to do outputs on audio pins only, not GPIO 18 or 19
-	int mode; //MARK_SPACE for servos or BALANCED for analog
+	int PWMmode; //MARK_SPACE for servos or BALANCED for analog
 	int enable; // 1 to start PWMing immediately, 0 to start in un-enabled state
 	int polarity; 
 	int offState;
@@ -129,9 +129,9 @@ class PWM_thread : public pulsedThread{
 	static PWM_thread * PWM_threadMaker (float pwmFreq, unsigned int pwmRange, int useFIFO, unsigned int durUsecs, unsigned int nPulses, int accuracyLevel);
 	static PWM_thread * PWM_threadMaker (float pwmFreq, unsigned int pwmRange, int useFIFO, float frequency, float trainDuration, int accuracyLevel);
 	// configures one of the channels, 1 or 2, for output on the PWM. returns 0 for success, 1 for failure
-	int addChannel (int channel, int audioOnly, int mode, int enable, int polarity, int offState, int * arrayData, unsigned int nData);
+	int addChannel (int channel, int audioOnly, int PWMmode, int enable, int polarity, int offState, int * arrayData, unsigned int nData);
 	// set whether PWM is using FIFO, both channels are done the same way, either both are FIFO or neither is
-	int setFIFO (int FIFOstate, int isLocking);
+	virtual int setFIFO (int FIFOstate, int isLocking);
 	// mod functions for enabling PWM output, setting polarity, and array modifications
 	int setEnable (int enableState, int channel, int isLocking);
 	int setPolarity (int polarityP, int channel, int isLocking);
@@ -149,12 +149,14 @@ class PWM_thread : public pulsedThread{
 	unsigned int PWMrange;
 	int useFIFO;
 	int PWMchans; // bitwise pwm channels in use, 1 for channel 0, 2 for channel 1
-	int mode1; // 0 for PWM_BALANCED, 1 for MARK_SPACE
+	// config for channel 1
+	int PWMmode1; // 0 for PWM_BALANCED, 1 for MARK_SPACE
 	int polarity1; // 0 for normal polarity, 1 for reversed
 	int offState1; // 0 for low when not enabled, 1 for high when enabled
 	int enabled1; // 0 for not enabled, 1 for enabled
 	int audioOnly1; // 0 for GPIO 18, 1 for default output over audio
-	int mode2;
+	// config for channel 2
+	int PWMmode2;
 	int polarity2; // 0 for normal polarity, 1 for reversed
 	int offState2; // 0 for low when not enabled, 1 for high when enabled
 	int enabled2; // 0 for not enabled, 1 for enabled
