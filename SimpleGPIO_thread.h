@@ -4,7 +4,6 @@
 #include <pulsedThread.h>
 #include "GPIOlowlevel.h"
 
-
 /* *********************** Forward declare functions used by thread so we can refer to them in constructors*************************/
 void SimpleGPIO_Lo (void *  taskData);
 void SimpleGPIO_Hi (void *  taskData);
