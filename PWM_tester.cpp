@@ -8,13 +8,13 @@ Last Modified:
 
 int main(int argc, char **argv){
 	// PWM settings
-	float PWMfreq = 80e03;
+	float PWMfreq = 44e03;
 	unsigned int PWMrange = 1000;
 	float toneFreq = 20000;  // tone, in Hz, that will play over the audio if directed to the speakers
 	// PWM channel settings
 	int channel = 1;
 	int audioOnly =0;
-	int mode = PWM_BALANCED; //PWM_MARK_SPACE; //
+	int mode = PWM_BALANCED;// PWM_BALANCED; //PWM_MARK_SPACE; //
 	int enable = 0;
 	int polarity = 0;
 	int offState =0;

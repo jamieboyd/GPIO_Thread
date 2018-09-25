@@ -12,7 +12,7 @@ lifted from https://sourcemaking.com/design_patterns/singleton/python/1
 class SingletonForGPIO (type):
 
     def __init__ (cls, name, bases, attrs, **kwargs):
-        super().__init__(nam, bases, attrs)
+        super().__init__(name, bases, attrs)
         cls._instance = None
 
     def __call__(cls, *args, **kwargs):

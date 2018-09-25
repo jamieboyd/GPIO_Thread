@@ -27,14 +27,15 @@ Last Modified;
  static PyObject* ptPWM_delayDur (PyObject *self, PyObject *args) {
 	float pwmFreq;
 	unsigned int pwmRange;
+	int useFIFO;
 	unsigned int durUsecs;
 	unsigned int nPulses;
 	int accuracyLevel;
-	if (!PyArg_ParseTuple(args,"fIIIi", &pwmFreq, &pwmRange, &durUsecs, &nPulses, &accuracyLevel)) {
+	if (!PyArg_ParseTuple(args,"fIiIIi", &pwmFreq, &pwmRange, &useFIFO, &durUsecs, &nPulses, &accuracyLevel)) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse inputs for PWM frequency, PWM range, pulse useconds, number of pulses, and thread accuracy.");
 		return NULL;
 	}
-	PWM_thread * threadObj = PWM_thread::PWM_threadMaker (pwmFreq, pwmRange, durUsecs, nPulses, accuracyLevel);
+	PWM_thread * threadObj = PWM_thread::PWM_threadMaker (pwmFreq, pwmRange, useFIFO, durUsecs, nPulses, accuracyLevel);
 	if (threadObj == nullptr){
 		PyErr_SetString (PyExc_RuntimeError, "PWM_threadMaker was not able to make a PWM object");
 		return NULL;
@@ -52,13 +53,14 @@ static PyObject* ptPWM_freqDuty (PyObject *self, PyObject *args) {
 	float pwmFreq;
 	unsigned int pwmRange;
 	float trainFreq;
+	int useFIFO;
 	float trainDur;
 	int accuracyLevel;
-	if (!PyArg_ParseTuple(args,"fIffi", &pwmFreq, &pwmRange, &trainFreq, &trainDur, &accuracyLevel)) {
+	if (!PyArg_ParseTuple(args,"fIiffi", &pwmFreq, &pwmRange, &useFIFO, &trainFreq, &trainDur, &accuracyLevel)) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse inputs for PWM frequency, PWM range, train frequency, train duration, and thread accuracy.");
 		return NULL;
 	}
-	PWM_thread * threadObj = PWM_thread::PWM_threadMaker (pwmFreq, pwmRange, durUsecs, nPulses, accuracyLevel);
+	PWM_thread * threadObj = PWM_thread::PWM_threadMaker (pwmFreq, pwmRange, useFIFO, trainFreq, trainDur, accuracyLevel);
 	if (threadObj == nullptr){
 		PyErr_SetString (PyExc_RuntimeError, "PWM_threadMaker was not able to make a PWM object");
 		return NULL;
@@ -76,14 +78,13 @@ static PyObject* ptPWM_addChannel (PyObject *self, PyObject *args) {
 	PyObject *PyPtr;
 	int channel;	// 1 or 2
 	int audioOnly;	// 1 to NOT configure GPIO 18 or 19, the audio output will still play
-	int useFIFO;	// set to use the PWM FIFO, 0 to use the data register
 	int mode;		// 0 = PWM_MARK_SPACE for things like servos that need duty cycle, 1 = PWM_BALANCED for analog output, like audio
 	int enable;		// 1 to enable the PWM channel to begin output immediately
 	int polarity;	// 1 for reversed polarity of PWM output
 	int offState;	// state, high or low, when PWM channel is NOT enabled.  Only set high after stopping PWM, set low before starting PWM again
 	PyObject * bufferObj; // the unsigned int array of data to feed to PWM, made in Python
 	
-	if (!PyArg_ParseTuple(args,"OiiiiiiiOI",  &PyPtr, &channel, &audioOnly, &useFIFO, &mode, &enable, &polarity, &offState, &bufferObj)) {
+	if (!PyArg_ParseTuple(args,"OiiiiiiO",  &PyPtr, &channel, &audioOnly, &mode, &enable, &polarity, &offState, &bufferObj)) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object and channel confguration paramaters.");
 		return NULL;
 	}
@@ -110,7 +111,7 @@ static PyObject* ptPWM_addChannel (PyObject *self, PyObject *args) {
 	// get pointer to PWM_thread
 	PWM_thread * threadPtr = static_cast<PWM_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
 	// Call thread's addChannel function and retiurn the result
-	return Py_BuildValue("i", threadPtr ->addChannel (channel, audioOnly, useFIFO, mode, enable, polarity, offState, arrayData, nData));
+	return Py_BuildValue("i", threadPtr ->addChannel (channel, audioOnly, mode, enable, polarity, offState, arrayData, nData));
 }
 
 /* ************************************** Sets enable state of PWM output of the thread **********************************
@@ -204,7 +205,6 @@ static PyObject* ptPWM_setArraySubrange (PyObject *self, PyObject *args){
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object, start pos, stop pos, channel, and isLocking.");
 		return NULL;
 	}
-	PWM_thread * threadPtr = static_cast<PWM_thread* > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
 	// get pointer to PWM_thread
 	PWM_thread * threadPtr = static_cast<PWM_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
 	// Call thread's setAraySubRange function and return the result
@@ -305,7 +305,7 @@ static PyMethodDef ptPWMMethods[] = {
 		
 	{"newDelayDur", ptPWM_delayDur, METH_VARARGS, "(pwmFreq, pwmRange, durUsecs, nPulses, accuracyLevel) Creates and configures new PWM task"},
 	{"newFreqDuty", ptPWM_freqDuty, METH_VARARGS, "(pwmFreq, pwmRange, trainFreq , trainDuration) Creates and configures new PWM task"},
-	{"addChannel", ptPWM_addChannel,METH_VARARGS, "(PyCapsule,channel, audioOnly, useFIFO, mode, enable, polarity, offState, dataArray)"},
+	{"addChannel", ptPWM_addChannel,METH_VARARGS, "(PyCapsule,channel, audioOnly, mode, enable, polarity, offState, dataArray)"},
 	{"setEnable", ptPWM_setEnable, METH_VARARGS, "(PyCapsule, enableState, channel, isLocking) Enables or disables the PWM channel"},
 	{"setPolarity", ptPWM_setpolarity, METH_VARARGS, "(PyCapsule, polarity, channel, isLocking) Sets polarity of the PWM channel"},
 	{"setOffState", ptPWM_setOffState, METH_VARARGS, "(PyCapsule, offState, channel, isLocking) Sets offState of the PWM channel"},
@@ -318,7 +318,6 @@ static PyMethodDef ptPWMMethods[] = {
 	{ NULL, NULL, 0, NULL}
   };
 
-pwmFreq, &pwmRange, &durUsecs, &nPulses, &accuracyLevel
   /* Module structure */
   static struct PyModuleDef ptPWMmodule = {
     PyModuleDef_HEAD_INIT,
