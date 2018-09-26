@@ -3,15 +3,6 @@
 #include "pulsedThread.h"
 #include "GPIOlowlevel.h"
 
-/*
- last modified:
- 2016/12/08 by Jamie Boyd - initial version 
- 2016/12/12 by Jamie Boyd - made separate functions for forward and reverse
- 2016/12/27 by Jamie Boyd - make stepperMotor into a class
- 2016/12/30 by Jamie Boyd - working on stepperMotor classses
- 2017/03/02 by Jamie Boyd - using GPIOlowlevel.h instead of wiringPi
- 
- */
  
 /***********************************************************************************************
 StepperMotor drives a 2 phase bipolar stepper motor, in full step mode using 2 GPIO pins, or in half step mode, 
