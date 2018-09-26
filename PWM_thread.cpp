@@ -541,20 +541,20 @@ Last Modified:
 2018/08/06 by Jamie Boyd- modified for pulsedThread subclassing */
 float PWM_thread::setClock (float PWMFreq, unsigned int PWMrange){
 	// clock must be this fast in Hz to output PWMrange ticks in 1/PWMFreq seconds
-	unsigned int clockFreq = PWMFreq * PWMrange;
+	unsigned int reqClockFreq = PWMFreq * PWMrange;
 #if beVerbose
-	printf ("Requested PWM frequency = %.3f and range = %d, for a clock frequecy of %d.\n",  PWMFreq, PWMrange, clockFreq);
+	printf ("Requested PWM frequency = %.3f and range = %d, for a clock frequecy of %d.\n",  PWMFreq, PWMrange, reqClockFreq);
 #endif
 	// Choose the right clock source for the frequency, and divide it down. With MASH =2, mininum integer divider is 3
 	unsigned int clockSrc =0; 
 	unsigned int clockSrcRate =0;
 	unsigned int mash = CM_MASH2; // start with 2 stage MASH, minimum divisir is 3
 	// take it from the top, to use fastest source that we can
-	if (clockFreq > (PLLD_CLOCK_RATE/2)){
+	if (reqClockFreq > (PLLD_CLOCK_RATE/2)){
 		printf ("Requested PWM frequency %.3f and range %d require PWM clock rate of %.3f.\n", PWMFreq, PWMrange, (PWMFreq * PWMrange));
 		printf ("Highest available PWM clock rate using PLL D with MASH=1 is %.3f.\n", (PLLD_CLOCK_RATE/2));
 	}else{
-		if (clockFreq > (PLLD_CLOCK_RATE/3)){
+		if (reqClockFreq > (PLLD_CLOCK_RATE/3)){
 			mash = CM_MASH1;
 			clockSrc = CM_SRCPLL;
 			clockSrcRate = PLLD_CLOCK_RATE;
@@ -562,28 +562,28 @@ float PWM_thread::setClock (float PWMFreq, unsigned int PWMrange){
 			printf ("PWM clock manager is using PWM clock source PLL D at 500 MHz with MASH =1.\n");
 #endif
 		}else{
-			if (clockFreq > (PLLD_CLOCK_RATE/4095)){
+			if (reqClockFreq > (PLLD_CLOCK_RATE/4095)){
 				clockSrc = CM_SRCPLL;
 				clockSrcRate = PLLD_CLOCK_RATE;
 #if beVerbose
 				printf ("PWM clock manager is using PWM clock source PLL D at 500 MHz with MASH =2.\n");
 #endif
 			}else{
-				if (clockFreq > (HDMI_CLOCK_RATE/4095)){
+				if (reqClockFreq > (HDMI_CLOCK_RATE/4095)){
 					clockSrc = CM_SRCHDMI;
 					clockSrcRate = HDMI_CLOCK_RATE;
 #if beVerbose
 					printf ("PWM clock manager is using HDMI Auxillary clock source at 216 MHz.\n");
 #endif
 				}else{
-					if (clockFreq > (PI_CLOCK_RATE/4095)){
+					if (reqClockFreq > (PI_CLOCK_RATE/4095)){
 						clockSrc = CM_SRCOSC;
 						clockSrcRate = PI_CLOCK_RATE;
 #if beVerbose
 						printf ("PWM clock manager is using PWM clock source oscillator at 19.2 MHz.\n");
 #endif						
 					}else{
-						printf ("Calculated integer divisor, %d, is greater than 4095, the max divisor, you need to select a larger range or higher frequency\n", (int)(PI_CLOCK_RATE/clockFreq));
+						printf ("Calculated integer divisor, %d, is greater than 4095, the max divisor, you need to select a larger range or higher frequency\n", (int)(PI_CLOCK_RATE/reqClockFreq));
 						return -2;
 					}
 				}					
@@ -591,9 +591,10 @@ float PWM_thread::setClock (float PWMFreq, unsigned int PWMrange){
 		}
 	}
 	// configure clock dividers
-	unsigned int integerDivisor = clockSrcRate/clockFreq; // Divisor Value for clock, clock source freq/Divisor = PWM hz
-	unsigned int fractionalDivisor = (((float)clockSrcRate/(float)clockFreq) - integerDivisor) * 4096;
-	float actualClockRate = (clockSrcRate/(integerDivisor + (fractionalDivisor/4095)));
+	unsigned int integerDivisor = (unsigned int )clockSrcRate/reqClockFreq; // Divisor Value for clock, clock source freq/Divisor = PWM hz
+	unsigned int fractionalDivisor = (unsigned int) ((((float)clockSrcRate/(float)reqClockFreq) - (float)integerDivisor) * 4096);  //(unsigned int)(((float)clockSrcRate/(float)clockFreq) - integerDivisor) * 4096;
+	float actualClockRate = clockSrcRate/(integerDivisor + ((float)fractionalDivisor/4095.0));
+
 #if beVerbose
 	printf ("Calculated integer divisor is %d and fractional divisor is %d for a clock rate of %.3f.\n", integerDivisor, fractionalDivisor, actualClockRate);
 #endif	
@@ -716,7 +717,7 @@ Thread data is destroyed by the pulsedThread destructor.  Array data is not "own
 All we need to do here is unset the alternate function for the GPIO pins and decrement the tally for the peripheral mappings
 Last Modified:
 2018/08/07 by Jamie Boyd - Initial Version */
-PWM_thread::~PWM_thread (){
+PWM_thread::~PWM_thread (void){
 	if (PWMchans & 1){
 		if (audioOnly1 == 0){
 			INP_GPIO(GPIOperi->addr,18);
@@ -731,9 +732,9 @@ PWM_thread::~PWM_thread (){
 			GPIO_CLR(GPIOperi->addr, (1 << 19));
 		}
 	}
-	unUseGPIOperi();
-	unUsePWMperi();
 	unUsePWMClockperi();
+	unUsePWMperi();
+	unUseGPIOperi();
 }
 
 
@@ -748,7 +749,7 @@ int PWM_thread::addChannel (int channel, int audioOnly, int PWMmode, int enable,
 	ptPWMchanAddStructPtr addStructPtr = new ptPWMchanAddStruct;
 	addStructPtr->channel = channel;
 	addStructPtr->audioOnly = audioOnly;
-	addStructPtr->mode = mode;
+	addStructPtr->mode = PWMmode;
 	addStructPtr->enable = enable;
 	addStructPtr->polarity = polarity;
 	addStructPtr->offState = offState;
@@ -789,7 +790,7 @@ int PWM_thread::addChannel (int channel, int audioOnly, int PWMmode, int enable,
 if both channels are being used, they either both use the FIFO, or both use their respective data registers
 Last Modified:
 2018/09/23 by Jamie Boyd - intial verison */
-virtual int PWM_thread::setFIFO (int FIFOstate, int isLocking){
+int PWM_thread::setFIFO (int FIFOstate, int isLocking){
 	useFIFO = FIFOstate;
 	int * useFIFOVal = new int;
 	* useFIFOVal = FIFOstate;

@@ -24,7 +24,7 @@ int main(int argc, char **argv){
 	// Turn off enable flag.
 	unsigned int clockSrc = CM_SRCPLL;
 	unsigned int clockSrcRate = 500E06;
-	unsigned int reqClockFreq =400000;
+	unsigned int reqClockFreq =433000;
 	unsigned int integerDivisor = clockSrcRate/reqClockFreq; // Divisor Value for clock, clock source freq/Divisor = PWM hz
 	unsigned int fractionalDivisor = ((float)(clockSrcRate/reqClockFreq) - integerDivisor) * 4096;
 	float actualClockRate = (clockSrcRate/(integerDivisor + (fractionalDivisor/4095)));

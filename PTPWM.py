@@ -4,12 +4,13 @@
 import ptPWM
 from PTSimpleGPIO import PTSimpleGPIO,SingletonForGPIO
 from array import array
+from time import sleep
 
 class PTPWM (metaclass = SingletonForGPIO):
     TRAIN =1
     INFINITE_TRAIN = 0
-    PWM_MARK_SPACE =1
-    PWM_BALANCED =0
+    PWM_MARK_SPACE =0
+    PWM_BALANCED =1
     
     def __init__(self, mode, pwmFreq, pwmRange, useFIFO, pulseDurationOrTrainFreq, nPulsesOrTrainDuration, accuracyLevel):
         if mode == PTSimpleGPIO.MODE_PULSES:
@@ -126,11 +127,43 @@ class PTPWM (metaclass = SingletonForGPIO):
     def get_enable (self):
         return self.enabled
 
-    def get_frequency (self, frequency, is_locking):
-        return self.frequency
+
+class PTPWMsin (PTPWM):
     
+    def __init__(self, chans):
+        self.task_ptr = ptPWM.newSin (chans)
+        self.PWM_channels = chans
+        self.useFIFO = 1
+        self.respectTheGIL = False
+        self.train_type = PTPWM.INFINITE_TRAIN
+
+
+    def set_sin_freq (self, new_frequency, channel, is_Locking):
+        ptPWM.setSinFreq(self.task_ptr, new_frequency, channel, is_Locking)
+        self.sin_freq = new_frequency
+        
+
+    def get_sin_freq (self, channel):
+        return ptPWM.getSinFreq(self.task_ptr,channel)
+
+    def start (self):
+        self.start_train ()
+        self.set_PWM_enable (1,self.PWM_channels,0)
+
+    def stop (self):
+        self.stop_train ()
+        self.set_PWM_enable (0,self.PWM_channels,0)
 
 if __name__ == '__main__':
     import PTPWM
-    wavy = PTPWM (0, 80E03, 1000, 1, 8000, 0, 1)
-    
+    from PTPWM import PTPWM, PTPWMsin
+    wavy = PTPWM (PTSimpleGPIO.MODE_FREQ, 1E03, 1000, 0, 2, 0, 1)
+    dataArray = array('i', (i for i in range (0, 1000)))
+    wavy.add_channel (1, 0, PTPWM.PWM_BALANCED, 0, 0, 0, dataArray)
+    wavy.set_PWM_enable (1, 1, 0)
+    wavy.start_train()
+    sleep (10)
+    wavy.set_PWM_enable (0, 1, 0)
+    wavy.stop_train()
+    del wavy
+

@@ -120,7 +120,7 @@ class PWM_thread : public pulsedThread{
 	/* and the the other constructor with floats for frequency, duty cycle, and train duration */
 	PWM_thread (float frequency, float trainDuration, int accLevel, int &errCode) : pulsedThread (frequency, 1, trainDuration, nullptr, &ptPWM_Init, nullptr, &ptPWM_REG, accLevel, errCode){
 	};
-	~PWM_thread ();
+	virtual ~PWM_thread (void);
 	// maps the GPIO, PWM, and PWMclock peripherals.  Do this before doing anything else
 	static int mapPeripherals ();
 	// sets PWM clock for given frequency and range. Do this before making a PWM_thread, because thread makers need to kknow range and freq
@@ -131,7 +131,7 @@ class PWM_thread : public pulsedThread{
 	// configures one of the channels, 1 or 2, for output on the PWM. returns 0 for success, 1 for failure
 	int addChannel (int channel, int audioOnly, int PWMmode, int enable, int polarity, int offState, int * arrayData, unsigned int nData);
 	// set whether PWM is using FIFO, both channels are done the same way, either both are FIFO or neither is
-	virtual int setFIFO (int FIFOstate, int isLocking);
+	int setFIFO (int FIFOstate, int isLocking);
 	// mod functions for enabling PWM output, setting polarity, and array modifications
 	int setEnable (int enableState, int channel, int isLocking);
 	int setPolarity (int polarityP, int channel, int isLocking);

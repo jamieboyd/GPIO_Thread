@@ -1,7 +1,7 @@
 #include "PWM_sin_thread.h"
 
-static const unsigned int PWM_UPDATE_FREQ = 100e03; // The PWM output is updated at this frequency
-static const float THREAD_UPDATE_FREQ = 10e03; // pulsed thread update frequency, slower than PWM update, try 10X slower
+static const unsigned int PWM_UPDATE_FREQ = 80E03; // The PWM output is updated at this frequency
+static const float THREAD_UPDATE_FREQ = (PWM_UPDATE_FREQ/9); // pulsed thread update frequency, slower than PWM update, try 10X slower
 static const unsigned int PWM_RANGE = 1000; // data for sine wave ranges from 0 to 999
 static const double PHI = 6.2831853071794;  // this is just pi * 2, used for making a sin wave
 
@@ -15,7 +15,7 @@ lowest ever needed frequency, in this case 1 Hz, and instead of changing the arr
 by which we jump. We can easily do any multiple of the base frequency.  With 1Hz sine wave, we add 1 each time for 1 Hz, add 2 each time
 for 2 Hz, etc, using the modulo operator % so we don't get tripped up at wrap-around. 
 
-/* *********************************** PWM Hi function when using FIFO for channel 1 ******************************
+ *********************************** PWM Hi function when using FIFO for channel 1 ******************************
 checks the FULL bit and feeds the FIFO from channel 1 array till it is full
 Last Modified:
 2018/09/24 - by Jamie Boyd - initial version */
@@ -93,6 +93,9 @@ int ptPWM_sin_setFIFOCallback (void * modData, taskParams * theTask){
 		*(PWMperi ->addr + PWM_CTL) |=  PWM_RPTL1;
 		*(PWMperi ->addr + PWM_CTL) |= PWM_RPTL2;
 	}
+#if beVerbose
+	printf ("ptPWM_sin_setFIFOCallback called.\n");
+#endif
 	return 0;
 }
 
@@ -124,17 +127,46 @@ to a PWM_sin_thread
 Last Modified:
 2018/09/22 by Jamie Boyd - updated to use FIFO for PWM and better channel organization, less to do here,more in addChannel
 2018/09/13 by Jamie Boyd - initial version */
-PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (void){
-	return (PWM_sin_thread *)PWM_thread::PWM_threadMaker(PWM_UPDATE_FREQ, PWM_RANGE, 1, THREAD_UPDATE_FREQ, kINFINITETRAIN,ACC_MODE_SLEEPS_AND_SPINS);
+PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channels){
+	PWM_sin_thread * newPWMsin =  (PWM_sin_thread *) PWM_thread::PWM_threadMaker(PWM_UPDATE_FREQ, PWM_RANGE, 1, THREAD_UPDATE_FREQ, kINFINITETRAIN,ACC_MODE_SLEEPS_AND_SPINS);
+	if (newPWMsin != nullptr){
+		// make sine wave array data and add channels
+		float realPWMfreq = newPWMsin->getPWMFreq ();
+		unsigned int arraySize = (unsigned int)(realPWMfreq);
+		int* dataArray= new int [arraySize];
+		newPWMsin->dataArray = dataArray;
+		double offset =PWM_RANGE/2;
+		for (unsigned int ii=0; ii< arraySize; ii +=1){
+			dataArray [ii] = (unsigned int) (offset - offset * cos (PHI *((double) ii/ (double) arraySize)));
+		}
+		if (channels & 1){
+			newPWMsin->addChannel (1, 1, PWM_BALANCED, 0, 0, 0, dataArray, arraySize);
+		}
+		if (channels & 2){
+			newPWMsin->addChannel (2, 1, PWM_BALANCED, 0, 0, 0, dataArray, arraySize);
+		}
+		// explicitly call set FIFO
+		newPWMsin->setFIFO (1, 0);
+	}
+	return newPWMsin;
+}
+
+
+PWM_sin_thread::~PWM_sin_thread (){
+	delete dataArray;
 }
 
 /* ************************************ SetsPWM peripheral to use the FIFO  *************************** 
 if both channels are being used, they either both use the FIFO, or both use their respective data registers
 Last Modified:
 2018/09/24 by Jamie Boyd - intial verison modified from base class to call ptPWM_sin_setFIFOCallback */
-int PWM_thread::setFIFO (int FIFOstate, int isLocking){
+int PWM_sin_thread::setFIFO (int FIFOstate, int isLocking){
+#if beVerbose
+	printf ("ptPWM_sin setFIFO called.\n");
+#endif
 	return modCustom (&ptPWM_sin_setFIFOCallback, nullptr, isLocking);
 } 
+
 
 /* ****************************** sets Frequency ************************************
 Last Modified:
@@ -152,4 +184,12 @@ int PWM_sin_thread::setSinFrequency (unsigned int newFrequency, int channel, int
 	arrayMod->channel = channel;
 	int returnVal = modCustom (&ptPWM_sin_setFreqCallback, (void *) arrayMod, isLocking);
 	return returnVal;
+}
+
+unsigned int PWM_sin_thread::getSinFrequency (int channel){
+	if (channel ==1){
+		return sinFrequency1;
+	}else{
+		return sinFrequency2;
+	}
 }

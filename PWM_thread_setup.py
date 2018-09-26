@@ -7,7 +7,7 @@ setup(name='ptPWM',
       py_modules=['PTPWM'],
       ext_modules=[
         Extension('ptPWM',
-                  ['GPIOlowlevel.cpp', 'PWM_thread.cpp', 'PWM_thread_Py.cpp'],
+                  ['GPIOlowlevel.cpp', 'PWM_thread.cpp', 'PWM_sin_thread.cpp', 'PWM_thread_Py.cpp'],
                   include_dirs = ['./','/usr/include'],
                   library_dirs = ['./','/usr/local/lib'],
 		  extra_compile_args=["-O3", "-std=gnu++11"],

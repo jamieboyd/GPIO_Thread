@@ -3,8 +3,6 @@
 #include "PWM_thread.h"
 
 
-
-
 /* *********************** PWM_sin_thread ********************************************************
 Subclasses PWM_thread with goal of outputting a cleanish sine wave at user-settable frequency.
 To that end, range is set to 1000 and PWM update frequency is 100 kHz.
@@ -27,14 +25,19 @@ last modified:
 2018/09/12 by Jamie Boyd - initial verison */
 class PWM_sin_thread : public PWM_thread{
 	public:
+	~PWM_sin_thread (void);
+	void clearDataArray(void);
 	/* Static thread maker makes and fill an init struct, calls constructor, and return a pointer to a new PWM_sin_thread */
-	static PWM_sin_thread * PWM_sin_threadMaker (void);
+	static PWM_sin_thread * PWM_sin_threadMaker (int channels);
 	int setFIFO (int FIFOstate, int isLocking);
 	// sets the frequency to output
-	int setSinFrequency (unsigned int newFrequency, int isLocking);
+	int setSinFrequency (unsigned int newFrequency, int channel, int isLocking);
+	// gets the frequency being output
+	unsigned int getSinFrequency (int channel);
 	protected:
 	unsigned int sinFrequency1 ;
 	unsigned int sinFrequency2 ;
+	int * dataArray ;
 	
 };
 
