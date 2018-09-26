@@ -1,9 +1,5 @@
 #include "PWM_sin_thread.h"
 
-static const unsigned int PWM_UPDATE_FREQ = 80E03; // The PWM output is updated at this frequency
-static const float THREAD_UPDATE_FREQ = (PWM_UPDATE_FREQ/9); // pulsed thread update frequency, slower than PWM update, try 10X slower
-static const unsigned int PWM_RANGE = 1000; // data for sine wave ranges from 0 to 999
-static const double PHI = 6.2831853071794;  // this is just pi * 2, used for making a sin wave
 
 /* ******************************************  PWM_sin_thread functions for pulsedThread *****************************************
 
@@ -93,9 +89,6 @@ int ptPWM_sin_setFIFOCallback (void * modData, taskParams * theTask){
 		*(PWMperi ->addr + PWM_CTL) |=  PWM_RPTL1;
 		*(PWMperi ->addr + PWM_CTL) |= PWM_RPTL2;
 	}
-#if beVerbose
-	printf ("ptPWM_sin_setFIFOCallback called.\n");
-#endif
 	return 0;
 }
 
@@ -120,7 +113,6 @@ int ptPWM_sin_setFreqCallback (void * modData, taskParams * theTask){
 
 /* **********************************************  PWM_sin_thread class functions ************************************************
 
-
  ********************************************* PWM_sin_threadMaker***********************************************************
 returns a pointer to a new PWM_sin_thread object, made by making a regular PWM_thread with required settings and recasting it
 to a PWM_sin_thread
@@ -128,31 +120,63 @@ Last Modified:
 2018/09/22 by Jamie Boyd - updated to use FIFO for PWM and better channel organization, less to do here,more in addChannel
 2018/09/13 by Jamie Boyd - initial version */
 PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channels){
-	PWM_sin_thread * newPWMsin =  (PWM_sin_thread *) PWM_thread::PWM_threadMaker(PWM_UPDATE_FREQ, PWM_RANGE, 1, THREAD_UPDATE_FREQ, kINFINITETRAIN,ACC_MODE_SLEEPS_AND_SPINS);
-	if (newPWMsin != nullptr){
-		// make sine wave array data and add channels
-		float realPWMfreq = newPWMsin->getPWMFreq ();
-		unsigned int arraySize = (unsigned int)(realPWMfreq);
-		int* dataArray= new int [arraySize];
-		newPWMsin->dataArray = dataArray;
-		double offset =PWM_RANGE/2;
-		for (unsigned int ii=0; ii< arraySize; ii +=1){
-			dataArray [ii] = (unsigned int) (offset - offset * cos (PHI *((double) ii/ (double) arraySize)));
-		}
-		if (channels & 1){
-			newPWMsin->addChannel (1, 1, PWM_BALANCED, 0, 0, 0, dataArray, arraySize);
-		}
-		if (channels & 2){
-			newPWMsin->addChannel (2, 1, PWM_BALANCED, 0, 0, 0, dataArray, arraySize);
-		}
-		// explicitly call set FIFO
-		newPWMsin->setFIFO (1, 0);
+	
+	// ensure peripherals for PWM controller are mapped
+	int mapResult = PWM_thread::mapPeripherals ();
+	if (mapResult){
+		printf ("Could not map peripherals for PWM access with return code %d.\n", mapResult);
+		return nullptr;
 	}
+	// set clock for PWM from input parmamaters
+	float realPWMfreq = PWM_thread::setClock (PWM_UPDATE_FREQ, PWM_RANGE);
+	if (realPWMfreq < 0){
+		printf ("Could not set clock for PWM with frequency = %d and range = %d.\n", PWM_UPDATE_FREQ, PWM_RANGE);
+		return nullptr;
+	}
+	// call PWM_sin_thread constructor which calls PWM_thread constructor with pre-set timing info from contants
+	int errCode =0;
+	PWM_sin_thread * newPWMsin = new PWM_sin_thread (errCode) ;
+	if ((errCode) || (newPWMsin == nullptr)){
+#if beVerbose
+		printf ("PWM_sin_threadMaker failed to make PWM_sin_thread with errCode %d.\n", errCode);
+#endif
+		return nullptr;
+	}
+#if beVerbose
+		printf ("Calculated PWM update frequency = %.3f\n", realPWMfreq);
+#endif
+	// set custom task delete function
+	newPWMsin->setTaskDataDelFunc (&ptPWM_delTask);
+	// make sine wave array data and add channels
+	unsigned int arraySize = (unsigned int)(realPWMfreq);
+	newPWMsin->dataArray= new int [arraySize];
+	double offset =PWM_RANGE/2;
+	for (unsigned int ii=0; ii< arraySize; ii +=1){
+		newPWMsin->dataArray [ii] = (unsigned int) (offset - offset * cos (PHI *((double) ii/ (double) arraySize)));
+	}
+	// add channels , each channel can use the same array 
+	if (channels & 1){
+		newPWMsin->addChannel (1, 1, PWM_BALANCED, 0, 0, 0, newPWMsin->dataArray, arraySize);
+	}
+	if (channels & 2){
+		newPWMsin->addChannel (2, 1, PWM_BALANCED, 0, 0, 0, newPWMsin->dataArray, arraySize);
+	}
+	// set useFifo and explicitly call set FIFO
+	newPWMsin->useFIFO =1;
+	newPWMsin->setFIFO (1, 0);
+	// set fields for freq, range, and channels
+	newPWMsin->PWMfreq = realPWMfreq;
+	newPWMsin->PWMrange = PWM_RANGE;
+	newPWMsin->PWMchans = channels;
+	// return new thread
 	return newPWMsin;
 }
 
 
 PWM_sin_thread::~PWM_sin_thread (){
+#if beVerbose
+	printf ("PWM_sin_thread destructor called.\n");
+#endif
 	delete dataArray;
 }
 
@@ -162,7 +186,7 @@ Last Modified:
 2018/09/24 by Jamie Boyd - intial verison modified from base class to call ptPWM_sin_setFIFOCallback */
 int PWM_sin_thread::setFIFO (int FIFOstate, int isLocking){
 #if beVerbose
-	printf ("ptPWM_sin setFIFO called.\n");
+	printf ("PWM_sin_thread setFIFO called.\n");
 #endif
 	return modCustom (&ptPWM_sin_setFIFOCallback, nullptr, isLocking);
 } 

@@ -131,7 +131,7 @@ class PWM_thread : public pulsedThread{
 	// configures one of the channels, 1 or 2, for output on the PWM. returns 0 for success, 1 for failure
 	int addChannel (int channel, int audioOnly, int PWMmode, int enable, int polarity, int offState, int * arrayData, unsigned int nData);
 	// set whether PWM is using FIFO, both channels are done the same way, either both are FIFO or neither is
-	int setFIFO (int FIFOstate, int isLocking);
+	virtual int setFIFO (int FIFOstate, int isLocking);
 	// mod functions for enabling PWM output, setting polarity, and array modifications
 	int setEnable (int enableState, int channel, int isLocking);
 	int setPolarity (int polarityP, int channel, int isLocking);

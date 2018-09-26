@@ -11,7 +11,8 @@ int main(int argc, char **argv){
 	
 	// PWM channel settings
 	int channel = 1;
-
+	
+	
 	// now with PWM sin
 	printf ("let's do PWM_sin version.\n");
 	PWM_sin_thread * my_sin_PWM  =  PWM_sin_thread::PWM_sin_threadMaker (channel);
@@ -24,9 +25,10 @@ int main(int argc, char **argv){
 	my_sin_PWM->startInfiniteTrain ();
 	float freq ;
 	for (freq= 200; freq < 25e03; freq *= 1.12246){
-		my_sin_PWM->setSinFrequency ((unsigned int)freq ,channel,0);
+		my_sin_PWM->setSinFrequency ((unsigned int)freq ,channel,1);
 		printf ("Current Sine wave frequency is %dHz.\n", my_sin_PWM->getSinFrequency (channel));;
-		my_sin_PWM->waitOnBusy (0.075);
+		my_sin_PWM->waitOnBusy (0.2);
+		//usleep (20000); // just to be sure train is stopped
 	}
 	my_sin_PWM->stopInfiniteTrain ();
 	usleep (2000); // just to be sure train is stopped
@@ -36,8 +38,8 @@ int main(int argc, char **argv){
 	
 	return 0;
 }
-	
 	/*
+	
 	int audioOnly =0;
 	int mode = PWM_BALANCED;// PWM_BALANCED; //PWM_MARK_SPACE; //
 	int enable = 0;
@@ -107,7 +109,7 @@ int main(int argc, char **argv){
 	delete myPWM;
 	printf ("myPWM was deleted.\n");
 	delete dataArray;
-	printf (" data array was deleted.\n");
+	printf ("data array was deleted.\n");
 	//usleep (20000); // just to be sure train is stopped
 
 	return 0;

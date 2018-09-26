@@ -648,7 +648,7 @@ PWM_thread * PWM_thread::PWM_threadMaker (float PWMFreq, unsigned int PWMrange, 
 #if beVerbose
 		printf ("Calculated PWM update frequency = %.3f\n", setFrequency);
 #endif
-	// call PWM_thread constructor with no init data, which calls pulsedThread constructor
+	// call PWM_thread constructor with thread timing , which calls pulsedThread constructor
 	int errCode =0;
 	PWM_thread * newPWM_thread = new PWM_thread (durUsecs, nPulses, accuracyLevel, errCode);
 	if (errCode){
@@ -718,6 +718,9 @@ All we need to do here is unset the alternate function for the GPIO pins and dec
 Last Modified:
 2018/08/07 by Jamie Boyd - Initial Version */
 PWM_thread::~PWM_thread (void){
+#if beVerbose
+	printf ("PWM_thread destructor called.\n");
+#endif
 	if (PWMchans & 1){
 		if (audioOnly1 == 0){
 			INP_GPIO(GPIOperi->addr,18);
