@@ -127,12 +127,7 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 	}
 	// finally, copy registerVal back to the register
 	*(PWMperi ->addr + PWM_CTL)=registerVal;
-	
-	
-#if beVerbose
-	printf ("PWM Data register for channel %d contains %d.\n",chanAddPtr->channel , *(PWMperi->addr + dataRegisterOffset));
-	printf ("PWM Control Register = 0x%x.\n", *(PWMperi ->addr + PWM_CTL));
-#endif
+
 	delete chanAddPtr;
 	return 0;
 }
