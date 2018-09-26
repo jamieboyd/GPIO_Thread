@@ -166,4 +166,14 @@ if __name__ == '__main__':
     wavy.set_PWM_enable (0, 1, 0)
     wavy.stop_train()
     del wavy
+    siner = PTPWMsin (1)
+    siner.set_sin_freq(1000, 1, 1)
+    siner.start()
+    sleep (5)
+    siner.set_sin_freq(2000, 1, 1)
+    sleep (5)
+    siner.set_sin_freq(7000, 1, 1)
+    sleep (5)
+    siner.stop()
+    del siner
 
