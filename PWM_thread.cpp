@@ -130,8 +130,6 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 	}
 	// finally, copy registerVal back to the register
 	*(PWMperi ->addr + PWM_CTL)=registerVal;
-	
-	
 #if beVerbose
 	printf ("PWM Control Register = 0x%x.\n", *(PWMperi ->addr + PWM_CTL));
 #endif
@@ -191,7 +189,6 @@ void ptPWM_FIFO_2 (void * taskDataP){
 		if (taskData->arrayPos2 == taskData->stopPos2){
 			taskData->arrayPos2 = taskData->startPos2;
 		}
-//printf ("Data at %d = %d.\n", taskData->arrayPos2 , taskData->arrayData2[taskData->arrayPos2]);
 	}
 }
 
@@ -247,12 +244,9 @@ int ptPWM_setFIFOCallback (void * modData, taskParams * theTask){
 			*(PWMperi ->addr + PWM_CTL) &= ~PWM_RPTL2;
 		}else{
 			if (taskData->channels ==  1){
-				theTask->hiFunc =  &ptPWM_FIFO_1;
+				theTask->hiFunc = &ptPWM_FIFO_1;
 			}else{
 				theTask->hiFunc =  &ptPWM_FIFO_2;
-#if beVerbose
-				printf ("Set hiFunc to ptPWM_FIFO_2.\n");
-#endif
 			}
 			*(PWMperi ->addr + PWM_CTL) |=  PWM_RPTL1;
 			*(PWMperi ->addr + PWM_CTL) |= PWM_RPTL2;
@@ -266,7 +260,6 @@ int ptPWM_setFIFOCallback (void * modData, taskParams * theTask){
 	delete useFIFOPtr;
 	return 0;
 }
-
 
 /* ****************** Callback to enable or disable PWM output on one or both channels ***********************
 modData is a pointer to an int, bit 0 set for channel 1, bit 1 set for channel 2

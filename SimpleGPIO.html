@@ -14,7 +14,7 @@
 <li>PTSimpleGPIO_test.py -- Python code with tests for PTSimpleGPIO. May require oscilloscope, LED</li></ul>
 
 <h3>SimpleGPIO_thread Thread Makers</h3>
-<p>The SimpleGPIO_thread class extends the pulsedThread class. The constructor calls the pulsedThread constructor with a structure holding data for initilization, a function for initialization, high and low callbacks, and parameters for pulse timing and number. The SimpleGPIO_thread class simplifies thread creation a little bit by providing two static ThreadMaker functions that make an initStruct and call a constructor with it, returning a pointer to a SimpleGPIO_thread:
+<p>The SimpleGPIO_thread class extends the pulsedThread class. The constructors call a pulsedThread constructor with a structure holding data for initilization, a function for initialization, high and low callbacks, and parameters for pulse timing and number. The SimpleGPIO_thread class simplifies thread creation a little bit by providing two static ThreadMaker functions that make an initStruct and call a constructor with it, returning a pointer to a SimpleGPIO_thread:
 <ul><li>static SimpleGPIO_thread * SimpleGPIO_threadMaker (
 	<dl><dt>int pin</dt>
 	<dd>GPIO pin number to use, in Broadcom numbering</dd>
@@ -44,29 +44,12 @@
 	<dd>controls how timing is done, see pulsedThread</dd>);
 </dl></li>
 </ul>
-One ThreadMaker sets timing parameters in microsecond delays and durations, and the other sets timing parameters in frequency and duty cycle; each threadMaker calls the corresponding constructor that takes either unsigned integer microsecond delays and durations, or floating point frequency and duty cycle. Each threadMaker makes a simple initStruct with the passed-in pin number and polarity, plus the base address of the GPIO peripheral obtained by useGpioPeri ().
-</p>
+One ThreadMaker sets timing parameters in microsecond delays and durations, and the other sets timing parameters in frequency and duty cycle; each threadMaker calls the corresponding constructor that takes either unsigned integer microsecond delays and durations, or floating point frequency and duty cycle. Each threadMaker makes a simple initStruct with the passed-in pin number and polarity, plus the base address of the GPIO peripheral obtained by useGpioPeri ().</p>
+
 <h3>SimpleGPIO_thread Thread Functions</h3>
-SimpleGPIO_thread is all about setting the level of a single GPIO pin, high and low, in a pulse or train. The low callback sets the GPIO pin low, and the high callback sets the GPIO pin high. Initializing with a reversed polarity will, of course, reverse these. The initialization function calculates the addresses to ON and OFF register as Hi or Lo as appropriate to save a level of indirection later
+SimpleGPIO_thread is all about setting the level of a single GPIO pin, high and low, in a pulse or train. The low callback sets the GPIO pin low, and the high callback sets the GPIO pin high. Initializing with a reversed polarity will, of course, reverse these. The initialization function calculates the addresses to ON and OFF register as Hi or Lo as appropriate to save a level of indirection later.
 
 
-/* ***************** Lo Callback ******************************
- Task to do on Low tick, sets GPIO line low or high depending on polarity
-last modified:
-2016/12/07 by Jamie Boyd - initial version */
-void SimpleGPIO_Lo (void *  taskData){
-	SimpleGPIOStructPtr gpioTaskPtr = (SimpleGPIOStructPtr) taskData;
-	*(gpioTaskPtr->GPIOperiLo) = gpioTaskPtr->pinBit;
-}
-
-/* ***************** Hi Callback ******************************
-Task to do on High tick, sets GPIO line high or ow depending on polarity
-last modified:
-2016/12/07 by Jamie Boyd - initial version */
-void SimpleGPIO_Hi (void *  taskData){
-	SimpleGPIOStructPtr gpioTaskPtr = (SimpleGPIOStructPtr) taskData;
-	*(gpioTaskPtr->GPIOperiHi) =gpioTaskPtr->pinBit;
-}
 </p>
 
 <hr>
