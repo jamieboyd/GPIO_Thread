@@ -126,8 +126,8 @@ PWM_BASE is defined by 0x20C000 offset from the base peripheral addresss */
 #define PWM_EMPT1	0x2		// bit 1, FIFO empty flag
 #define PWM_FULL1		0x1		// bit 0, FIFO full flag
 
-#define PWM_MARK_SPACE 0
-#define PWM_BALANCED 1
+#define PWM_MARK_SPACE 1
+#define PWM_BALANCED 0
 
 extern bcm_peripheralPtr PWMperi ;
 extern int PWMperi_users;

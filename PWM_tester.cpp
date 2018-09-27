@@ -10,25 +10,23 @@ int main(int argc, char **argv){
 	
 	
 	// PWM channel settings
-	int channel = 1;
-	
-	
+	int channel = 3;
+	/*
 	// now with PWM sin
 	printf ("let's do PWM_sin version.\n");
 	PWM_sin_thread * my_sin_PWM  =  PWM_sin_thread::PWM_sin_threadMaker (channel);
 	printf ("thread maker made a thread.\n");
 	// set initial frequency
-	my_sin_PWM->setSinFrequency (100 ,1,0);
+	my_sin_PWM->setSinFrequency (100 ,channel,0);
 	// enable the PWM to output
 	my_sin_PWM->setEnable (1, channel, 0);
 	// start train 
 	my_sin_PWM->startInfiniteTrain ();
 	float freq ;
 	for (freq= 200; freq < 25e03; freq *= 1.12246){
-		my_sin_PWM->setSinFrequency ((unsigned int)freq ,channel,1);
+		my_sin_PWM->setSinFrequency ((unsigned int)freq ,channel,0);
 		printf ("Current Sine wave frequency is %dHz.\n", my_sin_PWM->getSinFrequency (channel));;
-		my_sin_PWM->waitOnBusy (0.2);
-		//usleep (20000); // just to be sure train is stopped
+		my_sin_PWM->waitOnBusy (0.075);
 	}
 	my_sin_PWM->stopInfiniteTrain ();
 	usleep (2000); // just to be sure train is stopped
@@ -38,18 +36,18 @@ int main(int argc, char **argv){
 	
 	return 0;
 }
-	/*
+	*/
 	
 	int audioOnly =0;
-	int mode = PWM_BALANCED;// PWM_BALANCED; //PWM_MARK_SPACE; //
+	int mode = PWM_MARK_SPACE;// PWM_BALANCED; //PWM_MARK_SPACE; //
 	int enable = 0;
 	int polarity = 0;
 	int offState =0;
-	int useFIFO=1;
+	int useFIFO=0;
 	// PWM settings
-	float PWMfreq = 50e03;
+	float PWMfreq = 1e03;
 	unsigned int PWMrange = 1000;
-	float toneFreq = 2000;  // tone, in Hz, that will play over the audio if directed to the speakers
+	float toneFreq = 1;  // tone, in Hz, that will play over the audio if directed to the speakers
 	float pulsedThreadFreq;
 	int accMode;
 	
@@ -58,7 +56,7 @@ int main(int argc, char **argv){
 	// When using a FIFO, the data output rate is set by PWMfreq, not by the thread frequency, so we can use
 	// a less demanding but lower precision thread timing mode with the FIFO.  
 	if (useFIFO){
-		pulsedThreadFreq = PWMfreq/10;
+		pulsedThreadFreq = PWMfreq/8;
 		accMode = ACC_MODE_SLEEPS_AND_SPINS;
 	}else{
 		pulsedThreadFreq = PWMfreq;
@@ -82,7 +80,9 @@ int main(int argc, char **argv){
 	}
 	//printf ("data at 0 =%d, 1 = %d, 2 = %d, 3 = %d, 4 = %d\n", dataArray [0],  dataArray [1], dataArray [2], dataArray [3], dataArray [4]);      
 	// add the channel to the thread
-	myPWM->addChannel (channel, audioOnly, mode, enable, polarity, offState, dataArray, arraySize);
+	myPWM->addChannel (1, audioOnly, mode, enable, polarity, offState, dataArray, arraySize);
+	usleep (2000); // just to be sure train is stopped
+	myPWM->addChannel (2, audioOnly, mode, enable, polarity, offState, dataArray, arraySize);
 	// start the thread doing an infinite train for 10 seconds
 	myPWM->startInfiniteTrain ();
 	// enable the PWM to output
@@ -98,6 +98,7 @@ int main(int argc, char **argv){
 	usleep (2000000);
 	myPWM->setOffState (0,channel,0);
 	printf ("Set offstate low.\n");
+	usleep (2000000);
 	myPWM->setArraySubrange ((unsigned int) (arraySize/3), (unsigned int) (2 * arraySize/3), channel, 1);
 	myPWM->setEnable (1, channel, 0);
 	myPWM->startInfiniteTrain ();	
@@ -106,6 +107,7 @@ int main(int argc, char **argv){
 	myPWM->setEnable (0, channel, 0);
 	printf ("And we are done here.\n");
 	//usleep (200000); // just to be sure train is stopped
+	
 	delete myPWM;
 	printf ("myPWM was deleted.\n");
 	delete dataArray;
@@ -113,7 +115,7 @@ int main(int argc, char **argv){
 	//usleep (20000); // just to be sure train is stopped
 
 	return 0;
-} */
+} 
 
 /*
 g++ -O3 -std=gnu++11 -Wall -lpulsedThread GPIOlowlevel.cpp PWM_thread.cpp PWM_sin_thread.cpp PWM_tester.cpp -o PWMtester

@@ -73,8 +73,8 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 			// set array data
 			taskData->arrayData2 = chanAddPtr->arrayData;
 			taskData->nData2 = chanAddPtr->nData;
-			taskData->startPos1 =0;
-			taskData->stopPos1 = chanAddPtr->nData;
+			taskData->startPos2 =0;
+			taskData->stopPos2= chanAddPtr->nData;
 			// set up GPIO
 			if (chanAddPtr->audioOnly){
 				taskData->audioOnly2 = 1;
@@ -89,8 +89,11 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 			enableBit = PWM_PWEN2;
 			polarityBit = PWM_POLA2;
 			offStateBit = PWM_SBIT2;
+#if beVerbose
+		printf ("PWM channel %d configured, dataRegisterOffset = 0x%x, mode bit = 0x%x, enable bit = 0x%x, polarity  bit = 0x%x\n", chanAddPtr->channel, dataRegisterOffset,modeBit, enableBit,polarityBit);
+#endif
 		}else{
-			printf ("The PWM channel to be configured, %d, does not exist/n", chanAddPtr->channel);
+			printf ("The PWM channel to be configured, %d does not exist.\n", chanAddPtr->channel);
 			delete chanAddPtr;
 			return 1;
 		}
@@ -127,7 +130,11 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 	}
 	// finally, copy registerVal back to the register
 	*(PWMperi ->addr + PWM_CTL)=registerVal;
-
+	
+	
+#if beVerbose
+	printf ("PWM Control Register = 0x%x.\n", *(PWMperi ->addr + PWM_CTL));
+#endif
 	delete chanAddPtr;
 	return 0;
 }
@@ -184,6 +191,7 @@ void ptPWM_FIFO_2 (void * taskDataP){
 		if (taskData->arrayPos2 == taskData->stopPos2){
 			taskData->arrayPos2 = taskData->startPos2;
 		}
+//printf ("Data at %d = %d.\n", taskData->arrayPos2 , taskData->arrayData2[taskData->arrayPos2]);
 	}
 }
 
@@ -238,10 +246,13 @@ int ptPWM_setFIFOCallback (void * modData, taskParams * theTask){
 			*(PWMperi ->addr + PWM_CTL) &= ~PWM_RPTL1;
 			*(PWMperi ->addr + PWM_CTL) &= ~PWM_RPTL2;
 		}else{
-			if (taskData->channels ==  2){
-				theTask->hiFunc =  &ptPWM_FIFO_2;
-			}else{
+			if (taskData->channels ==  1){
 				theTask->hiFunc =  &ptPWM_FIFO_1;
+			}else{
+				theTask->hiFunc =  &ptPWM_FIFO_2;
+#if beVerbose
+				printf ("Set hiFunc to ptPWM_FIFO_2.\n");
+#endif
 			}
 			*(PWMperi ->addr + PWM_CTL) |=  PWM_RPTL1;
 			*(PWMperi ->addr + PWM_CTL) |= PWM_RPTL2;
@@ -643,7 +654,7 @@ PWM_thread * PWM_thread::PWM_threadMaker (float PWMFreq, unsigned int PWMrange, 
 #if beVerbose
 		printf ("Calculated PWM update frequency = %.3f\n", setFrequency);
 #endif
-	// call PWM_thread constructor with thread timing , which calls pulsedThread constructor
+	// call PWM_thread constructor with no init data, which calls pulsedThread constructor
 	int errCode =0;
 	PWM_thread * newPWM_thread = new PWM_thread (durUsecs, nPulses, accuracyLevel, errCode);
 	if (errCode){
@@ -713,9 +724,6 @@ All we need to do here is unset the alternate function for the GPIO pins and dec
 Last Modified:
 2018/08/07 by Jamie Boyd - Initial Version */
 PWM_thread::~PWM_thread (void){
-#if beVerbose
-	printf ("PWM_thread destructor called.\n");
-#endif
 	if (PWMchans & 1){
 		if (audioOnly1 == 0){
 			INP_GPIO(GPIOperi->addr,18);
