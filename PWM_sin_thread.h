@@ -33,7 +33,7 @@ class PWM_sin_thread : public PWM_thread{
 	public:
 	PWM_sin_thread (int &errCode) : PWM_thread (THREAD_UPDATE_FREQ, 0.0, ACC_MODE_SLEEPS_AND_SPINS, errCode) {};
 	~PWM_sin_thread (void);
-	/* Static thread maker makes and fill an init struct, calls constructor, and return a pointer to a new PWM_sin_thread */
+	/* Static thread maker calls constructor, and return a pointer to a new PWM_sin_thread */
 	static PWM_sin_thread * PWM_sin_threadMaker (int channels);
 	int setFIFO (int FIFOstate, int isLocking);
 	// sets the frequency to output

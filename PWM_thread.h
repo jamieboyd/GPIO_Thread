@@ -24,7 +24,6 @@ int ptPWM_reversePolarityCallback (void * modData, taskParams * theTask);
 int ptPWM_setOffStateCallback (void * modData, taskParams * theTask);
 int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask);
 
-
 /* ******************** Custom Data Struct for pulsed Thread used by PWM ***************************
 last modified:
 2018/09/18 by Jamie Boyd - channels and outputs modifications
@@ -52,6 +51,12 @@ typedef struct ptPWMStruct{
 	volatile unsigned int * FIFOregister; // address of FIFO
 	volatile unsigned int * dataRegister1; // address of register to write data to
 	volatile unsigned int * dataRegister2; // address of register to write data to
+	// addresses of functions for hiFunc
+	void (*hiFuncREG)(void *);
+	void (*hiFuncFIF1)(void *);
+	void (*hiFuncFIF2)(void *);
+	void (*hiFuncFIFdual)(void *);
+	// data for outputting
 	// data for outputting
 	int * arrayData1; // array of PWM values for thread to cycle through, start to end, 0 to range-1
 	unsigned int nData1; // number of points in data array
@@ -65,6 +70,7 @@ typedef struct ptPWMStruct{
 	unsigned int stopPos2;
 } ptPWMStruct, *ptPWMStructPtr;
 unsigned int getStatusRegister (void);
+
 /* **************custom struct for callback configuring a PWM channel *****************************
 Contains data for channel configurtation and pointer to data to output 
 last modified:
@@ -98,15 +104,16 @@ typedef struct ptPWMArrayModStruct{
 /* **************custom struct for returning info about a PWM channel *****************************
 Contains data for channel configurtation 
 last modified:
+2018/09/27 by Jamie Boyd - added chanel, you make the struct, fill in channel and pass the struct to getChannelInfo
 2018/09/21 by Jamie Boyd - initial version */
 typedef struct ptPWMchanInfoStruct{
+	int theChannel;
 	int audioOnly; // set to do outputs on audio pins only, not GPIO 18 or 19
 	int PWMmode; //MARK_SPACE for servos or BALANCED for analog
 	int enable; // 1 to start PWMing immediately, 0 to start in un-enabled state
 	int polarity; 
 	int offState;
 }ptPWMchanInfoStruct, *ptPWMchanInfoStructPtr;
-
 
 /* ********************************************* PWM_thread class *********************************************
 last modified:
@@ -142,8 +149,8 @@ class PWM_thread : public pulsedThread{
 	float getPWMFreq (void);
 	unsigned int getPWMRange (void);
 	int getChannels (void);
-	ptPWMchanInfoStructPtr getChannelInfo (int theChannel);
-	unsigned int getStatusRegister (void);
+	int getChannelInfo (ptPWMchanInfoStructPtr infoPtr);
+	static unsigned int getStatusRegister (void);
 	// data members
 	protected:
 	float PWMfreq;

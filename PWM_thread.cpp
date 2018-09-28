@@ -6,6 +6,7 @@
 Allocates task data for PWM thread.  Most data initialization is on a per channel basis, and
 is done in the addChannel callback, so the initDataP is not used in this function.
 last modified:
+2018/09/28 by Jamie Boyd - added addresses for thread functions, easier for subclassing
 2018/09/18 by Jamie Boyd - channels and outputs modifications
 2018/09/04 by Jamie Boyd - debugging
 2018/08/07 by Jamie Boyd - modified for pulsedThread subclassing
@@ -23,6 +24,11 @@ int ptPWM_Init (void * initDataP, void * &taskDataP){
 	taskData->FIFOregister = PWMperi->addr + PWM_FIF;
 	taskData->dataRegister1 = PWMperi->addr + PWM_DAT1;
 	taskData->dataRegister2 = PWMperi->addr + PWM_DAT2;
+	// save function addresses for thread functions, subclasses can set their own functions here
+	taskData->hiFuncREG = &ptPWM_REG;
+	taskData->hiFuncFIF1 = &ptPWM_FIFO_1;
+	taskData->hiFuncFIF1 = &ptPWM_FIFO_2;
+	taskData->hiFuncFIFdual = &ptPWM_FIFO_dual;
 	return 0; 
 }
 
@@ -34,7 +40,6 @@ last modified:
 2019/09/20 by Jamie Boyd - added option to use FIFO
 2018/09/19 by Jamie Boyd - initial version, moved from general initialization */
 int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
-	
 	ptPWMStructPtr taskData = (ptPWMStructPtr) theTask->taskData;
 	ptPWMchanAddStructPtr chanAddPtr =(ptPWMchanAddStructPtr)modData;
 	// some register address offsets and bits are channel specific, if we save them in variables
@@ -44,9 +49,9 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 	unsigned int enableBit;
 	unsigned int polarityBit;
 	unsigned int offStateBit;
-	// instead of constantly writing to register, use a variable, then OR 
-	// the control register with the variable at the end
-	unsigned int registerVal = 0;
+	// instead of constantly writing to register, copy control register into a variable 
+	// then set the control register with the variable at the end
+	unsigned int registerVal = *(taskData->ctlRegister);
 	if (chanAddPtr->channel == 1){
 		// set channel 1 in taskData
 		taskData->channels |= 1;
@@ -101,9 +106,7 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 			return 1;
 		}
 	}
-
 	// set up PWM channel 1 or 2 by writing to control register
-
 	// set mode
 	if (chanAddPtr->mode == PWM_MARK_SPACE){
 		registerVal |= modeBit; // put PWM in MS Mode
@@ -139,8 +142,8 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 	}else{
 		registerVal &= ~enableBit;
 	}
-	// OR the control register with registerVal
-	*(taskData->ctlRegister) |= registerVal;
+	// set the control register with registerVal
+	*(taskData->ctlRegister) = registerVal;
 	delete chanAddPtr;
 	return 0;
 }
@@ -148,6 +151,7 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 /* *********************************** PWM Hi function (no low function) when using data registers ******************************
 gets the next value from the array to be output and writes it to the data register for 1, 
 Last Modified:
+2018/09/27 by Jamie Boyd - reset errors in status register
 2018/09/24 - by Jamie Boyd - breaking out FIFO hi func
 2018/09/21 by Jamie Boyd - adding FIFO
 2018/09/18 by Jamie Boyd- updated for two channel 1 thread
@@ -155,7 +159,9 @@ Last Modified:
 void ptPWM_REG (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
 	if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO1 | PWM_GAPO2)){
+#if beVerbose
 		printf ("status reg = 0x%x\n", *(taskData->statusRegister) );
+#endif
 		 *(taskData->statusRegister) |= (PWM_BERR | PWM_GAPO1 | PWM_GAPO2);
 	}
 	if (taskData->enable1){
@@ -177,11 +183,14 @@ void ptPWM_REG (void * taskDataP){
 /* *********************************** PWM Hi function when using FIFO fir channel 1 ******************************
 checks the FULL bit and feeds the FIFO from channel 1 array till it is full
 Last Modified:
+2018/09/27 by Jamie Boyd - reset errors in status register
 2018/09/24 - by Jamie Boyd - initial version */
 void ptPWM_FIFO_1 (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
 	if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO1 | PWM_GAPO2)){
+#if beVerbose
 		printf ("status reg = 0x%x\n", *(taskData->statusRegister) );
+#endif
 		 *(taskData->statusRegister) |= (PWM_BERR | PWM_GAPO1 | PWM_GAPO2);
 	}
 	while (!(*(taskData->statusRegister) & PWM_FULL1)){
@@ -196,13 +205,14 @@ void ptPWM_FIFO_1 (void * taskDataP){
 /* *********************************** PWM Hi function when using FIFO for channel 2 ******************************
 checks the FULL bit and feeds the FIFO from channel 2 array till it is full
 Last Modified:
+2018/09/27 by Jamie Boyd - reset errors in status register
 2018/09/24 - by Jamie Boyd - initial version */
 void ptPWM_FIFO_2 (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
 	if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO1 | PWM_GAPO2)){
-		//*(taskData -> ctlRegister) |= (PWM_USEF2 | PWM_PWEN2 ); 
-		//*(taskData -> ctlRegister ) &= ~(PWM_SBIT2 | PWM_MODE2);
+#if beVerbose
 		printf ("status reg = 0x%x\n", *(taskData->statusRegister) );
+#endif
 		 *(taskData->statusRegister) |= (PWM_BERR | PWM_GAPO1 | PWM_GAPO2);
 	}
 	while (!(*(taskData->statusRegister) & PWM_FULL1)){
@@ -217,11 +227,14 @@ void ptPWM_FIFO_2 (void * taskDataP){
 /* *********************************** PWM Hi function when using FIFO with both channels ******************************
 checks the FULL bit and feeds the FIFO from array for channels 1 and 2 alternately till it is full
 Last Modified:
+2018/09/27 by Jamie Boyd - reset errors in status register
 2018/09/24 - by Jamie Boyd - initial version */
 void ptPWM_FIFO_dual (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
 	if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO1 | PWM_GAPO2)){
+#if beVerbose
 		printf ("status reg = 0x%x\n", *(taskData->statusRegister) );
+#endif
 		 *(taskData->statusRegister) |= (PWM_BERR | PWM_GAPO1 | PWM_GAPO2);
 	}
 	while (!(*(taskData->statusRegister) & PWM_FULL1)){
@@ -255,34 +268,33 @@ void ptPWM_delTask (void * taskData){
 /* ************************ callback to turn on or off use of FIFO vs data registers *********************
 modData is a pointer to an int, 0 to use dataRegisters, 1 to use FIFO for either or both channels
 Last Modified:
+2018/09/27 by Jamie Boyd - only write to conrol register once at end
 2018/09/23 by Jamie Boyd - initial version */
 int ptPWM_setFIFOCallback (void * modData, taskParams * theTask){
 	ptPWMStructPtr taskData = (ptPWMStructPtr) theTask->taskData;
+	unsigned int registerVal = *(taskData->ctlRegister);
 	int * useFIFOPtr =(int *)modData;
 	if (*useFIFOPtr){
 		taskData->useFIFO = 1;
-		*(PWMperi ->addr + PWM_CTL) |= PWM_USEF1;
-		*(PWMperi ->addr + PWM_CTL) |= PWM_USEF2;
+		registerVal |= (PWM_USEF1 | PWM_USEF2);
 		if (taskData->channels ==3){ 
-			theTask->hiFunc = &ptPWM_FIFO_dual;
+			theTask->hiFunc = taskData->hiFuncFIFdual;
 			// can't use repeat last when both channels are active
-			*(PWMperi ->addr + PWM_CTL) &= ~PWM_RPTL1;
-			*(PWMperi ->addr + PWM_CTL) &= ~PWM_RPTL2;
+			registerVal &= ~(PWM_RPTL1 | PWM_RPTL2);
 		}else{
 			if (taskData->channels ==  1){
-				theTask->hiFunc = &ptPWM_FIFO_1;
+				theTask->hiFunc = taskData->hiFuncFIF1;;
 			}else{
-				theTask->hiFunc =  &ptPWM_FIFO_2;
+				theTask->hiFunc =  taskData->hiFuncFIF2;;
 			}
-			*(PWMperi ->addr + PWM_CTL) |=  PWM_RPTL1;
-			*(PWMperi ->addr + PWM_CTL) |= PWM_RPTL2;
+			registerVal |=  (PWM_RPTL1 |PWM_RPTL2) ;
 		}
 	}else{
 		taskData->useFIFO =0;
-		theTask->hiFunc = &ptPWM_REG;
-		*(PWMperi ->addr + PWM_CTL) &= ~PWM_USEF1;
-		*(PWMperi ->addr + PWM_CTL) &= ~PWM_USEF2;
-	}	
+		theTask->hiFunc = taskData->hiFuncREG;
+		registerVal &= ~(PWM_USEF1 | PWM_USEF2);
+	}
+	*(taskData->ctlRegister) = registerVal;
 	delete useFIFOPtr;
 	return 0;
 }
@@ -296,7 +308,7 @@ Last Modified:
 int ptPWM_setEnableCallback (void * modData, taskParams * theTask){
 	ptPWMStructPtr taskData = (ptPWMStructPtr) theTask->taskData;
 	int * enablePtr =(int *)modData;
-	unsigned int regVal = 0;
+	unsigned int registerVal = *(taskData->ctlRegister);
 	if (*enablePtr & 4){ // we are enabling
 		if (*enablePtr & 1){
 			// set PWM value first so we are putting out current value
@@ -307,7 +319,7 @@ int ptPWM_setEnableCallback (void * modData, taskParams * theTask){
 			}else{ //
 				*(taskData->dataRegister1) = taskData->arrayData1[taskData->arrayPos1];
 			}
-			regVal |= PWM_PWEN1;
+			registerVal |= PWM_PWEN1;
 			//*(taskData -> ctlRegister) |= PWM_PWEN1; // set enable bit
 			taskData->enable1 =1;
 		}
@@ -320,24 +332,38 @@ int ptPWM_setEnableCallback (void * modData, taskParams * theTask){
 			}else{ 
 				*(taskData->dataRegister2) = taskData->arrayData2[taskData->arrayPos2];
 			}
-			regVal |= PWM_PWEN2;
+			registerVal |= PWM_PWEN2;
 			//*(taskData -> ctlRegister) |= PWM_PWEN2; // set enable bit
 			taskData->enable2 =1;
 		}
 		*(taskData -> ctlRegister) |= regVal;
 	}else{ // we are un-enabling
 		if (*enablePtr & 1){
-			regVal  |= PWM_PWEN1;
+			registerVal &= ~PWM_PWEN1;
 			//*(taskData -> ctlRegister) &= ~PWM_PWEN1; // set enable bit
 			taskData->enable1 =0;
 		}
 		if (*enablePtr & 2){
-			regVal  |= PWM_PWEN2;
+			registerVal &= ~PWM_PWEN2;
 			//*(taskData -> ctlRegister) &= ~PWM_PWEN2; // set enable bit
 			taskData->enable2 =0;
 		}
-		*(taskData -> ctlRegister) &= ~regVal;
 	}
+	// maybe change hiFUnc if using a FIFO and both channels are configured
+	if ((taskData->channels ==3) && (taskData->useFIFO)){ 
+		if ((taskData->enable1) && (taskData->enable2)){
+			theTask->hiFunc = &taskData->hiFuncFIFdual;
+		}else{
+			if (taskData->enable2){
+				theTask->hiFunc = theTask->hiFunc = &taskData->hiFuncFIF2;
+			}else{
+				if (theTask->enable1){
+					theTask->hiFunc = theTask->hiFunc = &taskData->hiFuncFIF1;
+				}
+			}
+		}
+	}
+	*(taskData->ctlRegister)= registerVal;
 	delete enablePtr;
 	return 0;
 }
@@ -351,21 +377,23 @@ Last Modified:
 int ptPWM_reversePolarityCallback (void * modData, taskParams * theTask){
 	ptPWMStructPtr taskData = (ptPWMStructPtr) theTask->taskData;
 	int * polarityPtr =(int *)modData;
+	unsigned int registerVal = *(taskData->ctlRegister);
 	if (*polarityPtr & 4){
 		if (*polarityPtr & 1){
-			*(taskData -> ctlRegister) |= PWM_POLA1; // set reverse polarity
+			registerVal |= PWM_POLA1; // set reverse polarity
 		}
 		if (*polarityPtr & 2){
-			*(taskData -> ctlRegister) |= PWM_POLA2; // set reverse polarity
+			registerVal |= PWM_POLA2; // set reverse polarity
 		}
 	}else{
 		if (*polarityPtr & 1){
-			*(taskData -> ctlRegister) &= ~PWM_POLA1; // un-set reverse polarity
+			registerVal &= ~PWM_POLA1; // un-set reverse polarity
 		}
 		if (*polarityPtr & 2){
-			*(taskData -> ctlRegister) &= ~PWM_POLA2; // un-set reverse polarity
+			registerVal &= ~PWM_POLA2; // un-set reverse polarity
 		}
 	}
+	*(taskData->ctlRegister)= registerVal;
 	delete polarityPtr;
 	return 0;
 }
@@ -378,21 +406,23 @@ Last Modified:
 int ptPWM_setOffStateCallback (void * modData, taskParams * theTask){
 	ptPWMStructPtr taskData = (ptPWMStructPtr) theTask->taskData;
 	int * offStatePtr =(int *)modData;
+	unsigned int registerVal = *(taskData->ctlRegister);
 	if (*offStatePtr & 4){
 		if (*offStatePtr & 1){
-			*(taskData -> ctlRegister ) |= PWM_SBIT1;
+			registerVal |= PWM_SBIT1;
 		}
 		if (*offStatePtr & 2){
-			*(taskData -> ctlRegister ) |= PWM_SBIT2;
+			registerVal |= PWM_SBIT2;
 		}
 	} else{
 		if (*offStatePtr & 1){
-			*(taskData -> ctlRegister ) &= ~PWM_SBIT1;
+			registerVal &= ~PWM_SBIT1;
 		}
 		if (*offStatePtr & 2){
-			*(taskData -> ctlRegister ) &= ~PWM_SBIT2;
+			registerVal &= ~PWM_SBIT2;
 		}
 	}
+	*(taskData->ctlRegister)= registerVal;
 	delete (offStatePtr);
 	return 0;
 }
@@ -744,7 +774,8 @@ PWM_thread * PWM_thread::PWM_threadMaker (float pwmFreq, unsigned int pwmRangeP,
 }
 
 /* ************************************** PWM_thread Instance methods*******************************
-****************** Destructor handles peripheral mapping and unsets alternate *************************
+
+****************** Destructor handles peripheral mapping and unsets alternate GPIO selections *************************
 Thread data is destroyed by the pulsedThread destructor.  Array data is not "owned" by the class or the thread
 All we need to do here is unset the alternate function for the GPIO pins and decrement the tally for the peripheral mappings
 Last Modified:
@@ -768,7 +799,6 @@ PWM_thread::~PWM_thread (void){
 	unUsePWMperi();
 	unUseGPIOperi();
 }
-
 
 /* ********************************** Configures a PWM Channel ***************************************************
 Makes and fills ptPWMchanStruct and calls ptPWM_addChannelCallback
@@ -942,40 +972,46 @@ unsigned int PWM_thread::PWM_thread::getPWMRange (void){
 	return PWMrange;
 }
 
+/* ************************* Gets configured channels  **********************
+returns bit-wise integer, 1 for channel 1, 2 for channel 2, 3 for both channels
+Last Modified:
+2018/09/21 by Jamie Boyd - initial version */
+
 int PWM_thread::getChannels (void){
 	return PWMchans;
 }
 
-
+/* ************************* Returns value of the PWM status register **********************
+Not really needed to be a class method at all, but here it is
+Last Modified:
+2018/09/27 by Jamie Boyd - - initial version */
 unsigned int PWM_thread::getStatusRegister (void){
 	return *(PWMperi->addr + PWM_STA);
-}	
-
+}
 
 /* ************************* Returns a structure containing information about a channel **********************
 returns a nullPtr if the channel is not 1 or 2, or if the channel has not been added
 The calling function is reponsible for deleting the returned ptPWMchanInfoStructPtr, if not null
 Last Modified:
+2018/09/27 by Jmaie Boyd - made infoPtr a parameter, not a return value
 2018/09/21 by Jamie Boyd - initial version */
-ptPWMchanInfoStructPtr PWM_thread::getChannelInfo (int theChannel){
-	ptPWMchanInfoStructPtr infoPtr = nullptr;
+int PWM_thread::getChannelInfo (ptPWMchanInfoStructPtr infoPtr);{
 	// check if theChannel is 1 or 2
-	if (!((theChannel ==1) || (theChannel ==2))){
+	if (!((infoPtr->theChannel ==1) || (infoPtr->theChannel ==2))){
 #if beVerbose
 		printf ("The requested channel, %d, does not existl; Channel must be either 1or 2.\n", theChannel);
 #endif
-		return infoPtr;
+		return 1;
 	}
 	// check that channel has been configured
-	if (!(PWMchans & theChannel)){
+	if (!(PWMchans & infoPtr->theChannel)){
 #if beVerbose
 		printf ("The requested channel, %d, has not been configured.\n", theChannel);
 #endif
-		return infoPtr;
+		return 2;
 	}
-	// now we know we have a channel we allocate some memory
-	infoPtr = new ptPWMchanInfoStruct;
-	if (theChannel == 1){
+	// now we know we have a channel
+	if (infoPtr->theChannel == 1){
 		infoPtr->audioOnly = audioOnly1;
 		infoPtr->PWMmode = PWMmode1;
 		infoPtr->enable = enabled1;
@@ -988,5 +1024,5 @@ ptPWMchanInfoStructPtr PWM_thread::getChannelInfo (int theChannel){
 		infoPtr->polarity = polarity2;
 		infoPtr->offState = offState2;
 	}
-	return infoPtr;
+	return 0;
 }
