@@ -45,9 +45,9 @@ int main(int argc, char **argv){
 	int offState =0;
 	int useFIFO=1;
 	// PWM settings
-	float PWMfreq = 400;
-	unsigned int PWMrange = 4096;//;
-	float toneFreq = 1;  // tone, in Hz, that will play over the audio if directed to the speakers
+	float PWMfreq = 40000;
+	unsigned int PWMrange = 1000;//;
+	float toneFreq = 4000;  // tone, in Hz, that will play over the audio if directed to the speakers
 	float pulsedThreadFreq;
 	int accMode;
 	
