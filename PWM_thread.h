@@ -64,7 +64,7 @@ typedef struct ptPWMStruct{
 	unsigned int startPos2;
 	unsigned int stopPos2;
 } ptPWMStruct, *ptPWMStructPtr;
-
+unsigned int getStatusRegister (void);
 /* **************custom struct for callback configuring a PWM channel *****************************
 Contains data for channel configurtation and pointer to data to output 
 last modified:
@@ -143,6 +143,7 @@ class PWM_thread : public pulsedThread{
 	unsigned int getPWMRange (void);
 	int getChannels (void);
 	ptPWMchanInfoStructPtr getChannelInfo (int theChannel);
+	unsigned int getStatusRegister (void);
 	// data members
 	protected:
 	float PWMfreq;

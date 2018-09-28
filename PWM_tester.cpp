@@ -43,13 +43,14 @@ int main(int argc, char **argv){
 	int enable = 0;
 	int polarity = 0;
 	int offState =0;
-	int useFIFO=0;
+	int useFIFO=1;
 	// PWM settings
-	float PWMfreq = 1e03;
-	unsigned int PWMrange = 1000;
+	float PWMfreq = 400;
+	unsigned int PWMrange = 4096;//;
 	float toneFreq = 1;  // tone, in Hz, that will play over the audio if directed to the speakers
 	float pulsedThreadFreq;
 	int accMode;
+	
 	
 	// make a thread for continuous output. Do thread at same speed as PWM frequency when writing to the data register
 	// WHen using a FIFO, thread can go 10x slower because as long as we get back before the FIFO is empty, all is good
@@ -62,6 +63,7 @@ int main(int argc, char **argv){
 		pulsedThreadFreq = PWMfreq;
 		accMode = ACC_MODE_SLEEPS_AND_OR_SPINS;
 	}
+	
 	PWM_thread * myPWM  = PWM_thread::PWM_threadMaker (PWMfreq, PWMrange, useFIFO,  pulsedThreadFreq, 0, accMode);
 	
 	if (myPWM == nullptr){
@@ -80,29 +82,47 @@ int main(int argc, char **argv){
 	}
 	//printf ("data at 0 =%d, 1 = %d, 2 = %d, 3 = %d, 4 = %d\n", dataArray [0],  dataArray [1], dataArray [2], dataArray [3], dataArray [4]);      
 	// add the channel to the thread
-	myPWM->addChannel (1, audioOnly, mode, enable, polarity, offState, dataArray, arraySize);
-	usleep (2000); // just to be sure train is stopped
-	myPWM->addChannel (2, audioOnly, mode, enable, polarity, offState, dataArray, arraySize);
+	if (channel &2){
+		myPWM->addChannel (2, audioOnly, mode, enable, polarity, offState, dataArray, arraySize);
+	}
+	if (channel &1){
+		myPWM->addChannel (1, audioOnly, mode, enable, polarity, offState, dataArray, arraySize);
+	}
+	unsigned int status = myPWM->getStatusRegister();
+	printf ("status reg = 0x%x. chan1 state = %d and chan2 state = %d.\n", status, (status & PWM_STA1), (status & PWM_STA2));
+	//myPWM->addChannel (2, audioOnly, mode, enable, polarity, offState, dataArray, arraySize);
 	// start the thread doing an infinite train for 10 seconds
 	myPWM->startInfiniteTrain ();
 	// enable the PWM to output
 	myPWM->setEnable (1, channel, 1);
+
+	myPWM->waitOnBusy (1);
+	status = myPWM->getStatusRegister();
+	printf ("status reg = 0x%x. chan1 state = %d and chan2 state = %d.\n", status, (status & PWM_STA1), (status & PWM_STA2));
+	myPWM->waitOnBusy (1);
+	status = myPWM->getStatusRegister();
+	printf ("status reg = 0x%x. chan1 state = %d and chan2 state = %d.\n", status, (status & PWM_STA1), (status & PWM_STA2));
 	myPWM->waitOnBusy (10);
 	myPWM->stopInfiniteTrain ();
-	
-	myPWM->setEnable (0, channel, 0);
+	myPWM->setEnable (0, 	2, 0);
+	myPWM->setEnable (0, 	1, 0);
 	printf ("turned off.\n");
-	usleep (2000000);
-	myPWM->setOffState (1,channel,0);
-	printf ("Set offstate high.\n");
-	usleep (2000000);
-	myPWM->setOffState (0,channel,0);
+	status = myPWM->getStatusRegister();
+	printf ("status reg = 0x%x. chan1 state = %d and chan2 state = %d.\n", status, (status & PWM_STA1), (status & PWM_STA2));
+
+	//usleep (2000000);
+	//myPWM->setOffState (1,channel,0);
+	//printf ("Set offstate high.\n");
+	//usleep (2000000);
+	//myPWM->setOffState (0,channel,0);
 	printf ("Set offstate low.\n");
 	usleep (2000000);
 	myPWM->setArraySubrange ((unsigned int) (arraySize/3), (unsigned int) (2 * arraySize/3), channel, 1);
 	myPWM->setEnable (1, channel, 0);
 	myPWM->startInfiniteTrain ();	
 	myPWM->waitOnBusy (4);
+	status = myPWM->getStatusRegister();
+	printf ("status reg = 0x%x. chan1 state = %d and chan2 state = %d.\n", status, (status & PWM_STA1), (status & PWM_STA2));
 	myPWM->stopInfiniteTrain ();
 	myPWM->setEnable (0, channel, 0);
 	printf ("And we are done here.\n");
