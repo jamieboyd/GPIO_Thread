@@ -17,6 +17,12 @@ Last Modified:
 2018/09/24 - by Jamie Boyd - initial version */
 void ptPWM_sin_FIFO_1 (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
+	if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO1)){
+#if beVerbose
+		printf ("status reg = 0x%x\n", *(taskData->statusRegister) );
+#endif
+		*(taskData->statusRegister) |= (PWM_BERR | PWM_GAPO1);
+	}
 	while (!(*(taskData->statusRegister) & PWM_FULL1)){
 		*(taskData->FIFOregister) = taskData->arrayData1[taskData->arrayPos1];
 		taskData->arrayPos1 += taskData->startPos1;  // startPos is hijacked to use for frequency, so we can use same structs as base class. 
@@ -32,6 +38,12 @@ Last Modified:
 2018/09/24 - by Jamie Boyd - initial version */
 void ptPWM_sin_FIFO_2 (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
+		if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO2)){
+#if beVerbose
+		printf ("status reg = 0x%x\n", *(taskData->statusRegister) );
+#endif
+		*(taskData->statusRegister) |= (PWM_BERR | PWM_GAPO2);
+	}
 	while (!(*(taskData->statusRegister) & PWM_FULL1)){
 		*(taskData->FIFOregister) = taskData->arrayData2[taskData->arrayPos2];
 		taskData->arrayPos2 += taskData->startPos2;  // startPos is hijacked to use for frequency, so we can use same structs as base class. 
@@ -47,6 +59,13 @@ Last Modified:
 2018/09/24 - by Jamie Boyd - initial version */
 void ptPWM_sin_FIFO_dual (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
+		if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO1 | PWM_GAPO2)){
+#if beVerbose
+		printf ("status reg = 0x%x\n", *(taskData->statusRegister) );
+#endif
+		*(taskData->statusRegister) |= (PWM_BERR | PWM_GAPO1 | PWM_GAPO2);
+	}
+
 	while (!(*(taskData->statusRegister) & PWM_FULL1)){
 		if (taskData->chanFIFO==1){
 			*(taskData->FIFOregister) = taskData->arrayData1[taskData->arrayPos1];
@@ -64,32 +83,6 @@ void ptPWM_sin_FIFO_dual (void * taskDataP){
 			taskData->chanFIFO=1;
 		}
 	}	
-}
-
-/* ************************ callback to turn on or off use of FIFO vs data registers *********************
-modData is a pointer to an int, 0 to use dataRegisters, 1 to use FIFO for either or both channels
-Last Modified:
-2018/09/23 by Jamie Boyd - initial version */
-int ptPWM_sin_setFIFOCallback (void * modData, taskParams * theTask){
-	ptPWMStructPtr taskData = (ptPWMStructPtr) theTask->taskData;
-	taskData->useFIFO = 1;
-	*(PWMperi ->addr + PWM_CTL) |= PWM_USEF1;
-	*(PWMperi ->addr + PWM_CTL) |= PWM_USEF2;
-	if (taskData->channels ==3){ 
-		theTask->hiFunc = &ptPWM_sin_FIFO_dual;
-		// can't use repeat last when both channels are active
-		*(PWMperi ->addr + PWM_CTL) &= ~PWM_RPTL1;
-		*(PWMperi ->addr + PWM_CTL) &= ~PWM_RPTL2;
-	}else{
-		if (taskData->channels ==  2){
-			theTask->hiFunc =  &ptPWM_sin_FIFO_2;
-		}else{
-			theTask->hiFunc =  &ptPWM_sin_FIFO_1;
-		}
-		*(PWMperi ->addr + PWM_CTL) |=  PWM_RPTL1;
-		*(PWMperi ->addr + PWM_CTL) |= PWM_RPTL2;
-	}
-	return 0;
 }
 
 
@@ -147,8 +140,16 @@ PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channels){
 #endif
 	// set custom task delete function
 	newPWMsin->setTaskDataDelFunc (&ptPWM_delTask);
+	// overwrite PWM_thread hiFuncs with PWM_sin_thread hiFuncs
+	void * td = newPWMsin->getTaskData ();
+	ptPWMStructPtr taskData = (ptPWMStructPtr) td;
+	taskData->hiFuncREG = nullptr;
+	taskData->hiFuncFIF1 = &ptPWM_sin_FIFO_1;
+	taskData->hiFuncFIF1 = &ptPWM_sin_FIFO_2;
+	taskData->hiFuncFIFdual = &ptPWM_sin_FIFO_dual;
 	// set useFifo
 	newPWMsin->useFIFO =1;
+	newPWMsin->setFIFO (1, 0);
 	// set fields for PWMfreq and PWM Range,
 	newPWMsin->PWMfreq = realPWMfreq;
 	newPWMsin->PWMrange = PWM_RANGE;
@@ -167,6 +168,7 @@ PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channels){
 		newPWMsin->addChannel (2, 1, PWM_BALANCED, 0, 0, 0, newPWMsin->dataArray, arraySize);
 	}
 	newPWMsin->PWMchans = channels;
+	newPWMsin->setHighFunc (&ptPWM_sin_FIFO_1);
 	// return new thread
 	return newPWMsin;
 }
@@ -178,17 +180,6 @@ PWM_sin_thread::~PWM_sin_thread (){
 #endif
 	delete dataArray;
 }
-
-/* ************************************ SetsPWM peripheral to use the FIFO  *************************** 
-if both channels are being used, they either both use the FIFO, or both use their respective data registers
-Last Modified:
-2018/09/24 by Jamie Boyd - intial verison modified from base class to call ptPWM_sin_setFIFOCallback */
-int PWM_sin_thread::setFIFO (int FIFOstate, int isLocking){
-#if beVerbose
-	printf ("PWM_sin_thread setFIFO called.\n");
-#endif
-	return modCustom (&ptPWM_sin_setFIFOCallback, nullptr, isLocking);
-} 
 
 
 /* ****************************** sets Frequency ************************************
