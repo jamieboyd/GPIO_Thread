@@ -72,6 +72,8 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 		// set up GPIO
 		if (chanAddPtr->audioOnly ){
 			taskData->audioOnly1 =1;
+			INP_GPIO(GPIOperi->addr,18);
+			
 		}else{
 			INP_GPIO(GPIOperi ->addr, 18);           // Set GPIO 18 to input to clear bits
 			SET_GPIO_ALT(GPIOperi ->addr, 18, 5);     // Set GPIO 18 to Alt5 function PWM0
@@ -95,6 +97,7 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 			// set up GPIO
 			if (chanAddPtr->audioOnly){
 				taskData->audioOnly2 = 1;
+				INP_GPIO(GPIOperi->addr,19);           // Set GPIO 19 to input to clear bits
 			}else{
 				INP_GPIO(GPIOperi ->addr, 19);           // Set GPIO 19 to input to clear bits
 				SET_GPIO_ALT(GPIOperi->addr, 19, 5);     // Set GPIO 19 to Alt5 function PWM1
@@ -162,7 +165,7 @@ Last Modified:
 2018/08/07 by Jamie Boyd -updated for pusledThread subclass */
 void ptPWM_REG (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
-	if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO1 | PWM_GAPO2)){
+	if (*(taskData->statusRegister) & (PWM_BERR | PWM_GAPO1 | PWM_GAPO2)){
 #if beVerbose
 		printf ("status reg = 0x%x\n", *(taskData->statusRegister) );
 #endif
@@ -192,7 +195,7 @@ Last Modified:
 void ptPWM_FIFO_1 (void * taskDataP){
 	
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
-	if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO1 | PWM_GAPO2)){
+	if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO1)){
 #if beVerbose
 
 		printf ("status reg = 0x%x\n", *(taskData->statusRegister) );
@@ -216,7 +219,7 @@ Last Modified:
 2018/09/24 - by Jamie Boyd - initial version */
 void ptPWM_FIFO_2 (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
-	if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO1 | PWM_GAPO2 | PWM_FULL1 | PWM_EMPT1)){
+	if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO2 | PWM_FULL1 | PWM_EMPT1)){
 #if beVerbose
 
 		//printf ("status reg = 0x%x\n", *(taskData->statusRegister) );
@@ -313,33 +316,36 @@ Last Modified:
 int ptPWM_setEnableCallback (void * modData, taskParams * theTask){
 	ptPWMStructPtr taskData = (ptPWMStructPtr) theTask->taskData;
 	int * enablePtr =(int *)modData;
-	//*(taskData->ctlRegister) |= PWM_CLRF1;
+//	if ((taskData->useFIFO) && ((*enablePtr) & 4)){
+//		*(taskData->ctlRegister) |= PWM_CLRF1;
+//	}
 	unsigned int registerVal = *(taskData->ctlRegister);
 	if ((*enablePtr) & 4){ // we are enabling
 		if ((*enablePtr) & 1){
-			// set PWM value first so we are putting out current value
 			if (taskData->useFIFO){
-				if (*(taskData->statusRegister) & PWM_EMPT1){
+				registerVal |= (PWM_PWEN1 | PWM_USEF1);  //set enable and use FIFO
+				if (*(taskData->statusRegister) & PWM_EMPT1){  // set PWM value first so we are putting out a value
 					*(taskData->FIFOregister) = taskData->arrayData1[taskData->arrayPos1];
 					taskData->chanFIFO =2;
 				}
-			}else{ //
+			}else{ // not using FIFO 
+				registerVal |= PWM_PWEN1; // set enable
 				*(taskData->dataRegister1) = taskData->arrayData1[taskData->arrayPos1];
 			}
-			registerVal |= PWM_PWEN1;
 			taskData->enable1 =1;
 		}
 		if ((*enablePtr) & 2){
 			// set PWM value first so we are putting out current value
 			if (taskData->useFIFO){
+				registerVal |= (PWM_PWEN2 | PWM_USEF2);  //set enable and use FIFO
 				if (*(taskData->statusRegister) & PWM_EMPT1){
 					*(taskData->FIFOregister) = taskData->arrayData2[taskData->arrayPos2];
 					taskData->chanFIFO =1;
 				}
-			}else{ 
+			}else{
+				registerVal |= PWM_PWEN1;
 				*(taskData->dataRegister2) = taskData->arrayData2[taskData->arrayPos2];
 			}
-			registerVal |= PWM_PWEN2;
 			taskData->enable2 =1;
 		}
 	}else{ // we are un-enabling
@@ -356,19 +362,25 @@ int ptPWM_setEnableCallback (void * modData, taskParams * theTask){
 	if (taskData->useFIFO){ 
 		if ((taskData->enable1) && (taskData->enable2)){
 			theTask->hiFunc = *(taskData->hiFuncFIFdual);
+#if beVerbose
 			printf ("Set highfunc FIFO_dual.\n");
+#endif
 			// can't use repeat last when both channels are active
 			registerVal &= ~(PWM_RPTL1 | PWM_RPTL2);
 		}else{
 			if (taskData->enable2){
 				theTask->hiFunc = *(taskData->hiFuncFIF2);
+#if beVerbose
 				printf ("Set highfunc FIFO_2.\n");
+#endif
 				registerVal |=  PWM_RPTL2 ;
 
 			}else{
 				if (taskData->enable1){
 					theTask->hiFunc = *(taskData->hiFuncFIF1);
+#if beVerbose
 					printf ("Set highfunc FIFO_1\n");
+#endif
 					registerVal |=  PWM_RPTL1 ;
 				}
 			}
@@ -813,15 +825,11 @@ PWM_thread::~PWM_thread (void){
 	if (PWMchans & 1){
 		if (audioOnly1 == 0){
 			INP_GPIO(GPIOperi->addr,18);
-			OUT_GPIO(GPIOperi->addr,18);
-			GPIO_CLR(GPIOperi->addr, (1 << 18));
 		}
 	}
 	if (PWMchans & 2){
 		if (audioOnly2 == 0){
 			INP_GPIO(GPIOperi->addr,19);
-			OUT_GPIO(GPIOperi->addr,19);
-			GPIO_CLR(GPIOperi->addr, (1 << 19));
 		}
 	}
 	unUsePWMClockperi();
