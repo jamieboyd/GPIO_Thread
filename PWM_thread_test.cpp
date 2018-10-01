@@ -1,4 +1,4 @@
-#include "PWM_sin_thread.h"
+#include "PWM_thread.h"
 
 /* **************************************** Test of PWM_thread *******************************************
 Last Modified:
@@ -33,7 +33,7 @@ int main(int argc, char **argv){
 	delete my_sin_PWM;
 	
 	*/
-	int audioOnly =0;
+	int audioOnly =1;
 	int mode = PWM_BALANCED;// PWM_BALANCED; //PWM_MARK_SPACE; //
 	int enable = 0;
 	int polarity = 0;
@@ -72,24 +72,25 @@ int main(int argc, char **argv){
 		dataArray1 [ii] = (unsigned int) (offset - offset * cos (phi *((double) ii/ (double) arraySize)));
 	}
 	int * dataArray2 = new int [arraySize];
-	for (unsigned int ii=0; ii< arraySize; ii +=5){
-		dataArray1 [ii] = (unsigned int) (offset - offset * cos (phi *((double) (ii % arraySize)/ (double) arraySize)));
+	for (unsigned int ii=0; ii< arraySize; ii +=1){
+		dataArray2 [ii] = (unsigned int) (offset - offset * cos (phi *((double) (ii*3)/ (double) arraySize)));
 	}
-	myPWM->addChannel (1, audioOnly, mode, enable, polarity, offState, dataArray1, arraySize);
-	usleep (200000);
+
 	myPWM->addChannel (2, audioOnly, mode, enable, polarity, offState, dataArray2, arraySize);
 	usleep (200000);
 	
+
+	myPWM->addChannel (1, audioOnly, mode, enable, polarity, offState, dataArray1, arraySize);
+	usleep (200000);
 	
-	// do channel 1
-	printf ("channel 1\n");
-	myPWM->setEnable (1, 1, 0);
+			// both channels
+	printf ("channels 1 and 2\n");
+	myPWM->setEnable (1, 3, 0);
 	myPWM->startInfiniteTrain ();
 	myPWM->waitOnBusy (5);
 	myPWM->stopInfiniteTrain ();
-	myPWM->setEnable (0, 1, 0);
+	myPWM->setEnable (0, 3, 0);
 	usleep (2000000);
-	
 	
 	// channel 2
 	printf ("channel 2\n");
@@ -100,14 +101,26 @@ int main(int argc, char **argv){
 	myPWM->setEnable (0, 2, 0);
 	usleep (2000000);
 	
-	// both channels
-	printf ("channels 1 and 2\n");
-	myPWM->setEnable (1, 3, 0);
+	// do channel 1
+	printf ("channel 1\n");
+	myPWM->setEnable (1, 1, 0);
 	myPWM->startInfiniteTrain ();
 	myPWM->waitOnBusy (5);
 	myPWM->stopInfiniteTrain ();
-	myPWM->setEnable (0, 3, 0);
+	myPWM->setEnable (0, 1, 0);
 	usleep (2000000);
+	
+
+	
+
+	
+		
+	
+
+
+
+	
+
 	
 
 	
@@ -193,5 +206,6 @@ int main(int argc, char **argv){
 	return 0;
 }*/
  /*
+ g++ -O3 -std=gnu++11 -Wall -lpulsedThread GPIOlowlevel.cpp PWM_thread.cpp PWM_tester.cpp -o PWMtester
 g++ -O3 -std=gnu++11 -Wall -lpulsedThread GPIOlowlevel.cpp PWM_thread.cpp PWM_sin_thread.cpp PWM_tester.cpp -o PWMtester
 */

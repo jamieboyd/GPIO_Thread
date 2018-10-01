@@ -26,6 +26,19 @@ int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask);
 
 /* ******************** Custom Data Struct for pulsed Thread used by PWM ***************************
 last modified:
+2018/09/20 by Jamie Boyd - initial version */
+typedef struct ptPWM_init_Struct{
+	// using a FIFO or not is set on init
+	int useFIFO;
+	// addresses of functions for hiFunc are set at init
+	void (*hiFuncREG)(void *);
+	void (*hiFuncFIF1)(void *);
+	void (*hiFuncFIF2)(void *);
+	void (*hiFuncFIFdual)(void *);
+}ptPWM_init_Struct, *ptPWM_init_StructPtr;
+
+/* ******************** Custom Data Struct for pulsed Thread used by PWM ***************************
+last modified:
 2018/09/18 by Jamie Boyd - channels and outputs modifications
 2018/09/12 by Jamie Boyd - added note that channel includes info on which pins to use
 2018/08/07 byJamie Boyd - updating for pulsedThread subclass threading
@@ -117,15 +130,17 @@ typedef struct ptPWMchanInfoStruct{
 
 /* ********************************************* PWM_thread class *********************************************
 last modified:
+2018/09/30 by Jamie Boyd - better initialization options
 2018/09/19 by Jamie Boyd - channels and outputs modifications
 2018/08/08 by Jamie Boyd - initial verison */
 class PWM_thread : public pulsedThread{
 	public:
-	/* constructors, one with unsigned ints for pulse delay and duration times in microseconds and number of pulses */
-	PWM_thread (unsigned int durUsecs, unsigned int nPulses, int accLevel , int &errCode) : pulsedThread (0, durUsecs, nPulses, nullptr, &ptPWM_Init, nullptr, nullptr, accLevel, errCode) {
+	/* constructors, one with unsigned ints for pulse delay and duration times in microseconds and number of pulses 
+	PWM has no low func, so delay is 0, or dutyCycle is 1, and we don't know which hiFUnc to use til we have channels enabled*/
+	PWM_thread (unsigned int durUsecs, unsigned int nPulses, void *  initData, int (*initFunc)(void *, void * &), int accLevel , int &errCode) : pulsedThread (0, durUsecs, nPulses, initData, initFunc, nullptr, nullptr, accLevel, errCode) {
 	};
 	/* and the the other constructor with floats for frequency, duty cycle, and train duration */
-	PWM_thread (float frequency, float trainDuration, int accLevel, int &errCode) : pulsedThread (frequency, 1, trainDuration, nullptr, &ptPWM_Init, nullptr, nullptr, accLevel, errCode){
+	PWM_thread (float frequency, float trainDuration,  void *  initData, int (*initFunc)(void *, void * &), int accLevel, int &errCode) : pulsedThread (frequency, 1, trainDuration, initData, initFunc, nullptr, nullptr, accLevel, errCode){
 	};
 	virtual ~PWM_thread (void);
 	// maps the GPIO, PWM, and PWMclock peripherals.  Do this before doing anything else

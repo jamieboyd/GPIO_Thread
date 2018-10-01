@@ -97,6 +97,7 @@ volatile unsigned int * usePWMPeri (void){
 	  if (PWMperi_users > 0){
 		PWMperi_users -= 1;
 		if (PWMperi_users == 0){
+			*(PWMperi->addr + PWM_CTL) = 0; 
 			unmap_peripheral (PWMperi);
 			delete (PWMperi);
 		}
