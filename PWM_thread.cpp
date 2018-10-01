@@ -61,6 +61,8 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 	// instead of constantly writing to register, copy control register into a variable 
 	// then set the control register with the variable at the end
 	unsigned int registerVal = *(taskData->ctlRegister);
+	registerVal &= ~(PWM_MODE1 | PWM_MODE2);
+
 	*(taskData->ctlRegister) =0;
 	if (chanAddPtr->channel == 1){
 		// set channel 1 in taskData
@@ -138,9 +140,7 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 	}else{
 		registerVal |= offStateBit; // set OFFstate bit for hi
 	}
-#if beVerbose
-	printf ("PWM Control Register = 0x%x.\n", *(PWMperi ->addr + PWM_CTL));
-#endif
+
 	// set initial enable state
 	if (chanAddPtr->enable){
 		// set initial PWM value first so we have something to put out
@@ -176,6 +176,7 @@ void ptPWM_REG (void * taskDataP){
 #endif
 		 *(taskData->statusRegister) |= (PWM_BERR | PWM_GAPO1 | PWM_GAPO2);
 	}
+
 	if (taskData->enable1){
 		*(taskData->dataRegister1) = taskData->arrayData1[taskData->arrayPos1];
 		taskData->arrayPos1 += 1;
@@ -184,6 +185,7 @@ void ptPWM_REG (void * taskDataP){
 		}
 	}
 	if (taskData->enable2){
+
 		*(taskData->dataRegister2) = taskData->arrayData2[taskData->arrayPos2];
 		taskData->arrayPos2 += 1;
 		if (taskData->arrayPos2 == taskData->stopPos2){
@@ -316,17 +318,17 @@ Last Modified:
 int ptPWM_setEnableCallback (void * modData, taskParams * theTask){
 	ptPWMStructPtr taskData = (ptPWMStructPtr) theTask->taskData;
 	int * enablePtr =(int *)modData;
-	unsigned int registerVal = *(taskData->ctlRegister);
+	unsigned int registerVal =  *(PWMperi ->addr + PWM_CTL);
+	 *(taskData->ctlRegister) =0;
 	if ((taskData->useFIFO) && ((*enablePtr) & 4)){
-		*(taskData->ctlRegister) = PWM_CLRF1;
-	}else{
-		*(taskData->ctlRegister) =0;
+		*(PWMperi ->addr + PWM_CTL)= PWM_CLRF1;
 	}
 	if (((*enablePtr) & 4) ==4){ // we are enabling
 		if ((*enablePtr) & 1){
 #if beVerbose
 			printf("Enabling channel 1\n");
 #endif
+			taskData->enable1 =1;
 			if (taskData->useFIFO){
 				registerVal |= (PWM_PWEN1 | PWM_USEF1);  //set enable and use FIFO
 				if (*(taskData->statusRegister) & PWM_EMPT1){  // set PWM value first so we are putting out a value
@@ -334,16 +336,17 @@ int ptPWM_setEnableCallback (void * modData, taskParams * theTask){
 					taskData->chanFIFO =2;
 				}
 			}else{ // not using FIFO 
+				registerVal &= ~PWM_USEF1;
 				registerVal |= PWM_PWEN1; // set enable
 				*(taskData->dataRegister1) = taskData->arrayData1[taskData->arrayPos1];
 			}
-			taskData->enable1 =1;
 		}
 		if (((*enablePtr) & 2) ==2){
 			// set PWM value first so we are putting out current value
 #if beVerbose
 			printf("Enabling channel 2\n");
 #endif
+			taskData->enable2 =1;
 			if (taskData->useFIFO){
 				registerVal |= (PWM_PWEN2 | PWM_USEF2);  //set enable and use FIFO
 				if (*(taskData->statusRegister) & PWM_EMPT1){
@@ -351,10 +354,10 @@ int ptPWM_setEnableCallback (void * modData, taskParams * theTask){
 					taskData->chanFIFO =1;
 				}
 			}else{
-				registerVal |= PWM_PWEN1;
+				registerVal &= ~PWM_USEF2;
+				registerVal |= PWM_PWEN2;
 				*(taskData->dataRegister2) = taskData->arrayData2[taskData->arrayPos2];
 			}
-			taskData->enable2 =1;
 		}
 	}else{ // we are un-enabling
 		if ((*enablePtr) & 1){
@@ -403,8 +406,7 @@ int ptPWM_setEnableCallback (void * modData, taskParams * theTask){
 		theTask->hiFunc = *(taskData->hiFuncREG);
 		printf ("Set highfunc REG\n");
 	}
-	*(taskData->ctlRegister)= registerVal;
-
+	*(PWMperi ->addr + PWM_CTL)= registerVal;
 	delete enablePtr;
 	
 	return 0;
@@ -1039,13 +1041,124 @@ int PWM_thread::getChannels (void){
 	return PWMchans;
 }
 
+
+unsigned int PWM_thread::getControlRegister (int verbose){
+	unsigned int result = *(PWMperi->addr + PWM_CTL);
+	if (verbose){
+		if (result & 32768){
+			printf ("Channel 2 is using M/S transmission.\n");
+		}else{
+			printf ("Channel 2 is using balanced transmission.\n");
+		}
+		if (result & 8192){
+			printf ("Channel 2 is using the FIFO.\n");
+		}else{
+			printf ("Channel 2 is using the data register.\n");
+		}
+		if (result & 4096){
+			printf ("Channel 2 is using reversed polarity output.\n");
+		}else{
+			printf ("Channel 2 is using normal polarity output.\n");
+		}
+		if (result & 2048){
+			printf ("Channel 2 is high when channel is not enabled.\n");
+		}else{
+			printf ("Channel 2 is low when channel is not enabled.\n");
+		}
+		if (result & 1024){
+			printf ("Channel 2 repeats last value when FIFO is empty.\n");
+		}else{
+			printf("Channel 2 transmisison interrupts when FIFO is empty.\n");
+		}
+		if (result & 512){
+			printf ("Channel 2 is using Serializer mode.\n");
+		}else{
+			printf ("Channel 2 is using PWM mode.\n");
+		}
+		if (result & 256){
+			printf ("Channel 2 is ENABLED.\n");
+		}else{
+			printf("Channel 2 is NOT enabled.\n");
+		}
+		// channel 1
+		if (result & 128){
+			printf ("Channel 1 is using M/S transmission.\n");
+		}else{
+			printf ("Channel 1 is using balanced transmission.\n");
+		}
+		if (result & 32){
+			printf ("Channel 1 is using the FIFO.\n");
+		}else{
+			printf ("Channel 1 is using the data register.\n");
+		}
+		if (result & 16){
+			printf ("Channel 1 is using reversed polarity output.\n");
+		}else{
+			printf ("Channel 1 is using normal polarity output.\n");
+		}
+		if (result & 8){
+			printf ("Channel 1 is high when channel is not enabled.\n");
+		}else{
+			printf ("Channel 1 is low when channel is not enabled.\n");
+		}
+		if (result & 4){
+			printf ("Channel 1 repeats last value when FIFO is empty.\n");
+		}else{
+			printf("Channel 1 transmisison interrupts when FIFO is empty.\n");
+		}
+		if (result & 2){
+			printf ("Channel 1 is using Serializer mode.\n");
+		}else{
+			printf ("Channel 1 is using PWM mode.\n");
+		}
+		if (result & 1){
+			printf ("Channel 1 is ENABLED.\n");
+		}else{
+			printf("Channel 1 is NOT enabled.\n");
+		}
+	}
+	return result;
+}
+
 /* ************************* Returns value of the PWM status register **********************
 Not really needed to be a class method at all, but here it is
 Last Modified:
+2018/10/01 by Jamie Boyd - added option to print results 
 2018/09/27 by Jamie Boyd - - initial version */
-unsigned int PWM_thread::getStatusRegister (void){
-	return *(PWMperi->addr + PWM_STA);
+unsigned int PWM_thread::getStatusRegister (int verbose){
+	unsigned int result =  *(PWMperi->addr + PWM_STA);
+	if (verbose){
+		if (result & 1024){
+			printf ("Channel 2 is active.\n");
+		}
+		if (result & 512){
+			printf ("Channel 1 is active.\n");
+		}
+		if (result & 256){
+			printf ("Bus error ocurred.\n");
+		}
+		if (result & 32){
+			printf ("Channel 2 gap error ocurred.\n");
+		}
+		if (result & 16){
+			printf ("Channel 1 gap error ocurred.\n");
+		}
+		if (result & 8){
+			printf ("FIFO read error ocurred.\n");
+		}
+		if (result & 4){
+			printf ("FIFO write error ocurred.\n");
+		}
+		if (result & 2){
+			printf ("FIFO is empty.\n");
+		}
+		if (result & 1){
+			printf ("FIFO is FULL\n");
+		}
+	}
+	return result;
 }
+
 
 /* ************************* Returns a structure containing information about a channel **********************
 returns a nullPtr if the channel is not 1 or 2, or if the channel has not been added

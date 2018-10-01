@@ -165,7 +165,8 @@ class PWM_thread : public pulsedThread{
 	unsigned int getPWMRange (void);
 	int getChannels (void);
 	int getChannelInfo (ptPWMchanInfoStructPtr infoPtr);
-	static unsigned int getStatusRegister (void);
+	static unsigned int getStatusRegister (int verbose);
+	static unsigned int getControlRegister (int verbose);
 	// data members
 	protected:
 	float PWMfreq;

@@ -33,7 +33,7 @@ int main(int argc, char **argv){
 	delete my_sin_PWM;
 	
 	*/
-	int audioOnly =1;
+	int audioOnly =0;
 	int mode = PWM_BALANCED;// PWM_BALANCED; //PWM_MARK_SPACE; //
 	int enable = 0;
 	int polarity = 0;
@@ -82,9 +82,62 @@ int main(int argc, char **argv){
 	myPWM->addChannel (2, audioOnly, mode, enable, polarity, offState, dataArray2, arraySize2);
 	while (myPWM->getModCustomStatus());
 	
+	
+	
+		// do channel 1
+	printf ("Testing Channel 1\n");
+	myPWM->setEnable (1, 1, 1);
+	while (myPWM->getModCustomStatus());
+	PWM_thread::getControlRegister (1);
+	myPWM->startInfiniteTrain ();
+	myPWM->waitOnBusy (1);
+	PWM_thread::getStatusRegister (1);
+	myPWM->waitOnBusy (1);
+	PWM_thread::getStatusRegister (1);
+	myPWM->waitOnBusy (3);
+	myPWM->stopInfiniteTrain ();
+	while (myPWM->getModCustomStatus());
+	myPWM->setEnable (0, 1, 1);
+	while (myPWM->getModCustomStatus());
+	
+	
+	// do channel 2
+	printf ("Testing Channel 2\n");
+	myPWM->setEnable (1, 2, 1);
+	while (myPWM->getModCustomStatus());
+	PWM_thread::getControlRegister (1);
+	myPWM->startInfiniteTrain ();
+	myPWM->waitOnBusy (1);
+	PWM_thread::getStatusRegister (1);
+	myPWM->waitOnBusy (1);
+	PWM_thread::getStatusRegister (1);
+	myPWM->waitOnBusy (3);
+	myPWM->stopInfiniteTrain ();
+	while (myPWM->getModCustomStatus());
+	myPWM->setEnable (0, 2, 1);
+	while (myPWM->getModCustomStatus());
+	
+	// do both channels
+	printf ("testing Both Channels\n");
+	myPWM->setEnable (1, 3, 1);
+	while (myPWM->getModCustomStatus());
+	PWM_thread::getControlRegister (1);
+	myPWM->startInfiniteTrain ();
+	myPWM->waitOnBusy (1);
+	PWM_thread::getStatusRegister (1);
+	myPWM->waitOnBusy (1);
+	PWM_thread::getStatusRegister (1);
+	myPWM->waitOnBusy (3);
+	myPWM->stopInfiniteTrain ();
+	while (myPWM->getModCustomStatus());
+	myPWM->setEnable (0, 3, 1);
+	while (myPWM->getModCustomStatus());
+	
 
 	
-	// do channel 1
+	
+/*
+		// do channel 1
 	printf ("Testing Channel 1\n");
 	myPWM->setEnable (1, 1, 1);
 	while (myPWM->getModCustomStatus());
@@ -94,7 +147,6 @@ int main(int argc, char **argv){
 	while (myPWM->getModCustomStatus());
 	myPWM->setEnable (0, 1, 1);
 	while (myPWM->getModCustomStatus());
-	
 	
 	
 	// do both channels
@@ -107,21 +159,8 @@ int main(int argc, char **argv){
 	while (myPWM->getModCustomStatus());
 	myPWM->setEnable (0, 3, 1);
 	while (myPWM->getModCustomStatus());
-	
-		// do channel 2
-	printf ("Testing Channel 2\n");
-	myPWM->setEnable (1, 2, 1);
-	while (myPWM->getModCustomStatus());
-	myPWM->startInfiniteTrain ();
-	myPWM->waitOnBusy (5);
-	myPWM->stopInfiniteTrain ();
-	while (myPWM->getModCustomStatus());
-	myPWM->setEnable (0, 2, 1);
-	while (myPWM->getModCustomStatus());
-	
-	
-/*
-		// do channel 1
+
+// do channel 1
 	printf ("channel 1\n");
 	myPWM->setEnable (1, 1, 1);
 	while (myPWM->getModCustomStatus());
