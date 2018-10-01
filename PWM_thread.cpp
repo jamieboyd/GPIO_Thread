@@ -61,6 +61,7 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 	// instead of constantly writing to register, copy control register into a variable 
 	// then set the control register with the variable at the end
 	unsigned int registerVal = *(taskData->ctlRegister);
+	*(taskData->ctlRegister) =0;
 	if (chanAddPtr->channel == 1){
 		// set channel 1 in taskData
 		taskData->channels |= 1;
@@ -197,11 +198,9 @@ void ptPWM_FIFO_1 (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
 	if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO1)){
 #if beVerbose
-
-		printf ("status reg = 0x%x\n", *(taskData->statusRegister) );
+		printf ("ptPWM_FIFO_1: status reg = 0x%x\n", *(taskData->statusRegister) );
+		*(taskData->statusRegister) |= (PWM_BERR | PWM_GAPO1 ); 
 #endif
-		 *(taskData->statusRegister) |= (PWM_BERR | PWM_GAPO1 | PWM_GAPO2);
-		//*(taskData->ctlRegister) |= PWM_USEF1;
 		}
 	while (!(*(taskData->statusRegister) & PWM_FULL1)){
 		*(taskData->FIFOregister) = taskData->arrayData1[taskData->arrayPos1];
@@ -219,18 +218,15 @@ Last Modified:
 2018/09/24 - by Jamie Boyd - initial version */
 void ptPWM_FIFO_2 (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
-	if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO2 | PWM_FULL1 | PWM_EMPT1)){
+	if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO2)){
 #if beVerbose
-
-		//printf ("status reg = 0x%x\n", *(taskData->statusRegister) );
-
+		printf ("ptPWM_FIFO_2: status reg = 0x%x\n", *(taskData->statusRegister) );
+		*(taskData->statusRegister) |= (PWM_BERR  | PWM_GAPO2);
 #endif
-		 *(taskData->statusRegister) |= (PWM_BERR | PWM_GAPO1 | PWM_GAPO2);
-		//*(taskData->ctlRegister) |= PWM_USEF2;
 	}
 	while (!(*(taskData->statusRegister) & PWM_FULL1)){
 		*(taskData->FIFOregister) = taskData->arrayData2[taskData->arrayPos2];
-		taskData->arrayPos1 += 1;
+		taskData->arrayPos2 += 1;
 		if (taskData->arrayPos2 == taskData->stopPos2){
 			taskData->arrayPos2 = taskData->startPos2;
 		}
@@ -247,7 +243,7 @@ void ptPWM_FIFO_dual (void * taskDataP){
 	if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO1 | PWM_GAPO2)){
 #if beVerbose
 
-		printf ("status reg = 0x%x\n", *(taskData->statusRegister) );
+		printf ("ptPWM_FIFO_dual: status reg = 0x%x\n", *(taskData->statusRegister) );
 #endif
 		 *(taskData->statusRegister) |= (PWM_BERR | PWM_GAPO1 | PWM_GAPO2);
 	}
@@ -316,12 +312,17 @@ Last Modified:
 int ptPWM_setEnableCallback (void * modData, taskParams * theTask){
 	ptPWMStructPtr taskData = (ptPWMStructPtr) theTask->taskData;
 	int * enablePtr =(int *)modData;
-//	if ((taskData->useFIFO) && ((*enablePtr) & 4)){
-//		*(taskData->ctlRegister) |= PWM_CLRF1;
-//	}
 	unsigned int registerVal = *(taskData->ctlRegister);
-	if ((*enablePtr) & 4){ // we are enabling
+	if ((taskData->useFIFO) && ((*enablePtr) & 4)){
+		*(taskData->ctlRegister) = PWM_CLRF1;
+	}else{
+		*(taskData->ctlRegister) =0;
+	}
+	if (((*enablePtr) & 4) ==4){ // we are enabling
 		if ((*enablePtr) & 1){
+#if beVerbose
+			printf("Enabling channel 1\n");
+#endif
 			if (taskData->useFIFO){
 				registerVal |= (PWM_PWEN1 | PWM_USEF1);  //set enable and use FIFO
 				if (*(taskData->statusRegister) & PWM_EMPT1){  // set PWM value first so we are putting out a value
@@ -334,8 +335,11 @@ int ptPWM_setEnableCallback (void * modData, taskParams * theTask){
 			}
 			taskData->enable1 =1;
 		}
-		if ((*enablePtr) & 2){
+		if (((*enablePtr) & 2) ==2){
 			// set PWM value first so we are putting out current value
+#if beVerbose
+			printf("Enabling channel 2\n");
+#endif
 			if (taskData->useFIFO){
 				registerVal |= (PWM_PWEN2 | PWM_USEF2);  //set enable and use FIFO
 				if (*(taskData->statusRegister) & PWM_EMPT1){
@@ -350,10 +354,16 @@ int ptPWM_setEnableCallback (void * modData, taskParams * theTask){
 		}
 	}else{ // we are un-enabling
 		if ((*enablePtr) & 1){
+#if beVerbose
+			printf("Un-Enabling channel 1\n");
+#endif
 			registerVal &= ~PWM_PWEN1;
 			taskData->enable1 =0;
 		}
-		if ((*enablePtr) & 2){
+		if (((*enablePtr) & 2) ==2){
+#if beVerbose
+			printf("Un-Enabling channel 2\n");
+#endif
 			registerVal &= ~PWM_PWEN2;
 			taskData->enable2 =0;
 		}
@@ -390,7 +400,9 @@ int ptPWM_setEnableCallback (void * modData, taskParams * theTask){
 		printf ("Set highfunc REG\n");
 	}
 	*(taskData->ctlRegister)= registerVal;
+
 	delete enablePtr;
+	
 	return 0;
 }
 
@@ -911,11 +923,11 @@ int PWM_thread::setEnable (int enableState, int channel, int isLocking){
 	if (channel & 1){
 		enabled1 = enableState;
 	}
-	if (channel & 2){
+	if ((channel & 2) ==2){
 		enabled2 = enableState;
 	}
 	int * newEnableVal = new int;
-	* newEnableVal =  (enableState << 2) + channel;
+	* newEnableVal =  (enableState * 4) + channel;
 	int returnVal = modCustom (&ptPWM_setEnableCallback, (void *) newEnableVal, isLocking);
 	return returnVal;
 }
