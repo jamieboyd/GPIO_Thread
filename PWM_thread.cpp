@@ -80,6 +80,8 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 			SET_GPIO_ALT(GPIOperi ->addr, 18, 5);     // Set GPIO 18 to Alt5 function PWM0
 			taskData->audioOnly1 =0;
 		}
+		INP_GPIO(GPIOperi ->addr, 40);           // Set GPIO 40 to input to clear bits
+		SET_GPIO_ALT(GPIOperi ->addr, 40, 0);     // Set GPIO 40 to Alt0 function PWM0
 		// set bits and offsets appropriately for channel 1
 		dataRegisterOffset = PWM_DAT1;
 		modeBit = PWM_MSEN1;
@@ -104,6 +106,8 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 				SET_GPIO_ALT(GPIOperi->addr, 19, 5);     // Set GPIO 19 to Alt5 function PWM1
 				taskData->audioOnly2 =0;
 			}
+			INP_GPIO(GPIOperi ->addr, 45);           // Set GPIO 45 to input to clear bits
+			SET_GPIO_ALT(GPIOperi ->addr, 45, 0);     // Set GPIO 45 to Alt0 function PWM0
 			// set bits and offsets appropriately for channel 2
 			dataRegisterOffset = PWM_DAT2;
 			modeBit = PWM_MSEN2;

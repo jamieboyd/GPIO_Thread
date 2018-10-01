@@ -34,7 +34,7 @@ int main(int argc, char **argv){
 	
 	*/
 	int audioOnly =0;
-	int mode = PWM_BALANCED;// PWM_BALANCED; //PWM_MARK_SPACE; //
+	int mode = PWM_MARK_SPACE;// PWM_BALANCED; //PWM_MARK_SPACE; //
 	int enable = 0;
 	int polarity = 0;
 	int offState =0;
@@ -94,6 +94,28 @@ int main(int argc, char **argv){
 	myPWM->stopInfiniteTrain ();
 	while (myPWM->getModCustomStatus());
 	myPWM->setEnable (0, 2, 1);
+	while (myPWM->getModCustomStatus());
+	
+	// do channel 1
+	printf ("channel 1\n");
+	myPWM->setEnable (1, 1, 1);
+	while (myPWM->getModCustomStatus());
+	myPWM->startInfiniteTrain ();
+	myPWM->waitOnBusy (5);
+	myPWM->stopInfiniteTrain ();
+	while (myPWM->getModCustomStatus());
+	myPWM->setEnable (0, 1, 1);
+	while (myPWM->getModCustomStatus());
+	
+	// do both channels
+	printf ("Both channels\n");
+	myPWM->setEnable (1, 3, 1);
+	while (myPWM->getModCustomStatus());
+	myPWM->startInfiniteTrain ();
+	myPWM->waitOnBusy (5);
+	myPWM->stopInfiniteTrain ();
+	while (myPWM->getModCustomStatus());
+	myPWM->setEnable (0, 3, 1);
 	while (myPWM->getModCustomStatus());
 /*
 	// do channel 1
