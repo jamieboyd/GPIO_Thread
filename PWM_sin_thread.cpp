@@ -137,7 +137,7 @@ PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channels){
 	initData->hiFuncFIFdual = &ptPWM_sin_FIFO_dual;	
 	// call PWM_sin_thread constructor with init data, which calls pulsedThread constructor
 	int errCode =0;
-	PWM_thread * newPWM_thread = new PWM_sin_thread (initData, errCode);
+	PWM_sin_thread * newPWM_thread = new PWM_sin_thread (initData, errCode);
 	if (errCode){
 #if beVerbose
 		printf ("PWM_threadMaker failed to make PWM_sin_thread with errCode %d.\n", errCode);
@@ -145,27 +145,27 @@ PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channels){
 		return nullptr;
 	}
 	// set custom task delete function
-	newPWMsin->setTaskDataDelFunc (&ptPWM_delTask);
+	newPWM_thread->setTaskDataDelFunc (&ptPWM_delTask);
 	// set fields for PWMfreq and PWM Range,
-	newPWMsin->PWMfreq = realPWMfreq;
-	newPWMsin->PWMrange = PWM_RANGE;
+	newPWM_thread->PWMfreq = realPWMfreq;
+	newPWM_thread->PWMrange = PWM_RANGE;
 	// make sine wave array data and add channels
 	unsigned int arraySize = (unsigned int)(realPWMfreq);
-	newPWMsin->dataArray= new int [arraySize];
+	newPWM_thread->dataArray= new int [arraySize];
 	double offset =PWM_RANGE/2;
 	for (unsigned int ii=0; ii< arraySize; ii +=1){
-		newPWMsin->dataArray [ii] = (unsigned int) (offset - offset * cos (PHI *((double) ii/ (double) arraySize)));
+		newPWM_thread->dataArray [ii] = (unsigned int) (offset - offset * cos (PHI *((double) ii/ (double) arraySize)));
 	}
 	// add channels , each channel can use the same array 
 	if (channels & 1){
-		newPWMsin->addChannel (1, 1, PWM_BALANCED, 0, 0, newPWMsin->dataArray, arraySize);
+		newPWM_thread->addChannel (1, 1, PWM_BALANCED, 0, 0, newPWM_thread->dataArray, arraySize);
 	}
 	if (channels & 2){
-		newPWMsin->addChannel (2, 1, PWM_BALANCED, 0, 0, newPWMsin->dataArray, arraySize);
+		newPWM_thread->addChannel (2, 1, PWM_BALANCED, 0, 0, newPWM_thread->dataArray, arraySize);
 	}
-	newPWMsin->PWMchans = channels;
+	newPWM_thread->PWMchans = channels;
 	// return new thread
-	return newPWMsin;
+	return newPWM_thread;
 }
 
 PWM_sin_thread::~PWM_sin_thread (){

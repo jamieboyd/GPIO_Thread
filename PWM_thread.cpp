@@ -53,10 +53,10 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 	ptPWMchanAddStructPtr chanAddPtr =(ptPWMchanAddStructPtr)modData;
 	// some register address offsets and bits are channel specific, if we save them in variables
 	// at the start, we can use same the code for either channel later on
-	unsigned int dataRegisterOffset;
 	unsigned int modeBit;
 	unsigned int polarityBit;
 	unsigned int offStateBit;
+	unsigned int enableBit;
 	// instead of constantly writing to register, copy control register into a variable 
 	// then set the control register with the variable at the end
 	unsigned int registerVal = *(taskData->ctlRegister);
@@ -84,7 +84,6 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 		INP_GPIO(GPIOperi ->addr, 40);           // Set GPIO 40 to input to clear bits
 		SET_GPIO_ALT(GPIOperi ->addr, 40, 0);     // Set GPIO 40 to Alt0 function PWM0
 		// set bits and offsets appropriately for channel 1
-		dataRegisterOffset = PWM_DAT1;
 		modeBit = PWM_MSEN1;
 		enableBit = PWM_PWEN1;
 		polarityBit = PWM_POLA1;
@@ -110,7 +109,6 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 			INP_GPIO(GPIOperi ->addr, 45);           // Set GPIO 45 to input to clear bits
 			SET_GPIO_ALT(GPIOperi ->addr, 45, 0);     // Set GPIO 45 to Alt0 function PWM0
 			// set bits and offsets appropriately for channel 2
-			dataRegisterOffset = PWM_DAT2;
 			modeBit = PWM_MSEN2;
 			enableBit = PWM_PWEN2;
 			polarityBit = PWM_POLA2;
@@ -141,7 +139,6 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 	}
 	// start in unenabled state
 	registerVal &= ~enableBit;
-	}
 	// set the control register with registerVal
 	*(taskData->ctlRegister) = registerVal;
 	delete chanAddPtr;

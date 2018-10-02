@@ -34,21 +34,21 @@ class PTPWM (metaclass = SingletonForGPIO):
     def get_PWM_channels (self):
         return ptPWM.getChannels (self.task_ptr)
 
-    def add_channel (self, channel, audioOnly, mode, enable, polarity, offState, dataArray):
-        errVal = ptPWM.addChannel (self.task_ptr, channel, audioOnly, mode, enable, polarity, offState, dataArray)
+    def add_channel (self, channel, audioOnly, mode, polarity, offState, dataArray):
+        errVal = ptPWM.addChannel (self.task_ptr, channel, audioOnly, mode, polarity, offState, dataArray)
         if errVal == 0:
             self.PWM_channels &= channel
             if channel ==1:
                 self.audioOnly1 = audioOnly
                 self.mode1 = mode
-                self.enable1 = enable
+                self.enable1 = 0
                 self.polarity1 = polarity
                 self.offState1 = offState
                 self.dataArray1 = dataArray
             elif channel ==2:
                 self.audioOnly2 = audioOnly
                 self.mode2 = mode
-                self.enable2 = enable
+                self.enable2 = 0
                 self.polarity2 = polarity
                 self.offState2 = offState
                 self.dataArray2 = dataArray
@@ -147,33 +147,10 @@ class PTPWMsin (PTPWM):
         return ptPWM.getSinFreq(self.task_ptr,channel)
 
     def start (self):
-        self.start_train ()
-        self.set_PWM_enable (1,self.PWM_channels,0)
+        ptPWM.setEnable(self.task_ptr, 1, self.PWM_channels, 0)
+        ptPWM.startTrain(self.task_ptr)
+        
 
     def stop (self):
-        self.stop_train ()
-        self.set_PWM_enable (0,self.PWM_channels,0)
-
-if __name__ == '__main__':
-    import PTPWM
-    from PTPWM import PTPWM, PTPWMsin
-    wavy = PTPWM (PTSimpleGPIO.MODE_FREQ, 1E03, 1000, 0, 2, 0, 1)
-    dataArray = array('i', (i for i in range (0, 1000)))
-    wavy.add_channel (1, 0, PTPWM.PWM_BALANCED, 0, 0, 0, dataArray)
-    wavy.set_PWM_enable (1, 1, 0)
-    wavy.start_train()
-    sleep (10)
-    wavy.set_PWM_enable (0, 1, 0)
-    wavy.stop_train()
-    del wavy
-    siner = PTPWMsin (1)
-    siner.set_sin_freq(1000, 1, 1)
-    siner.start()
-    sleep (5)
-    siner.set_sin_freq(2000, 1, 1)
-    sleep (5)
-    siner.set_sin_freq(7000, 1, 1)
-    sleep (5)
-    siner.stop()
-    del siner
-
+        ptPWM.stopTrain(self.task_ptr)
+        ptPWM.setEnable (self.task_ptr, 0, self.PWM_channels, 0)

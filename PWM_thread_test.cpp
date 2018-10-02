@@ -1,4 +1,4 @@
-#include "PWM_thread.h"
+#include "PWM_sin_thread.h"
 
 /* **************************************** Test of PWM_thread *******************************************
 To test PWM_thread, pass 6 parameters, channels (1, 2, or 3 for both channels), useFIFO, audioOnly, mode, polarity, and offState
@@ -27,10 +27,10 @@ int main(int argc, char **argv){
 		polarity = atoi (argv[5]);
 		offState = atoi (argv[6]);
 	}else{
-		if (argc=2){
+		if (argc==2){
 			isSin =1;
 			channel = atoi (argv[1]);
-		}else
+		}else{
 			printf ("To test PWM_thread, pass 6 arguments, channels (1, 2, or 3 for both channels), useFIFO, audioOnly, mode, polarity, and offState.\n");
 			printf ("To test PWM_sin_thread, pass 1 argument for channels (1, 2, or 3 for both channels).\n");
 			return 0;
@@ -40,7 +40,7 @@ int main(int argc, char **argv){
 		printf ("******************* PWM_sin_thread *******************\n");
 		PWM_sin_thread * my_sin_PWM  =  PWM_sin_thread::PWM_sin_threadMaker (channel);
 		if (channel & 1){
-			printf ("************** Testing Channel 1 **************\n")
+			printf ("************** Testing Channel 1 **************\n");
 			// set initial frequency
 			my_sin_PWM->setSinFrequency (100 ,1,1);
 			// enable the PWM to output
@@ -57,7 +57,7 @@ int main(int argc, char **argv){
 			my_sin_PWM->setEnable (0, 1, 0);
 		}
 		if (channel & 2){
-			printf ("************** Testing Channel 2 **************\n")
+			printf ("************** Testing Channel 2 **************\n");
 			// set initial frequency
 			my_sin_PWM->setSinFrequency (100 ,2,1);
 			// enable the PWM to output
@@ -74,7 +74,7 @@ int main(int argc, char **argv){
 			my_sin_PWM->setEnable (0, 2, 0);
 		}
 		if ((channel & 3) == 3){
-			printf ("********** Testing Both Channels Simultaneously **********\n")
+			printf ("********** Testing Both Channels Simultaneously **********\n");
 			// set initial frequency
 			my_sin_PWM->setSinFrequency (100 ,1,1);
 			my_sin_PWM->setSinFrequency (1e04 ,2,1);
@@ -83,7 +83,7 @@ int main(int argc, char **argv){
 			// start train 
 			my_sin_PWM->startInfiniteTrain ();
 			float freq1, freq2 ;
-			for (freq= 200, freq2 = 1e04; freq1 < 10e03; freq1 *= 1.12246, freq2 /= 1.12246){
+			for (freq1= 200, freq2 = 1e04; freq1 < 10e03; freq1 *= 1.12246, freq2 /= 1.12246){
 				printf ("Frequency of channel 1 is %dHz, and of channel 2 is %dHz.\n", my_sin_PWM->getSinFrequency (1), my_sin_PWM->getSinFrequency (2));
 				my_sin_PWM->waitOnBusy (0.2);
 				my_sin_PWM->setSinFrequency ((unsigned int)freq1 ,1,1);
@@ -91,7 +91,7 @@ int main(int argc, char **argv){
 			}
 			my_sin_PWM->stopInfiniteTrain ();
 			my_sin_PWM->setEnable (0, 3, 1);
-		}
+		}			
 	}else{
 		printf ("******************* PWM_thread *******************\n");
 		printf ("Parameters: channel = %d, useFIFO = %d, audioOnly = %d, PWM mode = %d, output polarity = %d, output off state = %d.\n", channel, useFIFO, audioOnly, mode, polarity, offState);
@@ -104,6 +104,8 @@ int main(int argc, char **argv){
 		unsigned int arraySize = (unsigned int)(PWMfreq/toneFreq);
 		float offset = PWMrange/2;
 		double phi = 6.2831853071794;
+		int * dataArray1 ;
+		int * dataArray2; 
 		// make a thread for continuous output. Do thread at same speed as PWM frequency when writing to the data register
 		// WHen using a FIFO, thread can go slower because as long as we get back before the FIFO is empty, all is good
 		// When using a FIFO, the data output rate is set by PWMfreq, not by the thread frequency, so we can use
@@ -123,11 +125,11 @@ int main(int argc, char **argv){
 		if (channel & 1){
 			printf ("*************** Testing Channel 1 ***************\n");
 			// make sine wave array data for channel 1
-			int * dataArray1 = new int [arraySize];
+			dataArray1 = new int [arraySize];
 			for (unsigned int ii=0; ii< arraySize; ii +=1){
 				dataArray1 [ii] = (unsigned int) (offset - offset * cos (phi *((double) ii/ (double) arraySize)));
 			}
-			myPWM->addChannel (1, audioOnly, mode, enable, polarity, offState, dataArray1, arraySize);
+			myPWM->addChannel (1, audioOnly, mode, polarity, offState, dataArray1, arraySize);
 			while (myPWM->getModCustomStatus());
 			// do channel 1
 			myPWM->setEnable (1, 1, 1);
@@ -141,11 +143,11 @@ int main(int argc, char **argv){
 		if (channel & 2){
 			printf ("*************** Testing Channel 2 ***************\n");
 			// make sine wave array data for channel 2
-			int * dataArray2 = new int [arraySize];
+			dataArray2 = new int [arraySize];
 			for (unsigned int ii=0; ii< arraySize; ii +=1){
 				dataArray2 [ii] = (unsigned int) (offset - offset * cos (phi *((double) (ii*2)/ (double) arraySize)));
 			}
-			myPWM->addChannel (2, audioOnly, mode, enable, polarity, offState, dataArray1, arraySize);
+			myPWM->addChannel (2, audioOnly, mode, polarity, offState, dataArray2, arraySize);
 			while (myPWM->getModCustomStatus());
 			// do channel 2
 			myPWM->setEnable (1, 2, 1);
@@ -167,9 +169,15 @@ int main(int argc, char **argv){
 			myPWM->setEnable (0, 3, 1);
 			while (myPWM->getModCustomStatus());
 		}
+		if (channel &1){
+			delete dataArray1;
+		}
+		if (channel & 2){
+			delete dataArray2;
+		}
 	}
 	return 0;
 }
 /*
-g++ -O3 -std=gnu++11 -Wall -lpulsedThread GPIOlowlevel.cpp PWM_thread.cpp PWM_sin_thread.cpp PWM_tester.cpp -o PWMtester
+g++ -O3 -std=gnu++11 -Wall -lpulsedThread GPIOlowlevel.cpp PWM_thread.cpp PWM_sin_thread.cpp PWM_thread_test.cpp -o PWMtester
 */

@@ -17,3 +17,4 @@ for i in range (0,480):
 print ("End frequency = ", round (freq))
 sleep (2)
 w1.stop()
+del w1
