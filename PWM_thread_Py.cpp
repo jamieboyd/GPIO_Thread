@@ -42,7 +42,58 @@ Last Modified;
 	}else{
 		return PyCapsule_New (static_cast <void *>(threadObj), "pulsedThread", ptPWM_del);
 	}
-}
+}#ifndef PWM_SIN_THREAD_H
+#define PWM_SIN_THREAD_H
+#include "PWM_thread.h"
+
+/* *********************** PWM_sin_thread ********************************************************
+Subclasses PWM_thread with goal of outputting a cleanish sine wave at user-settable frequency without completely 
+maximizing a processor core. To that end, set PWM update frequency to 50 - 100 kHz and set PWM range to
+1000.
+
+The pulsedThread is configured as an infinite train. Because we use the FIFO for PWM data,
+we can set the thread update rate  around 10X slower than PWM update frequency, and we can use the 
+less intensive ACC_MODE_SLEEPS_AND_SPINS thread timing mode. 
+
+******************************************** Constants for PWM_sin_thread ***************************************************/
+static const unsigned int PWM_UPDATE_FREQ = 40E03; // 				the PWM output is updated at this frequency
+static const float THREAD_UPDATE_FREQ = (PWM_UPDATE_FREQ/9); //		pulsed thread update frequency, slower than PWM update, try 8-10X slower
+static const unsigned int PWM_RANGE = 1000; //					data for sine wave ranges from 0 to 999
+static const double PHI = 6.2831853071794;  //						this is just pi * 2, used for making a sin wave
+
+ /* ********************** Forward declare new functions used by thread *************************/
+void ptPWM_sin_FIFO_1 (void * taskDataP);
+void ptPWM_sin_FIFO_2 (void * taskDataP);
+void ptPWM_sin_FIFO_dual (void * taskDataP);
+int ptPWM_sin_setFreqCallback (void * modData, taskParams * theTask);
+
+
+// PWM_sin_thread (THREAD_UPDATE_FREQ, 0.0, initData, &ptPWM_Init, ACC_MODE_SLEEPS_AND_SPINS, errCode);
+
+/* ********************************************* PWM_sin_thread class *********************************************
+superclass is PWM_thread. Modified to continuously output a sine wave of user-set frequency, from 1Hz to 25 KHz, in steps of 1 Hz
+last modified:
+2018/09/21 by Jamie Boyd - updated for separate channels, and using FIFO 
+2018/09/12 by Jamie Boyd - initial verison */
+class PWM_sin_thread : public PWM_thread{
+	public:
+	PWM_sin_thread (void * initData, int &errCode) : PWM_thread (THREAD_UPDATE_FREQ, 0.0, initData, &ptPWM_Init, ACC_MODE_SLEEPS_AND_SPINS, errCode) {};
+	~PWM_sin_thread (void);
+	/* Static thread maker calls constructor, and return a pointer to a new PWM_sin_thread */
+	static PWM_sin_thread * PWM_sin_threadMaker (int channels);
+	// sets the frequency to output
+	int setSinFrequency (unsigned int newFrequency, int channel, int isLocking);
+	// gets the frequency being output
+	unsigned int getSinFrequency (int channel);
+	protected:
+	unsigned int sinFrequency1 ;
+	unsigned int sinFrequency2 ;
+	int * dataArray ;
+	
+};
+
+#endif
+
 
 /* **************************************** Train Frequency Constructor ***********************************
 This function uses train frequency and train duration to define the pulsedThread. 0 duration means infinite train
@@ -72,7 +123,7 @@ static PyObject* ptPWM_freqDuty (PyObject *self, PyObject *args) {
 static PyObject* ptPWM_sin (PyObject *self, PyObject *args) {
 	int chans;
 	if (!PyArg_ParseTuple(args,"i", &chans)) {
-		PyErr_SetString (PyExc_RuntimeError, "Could not parse inputs for channel.");
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for channel.");
 		return NULL;
 	}
 	PWM_sin_thread * threadObj = PWM_sin_thread::PWM_sin_threadMaker (chans);
@@ -94,12 +145,11 @@ static PyObject* ptPWM_addChannel (PyObject *self, PyObject *args) {
 	int channel;	// 1 or 2
 	int audioOnly;	// 1 to NOT configure GPIO 18 or 19, the audio output will still play
 	int mode;		// 0 = PWM_MARK_SPACE for things like servos that need duty cycle, 1 = PWM_BALANCED for analog output, like audio
-	int enable;		// 1 to enable the PWM channel to begin output immediately
 	int polarity;	// 1 for reversed polarity of PWM output
 	int offState;	// state, high or low, when PWM channel is NOT enabled.  Only set high after stopping PWM, set low before starting PWM again
 	PyObject * bufferObj; // the unsigned int array of data to feed to PWM, made in Python
 	
-	if (!PyArg_ParseTuple(args,"OiiiiiiO",  &PyPtr, &channel, &audioOnly, &mode, &enable, &polarity, &offState, &bufferObj)) {
+	if (!PyArg_ParseTuple(args,"OiiiiiiO",  &PyPtr, &channel, &audioOnly, &mode,, &polarity, &offState, &bufferObj)) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object and channel confguration paramaters.");
 		return NULL;
 	}
@@ -126,7 +176,7 @@ static PyObject* ptPWM_addChannel (PyObject *self, PyObject *args) {
 	// get pointer to PWM_thread
 	PWM_thread * threadPtr = static_cast<PWM_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
 	// Call thread's addChannel function and retiurn the result
-	return Py_BuildValue("i", threadPtr ->addChannel (channel, audioOnly, mode, enable, polarity, offState, arrayData, nData));
+	return Py_BuildValue("i", threadPtr ->addChannel (channel, audioOnly, mode, polarity, offState, arrayData, nData));
 }
 
 /* ************************************** Sets enable state of PWM output of the thread **********************************
@@ -320,6 +370,7 @@ static PyObject* ptPWM_getChannels (PyObject *self, PyObject *PyPtr){
 	return Py_BuildValue("i", threadPtr ->getChannels ());
 }
 
+
 /* Module method table - those starting with ptPWM are defined here, those starting with pulsedThread are defined in pyPulsedThread.h*/
 static PyMethodDef ptPWMMethods[] = {
 	{"isBusy", pulsedThread_isBusy, METH_O, "(PyCapsule) returns number of tasks a thread has left to do, 0 means finished all tasks"},
@@ -351,7 +402,7 @@ static PyMethodDef ptPWMMethods[] = {
 	{"newDelayDur", ptPWM_delayDur, METH_VARARGS, "(pwmFreq, pwmRange, durUsecs, nPulses, accuracyLevel) Creates and configures new PWM task"},
 	{"newFreqDuty", ptPWM_freqDuty, METH_VARARGS, "(pwmFreq, pwmRange, trainFreq , trainDuration) Creates and configures new PWM task"},
 	{"newSin", ptPWM_sin, METH_VARARGS, "(channels) creates a new PWM_sin task for the given channel."},
-	{"addChannel", ptPWM_addChannel,METH_VARARGS, "(PyCapsule,channel, audioOnly, mode, enable, polarity, offState, dataArray)"},
+	{"addChannel", ptPWM_addChannel,METH_VARARGS, "(PyCapsule,channel, audioOnly, mode, polarity, offState, dataArray)"},
 	{"setEnable", ptPWM_setEnable, METH_VARARGS, "(PyCapsule, enableState, channel, isLocking) Enables or disables the PWM channel"},
 	{"setPolarity", ptPWM_setpolarity, METH_VARARGS, "(PyCapsule, polarity, channel, isLocking) Sets polarity of the PWM channel"},
 	{"setOffState", ptPWM_setOffState, METH_VARARGS, "(PyCapsule, offState, channel, isLocking) Sets offState of the PWM channel"},

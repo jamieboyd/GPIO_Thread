@@ -55,7 +55,6 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 	// at the start, we can use same the code for either channel later on
 	unsigned int dataRegisterOffset;
 	unsigned int modeBit;
-	unsigned int enableBit;
 	unsigned int polarityBit;
 	unsigned int offStateBit;
 	// instead of constantly writing to register, copy control register into a variable 
@@ -140,19 +139,8 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 	}else{
 		registerVal |= offStateBit; // set OFFstate bit for hi
 	}
-
-	// set initial enable state
-	if (chanAddPtr->enable){
-		// set initial PWM value first so we have something to put out
-		if (taskData->useFIFO ){
-			*(taskData->FIFOregister) = chanAddPtr->arrayData[0]; 
-			taskData->chanFIFO = chanAddPtr->channel;
-		}else{
-			*(PWMperi->addr + dataRegisterOffset) = chanAddPtr->arrayData[0]; 
-		}
-		registerVal |= enableBit;
-	}else{
-		registerVal &= ~enableBit;
+	// start in unenabled state
+	registerVal &= ~enableBit;
 	}
 	// set the control register with registerVal
 	*(taskData->ctlRegister) = registerVal;
@@ -808,7 +796,7 @@ PWM_thread * PWM_thread::PWM_threadMaker (float pwmFreq, unsigned int pwmRangeP,
 #if beVerbose
 		printf ("PWM update frequency = %.3f\n", setFrequency);
 #endif
-// make init data struct
+	// make init data struct
 	ptPWM_init_StructPtr initData = new ptPWM_init_Struct;
 	initData->useFIFO = useFIFO;
 	initData-> hiFuncREG = &ptPWM_REG;
@@ -865,7 +853,7 @@ Last Modified:
 2018/09/20 by Jamie Boyd - added option to use a FIFO
 2018/09/20 by Jamie Boyd - made call to modCustom non-locking, so best not add channels while thread is running
 2018/09/19 by Jamie Boyd - initial version */
-int PWM_thread::addChannel (int channel, int audioOnly, int PWMmode, int enable, int polarity, int offState, int * arrayData, unsigned int nData){
+int PWM_thread::addChannel (int channel, int audioOnly, int PWMmode, int polarity, int offState, int * arrayData, unsigned int nData){
 	
 	if (!((channel ==1) || (channel ==2))){
 #if beVerbose
@@ -877,7 +865,6 @@ int PWM_thread::addChannel (int channel, int audioOnly, int PWMmode, int enable,
 	addStructPtr->channel = channel;
 	addStructPtr->audioOnly = audioOnly;
 	addStructPtr->mode = PWMmode;
-	addStructPtr->enable = enable;
 	addStructPtr->polarity = polarity;
 	addStructPtr->offState = offState;
 	addStructPtr->arrayData = arrayData;
@@ -890,7 +877,6 @@ int PWM_thread::addChannel (int channel, int audioOnly, int PWMmode, int enable,
 		PWMchans |= 1;
 		audioOnly1 = audioOnly;
 		PWMmode1 = PWMmode;
-		enabled1 = enable;
 		polarity1 = polarity;
 		offState1 = offState;
 	}else{
@@ -898,7 +884,6 @@ int PWM_thread::addChannel (int channel, int audioOnly, int PWMmode, int enable,
 			PWMchans |= 2;
 			audioOnly2 = audioOnly;
 			PWMmode2 = PWMmode;
-			enabled2 = enable;
 			polarity2 = polarity;
 			offState2 = offState;
 		}

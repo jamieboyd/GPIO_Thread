@@ -11,18 +11,18 @@ There should only ever be 1 PWM thread, and both channels of the pWM will be con
 Could implement the whole singleton design pattern thing to ensure a single instance
 
 ****************************** Declare non-class functions used by pulsed thread ******************************/
-void ptPWM_REG (void *  taskData);
+void ptPWM_REG (void * taskData);
 void ptPWM_FIFO_1 (void * taskDataP);
 void ptPWM_FIFO_2 (void * taskDataP);
 void ptPWM_FIFO_dual (void * taskDataP);
-int ptPWM_Init (void * initData, void *  &taskData);
+int ptPWM_Init (void * initData, void * &taskData);
 void ptPWM_delTask (void * taskData);
 int ptPWM_setFIFOCallback(void * modData, taskParams * theTask);
 int ptPWM_addChannelCallback (void * modData, taskParams * theTask);
 int ptPWM_setEnableCallback (void * modData, taskParams * theTask);
 int ptPWM_reversePolarityCallback (void * modData, taskParams * theTask);
 int ptPWM_setOffStateCallback (void * modData, taskParams * theTask);
-int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask);
+int ptPWM_ArrayModCalback (void * modData, taskParams * theTask);
 
 /* ******************** Custom Data Struct for pulsed Thread used by PWM ***************************
 last modified:
@@ -49,12 +49,12 @@ typedef struct ptPWMStruct{
 	// setings for each channel
 	int chanFIFO; // alternating FIFO 
 	int mode1; //MARK_SPACE for servos or BALANCED for analog
-	int enable1;  // 1 if channel is enabled, 0 if not enabled
+	int enable1; // 1 if channel is enabled, 0 if not enabled
 	int polarity1; // 1 for reversed output polarity, 0 for normal, default is 0
 	int offState1; // 0 for low level when PWM is not enabled, 1 for high level when PWM is enabled
 	int audioOnly1; // set if output is directed to audio GPIO 40, not GPIO 18
 	int mode2; //MARK_SPACE for servos or BALANCED for analog
-	int enable2;  // 1 if channel is enabled, 0 if not enabled
+	int enable2; // 1 if channel is enabled, 0 if not enabled
 	int polarity2; // 1 for reversed output polarity, 0 for normal, default is 0
 	int offState2; // 0 for low level when PWM is not enabled, 1 for high level when PWM is enabled
 	int audioOnly2; // set if output is directed to audio GPIO 41, not GPIO 19
@@ -92,7 +92,6 @@ typedef struct ptPWMchanAddStruct{
 	int channel; // 1 for channel 1, or 2 for channel 2
 	int audioOnly; // set to do outputs on audio pins only, not GPIO 18 or 19
 	int mode; //MARK_SPACE for servos or BALANCED for analog
-	int enable; // 1 to start PWMing immediately, 0 to start in un-enabled state
 	int polarity; 
 	int offState;
 	int * arrayData; // array of PWM values for thread to cycle through, 0 to range, for channel
@@ -137,13 +136,13 @@ class PWM_thread : public pulsedThread{
 	public:
 	/* constructors, one with unsigned ints for pulse delay and duration times in microseconds and number of pulses 
 	PWM has no low func, so delay is 0, or dutyCycle is 1, and we don't know which hiFUnc to use til we have channels enabled*/
-	PWM_thread (unsigned int durUsecs, unsigned int nPulses, void *  initData, int (*initFunc)(void *, void * &), int accLevel , int &errCode) : pulsedThread (0, durUsecs, nPulses, initData, initFunc, nullptr, nullptr, accLevel, errCode) {
+	PWM_thread (unsigned int durUsecs, unsigned int nPulses, void * initData, int (*initFunc)(void *, void * &), int accLevel , int &errCode) : pulsedThread (0, durUsecs, nPulses, initData, initFunc, nullptr, nullptr, accLevel, errCode) {
 	};
 	/* and the the other constructor with floats for frequency, duty cycle, and train duration */
-	PWM_thread (float frequency, float trainDuration,  void *  initData, int (*initFunc)(void *, void * &), int accLevel, int &errCode) : pulsedThread (frequency, 1, trainDuration, initData, initFunc, nullptr, nullptr, accLevel, errCode){
+	PWM_thread (float frequency, float trainDuration, void * initData, int (*initFunc)(void *, void * &), int accLevel, int &errCode) : pulsedThread (frequency, 1, trainDuration, initData, initFunc, nullptr, nullptr, accLevel, errCode){
 	};
 	virtual ~PWM_thread (void);
-	// maps the GPIO, PWM, and PWMclock peripherals.  Do this before doing anything else
+	// maps the GPIO, PWM, and PWMclock peripherals. Do this before doing anything else
 	static int mapPeripherals ();
 	// sets PWM clock for given frequency and range. Do this before making a PWM_thread, because thread makers need to kknow range and freq
 	static float setClock (float PWMFreq, unsigned int PWMrange);
@@ -151,7 +150,7 @@ class PWM_thread : public pulsedThread{
 	static PWM_thread * PWM_threadMaker (float pwmFreq, unsigned int pwmRange, int useFIFO, unsigned int durUsecs, unsigned int nPulses, int accuracyLevel);
 	static PWM_thread * PWM_threadMaker (float pwmFreq, unsigned int pwmRange, int useFIFO, float frequency, float trainDuration, int accuracyLevel);
 	// configures one of the channels, 1 or 2, for output on the PWM. returns 0 for success, 1 for failure
-	int addChannel (int channel, int audioOnly, int PWMmode, int enable, int polarity, int offState, int * arrayData, unsigned int nData);
+	int addChannel (int channel, int audioOnly, int PWMmode, int polarity, int offState, int * arrayData, unsigned int nData);
 	// set whether PWM is using FIFO, both channels are done the same way, either both are FIFO or neither is
 	int setFIFO (int FIFOstate, int isLocking);
 	// mod functions for enabling PWM output, setting polarity, and array modifications

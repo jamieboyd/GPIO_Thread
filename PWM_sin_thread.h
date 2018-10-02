@@ -23,15 +23,14 @@ void ptPWM_sin_FIFO_2 (void * taskDataP);
 void ptPWM_sin_FIFO_dual (void * taskDataP);
 int ptPWM_sin_setFreqCallback (void * modData, taskParams * theTask);
 
-
 /* ********************************************* PWM_sin_thread class *********************************************
-superclass is PWM_thread. Modified to continuously output a sine wave of user-set frequency, from 1Hz to 25 KHz, in steps of 1 Hz
+base class is PWM_thread. Modified to continuously output a sine wave of user-set frequency, from 1Hz to 25 KHz, in steps of 1 Hz
 last modified:
 2018/09/21 by Jamie Boyd - updated for separate channels, and using FIFO 
 2018/09/12 by Jamie Boyd - initial verison */
 class PWM_sin_thread : public PWM_thread{
 	public:
-	PWM_sin_thread (int &errCode) : PWM_thread (THREAD_UPDATE_FREQ, 0.0, ACC_MODE_SLEEPS_AND_SPINS, errCode) {};
+	PWM_sin_thread (void * initData, int &errCode) : PWM_thread (THREAD_UPDATE_FREQ, 0.0, initData, &ptPWM_Init, ACC_MODE_SLEEPS_AND_SPINS, errCode) {};
 	~PWM_sin_thread (void);
 	/* Static thread maker calls constructor, and return a pointer to a new PWM_sin_thread */
 	static PWM_sin_thread * PWM_sin_threadMaker (int channels);
