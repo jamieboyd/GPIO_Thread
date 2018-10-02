@@ -48,7 +48,7 @@ int main(int argc, char **argv){
 	
 	
 	// make a thread for continuous output. Do thread at same speed as PWM frequency when writing to the data register
-	// WHen using a FIFO, thread can go 10x slower because as long as we get back before the FIFO is empty, all is good
+	// WHen using a FIFO, thread can go slower because as long as we get back before the FIFO is empty, all is good
 	// When using a FIFO, the data output rate is set by PWMfreq, not by the thread frequency, so we can use
 	// a less demanding but lower precision thread timing mode with the FIFO.  
 	if (useFIFO){

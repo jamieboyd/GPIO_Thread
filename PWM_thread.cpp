@@ -237,6 +237,10 @@ void ptPWM_FIFO_2 (void * taskDataP){
 			taskData->arrayPos2 = taskData->startPos2;
 		}
 	}
+	/* printf ("arrayPos2 = %d\n", taskData->arrayPos2);
+	if we let this printf statement execute, we always get 8. In other words, we fill the buffer, but the 
+	buffer never gets written out to the PWM, and the PWM value never changes
+	*/
 }
 
 /* *********************************** PWM Hi function when using FIFO with both channels ******************************
@@ -1045,73 +1049,74 @@ int PWM_thread::getChannels (void){
 unsigned int PWM_thread::getControlRegister (int verbose){
 	unsigned int result = *(PWMperi->addr + PWM_CTL);
 	if (verbose){
-		if (result & 32768){
+		printf ("****************** PWM CONTROL REGISTER REPORT ******************\n");
+		if (result & PWM_MSEN2){
 			printf ("Channel 2 is using M/S transmission.\n");
 		}else{
 			printf ("Channel 2 is using balanced transmission.\n");
 		}
-		if (result & 8192){
+		if (result & PWM_USEF2){
 			printf ("Channel 2 is using the FIFO.\n");
 		}else{
 			printf ("Channel 2 is using the data register.\n");
 		}
-		if (result & 4096){
+		if (result & PWM_POLA2){
 			printf ("Channel 2 is using reversed polarity output.\n");
 		}else{
 			printf ("Channel 2 is using normal polarity output.\n");
 		}
-		if (result & 2048){
+		if (result & PWM_SBIT2){
 			printf ("Channel 2 is high when channel is not enabled.\n");
 		}else{
 			printf ("Channel 2 is low when channel is not enabled.\n");
 		}
-		if (result & 1024){
+		if (result & PWM_RPTL2){
 			printf ("Channel 2 repeats last value when FIFO is empty.\n");
 		}else{
 			printf("Channel 2 transmisison interrupts when FIFO is empty.\n");
 		}
-		if (result & 512){
+		if (result & PWM_MODE2){
 			printf ("Channel 2 is using Serializer mode.\n");
 		}else{
 			printf ("Channel 2 is using PWM mode.\n");
 		}
-		if (result & 256){
+		if (result & PWM_PWEN2){
 			printf ("Channel 2 is ENABLED.\n");
 		}else{
 			printf("Channel 2 is NOT enabled.\n");
 		}
 		// channel 1
-		if (result & 128){
+		if (result & PWM_MSEN1){
 			printf ("Channel 1 is using M/S transmission.\n");
 		}else{
 			printf ("Channel 1 is using balanced transmission.\n");
 		}
-		if (result & 32){
+		if (result & PWM_USEF1){
 			printf ("Channel 1 is using the FIFO.\n");
 		}else{
 			printf ("Channel 1 is using the data register.\n");
 		}
-		if (result & 16){
+		if (result & PWM_POLA1){
 			printf ("Channel 1 is using reversed polarity output.\n");
 		}else{
 			printf ("Channel 1 is using normal polarity output.\n");
 		}
-		if (result & 8){
+		if (result & PWM_SBIT1){
 			printf ("Channel 1 is high when channel is not enabled.\n");
 		}else{
 			printf ("Channel 1 is low when channel is not enabled.\n");
 		}
-		if (result & 4){
+		if (result & PWM_RPTL1){
 			printf ("Channel 1 repeats last value when FIFO is empty.\n");
 		}else{
 			printf("Channel 1 transmisison interrupts when FIFO is empty.\n");
 		}
-		if (result & 2){
+		if (result & PWM_MODE1){
 			printf ("Channel 1 is using Serializer mode.\n");
 		}else{
 			printf ("Channel 1 is using PWM mode.\n");
 		}
-		if (result & 1){
+		if (result & PWM_PWEN1){
 			printf ("Channel 1 is ENABLED.\n");
 		}else{
 			printf("Channel 1 is NOT enabled.\n");
@@ -1128,31 +1133,32 @@ Last Modified:
 unsigned int PWM_thread::getStatusRegister (int verbose){
 	unsigned int result =  *(PWMperi->addr + PWM_STA);
 	if (verbose){
-		if (result & 1024){
+		printf ("****************** PWM STATUS REGISTER REPORT ******************\n");
+		if (result & PWM_STA2){
 			printf ("Channel 2 is active.\n");
 		}
-		if (result & 512){
+		if (result & PWM_STA1){
 			printf ("Channel 1 is active.\n");
 		}
-		if (result & 256){
+		if (result & PWM_BERR){
 			printf ("Bus error ocurred.\n");
 		}
-		if (result & 32){
+		if (result & PWM_GAPO2){
 			printf ("Channel 2 gap error ocurred.\n");
 		}
-		if (result & 16){
+		if (result & PWM_GAPO1){
 			printf ("Channel 1 gap error ocurred.\n");
 		}
-		if (result & 8){
+		if (result & PWM_RERR1){
 			printf ("FIFO read error ocurred.\n");
 		}
-		if (result & 4){
+		if (result & PWM_WERR1){
 			printf ("FIFO write error ocurred.\n");
 		}
-		if (result & 2){
+		if (result & PWM_EMPT1){
 			printf ("FIFO is empty.\n");
 		}
-		if (result & 1){
+		if (result & PWM_FULL1){
 			printf ("FIFO is FULL\n");
 		}
 	}
