@@ -147,6 +147,7 @@ PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channels){
 #endif
 		return nullptr;
 	}
+	usleep (10000);
 	// set custom task delete function
 	newPWM_thread->setTaskDataDelFunc (&ptPWM_delTask);
 	// set fields for PWMfreq and PWM Range,

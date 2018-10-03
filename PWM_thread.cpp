@@ -765,6 +765,7 @@ PWM_thread * PWM_thread::PWM_threadMaker (float PWMFreq, unsigned int PWMrange, 
 #endif
 		return nullptr;
 	}
+	usleep (10000);
 	// set custom task delete function
 	newPWM_thread->setTaskDataDelFunc (&ptPWM_delTask);
 	// set FIFO state

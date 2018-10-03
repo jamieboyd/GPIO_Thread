@@ -37,7 +37,6 @@ Last Modified;
 		return NULL;
 	}
 	PWM_thread * threadObj = PWM_thread::PWM_threadMaker (pwmFreq, pwmRange, useFIFO, durUsecs, nPulses, accuracyLevel);
-	usleep (200);
 	if (threadObj == nullptr){
 		PyErr_SetString (PyExc_RuntimeError, "PWM_threadMaker was not able to make a PWM object");
 		return NULL;
@@ -63,7 +62,6 @@ static PyObject* ptPWM_freqDuty (PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	PWM_thread * threadObj = PWM_thread::PWM_threadMaker (pwmFreq, pwmRange, useFIFO, trainFreq, trainDur, accuracyLevel);
-	usleep (200);
 	if (threadObj == nullptr){
 		PyErr_SetString (PyExc_RuntimeError, "PWM_threadMaker was not able to make a PWM object");
 		return NULL;
@@ -301,7 +299,6 @@ static PyObject* ptPWM_sin (PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	PWM_sin_thread * threadObj = PWM_sin_thread::PWM_sin_threadMaker (chans);
-	usleep (200);
 	if (threadObj == nullptr){
 		PyErr_SetString (PyExc_RuntimeError, "PWM_sin threadMaker was not able to make a PWM_sin object");
 		return NULL;
@@ -371,8 +368,8 @@ static PyMethodDef ptPWMMethods[] = {
 	{"setArrayEndFunc", pulsedThread_setArrayFunc, METH_VARARGS, "(PyCapsule, Python float array, endFuncType, isLocking) sets pulsedThread endFunc to set frequency (type 0) or duty cycle (type 1) from a Python float array"},
 	{"cosDutyCycleArray", pulsedThread_cosineDutyCycleArray, METH_VARARGS, "(Python float array, pointsPerCycle, offset, scaling) fills passed-in array with cosine values of given period, with applied scaling and offset expected to range between 0 and 1"},
 		
-	{"newDelayDur", ptPWM_delayDur, METH_VARARGS, "(pwmFreq, pwmRange, durUsecs, nPulses, accuracyLevel) Creates and configures new PWM task"},
-	{"newFreqDuty", ptPWM_freqDuty, METH_VARARGS, "(pwmFreq, pwmRange, trainFreq , trainDuration) Creates and configures new PWM task"},
+	{"newDelayDur", ptPWM_delayDur, METH_VARARGS, "(pwmFreq, pwmRange, useFIFO, durUsecs, nPulses, accuracyLevel) Creates and configures new PWM task"},
+	{"newFreqDuty", ptPWM_freqDuty, METH_VARARGS, "(pwmFreq, pwmRange, useFIFO, trainFreq , trainDuration, accuracyLevel) Creates and configures new PWM task"},
 	{"newSin", ptPWM_sin, METH_VARARGS, "(channels) creates a new PWM_sin task for the given channel."},
 	{"addChannel", ptPWM_addChannel,METH_VARARGS, "(PyCapsule,channel, audioOnly, mode, polarity, offState, dataArray)"},
 	{"setEnable", ptPWM_setEnable, METH_VARARGS, "(PyCapsule, enableState, channel, isLocking) Enables or disables the PWM channel"},
