@@ -393,7 +393,9 @@ int ptPWM_setEnableCallback (void * modData, taskParams * theTask){
 		}
 	}else{
 		theTask->hiFunc = *(taskData->hiFuncREG);
+#if beVerbose
 		printf ("Set highfunc REG\n");
+#endif
 	}
 	*(PWMperi ->addr + PWM_CTL)= registerVal;
 	delete enablePtr;
