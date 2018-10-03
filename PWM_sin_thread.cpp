@@ -41,8 +41,7 @@ void ptPWM_sin_FIFO_2 (void * taskDataP){
 		if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO2)){
 #if beVerbose
 		printf ("status reg = 0x%x\n", *(taskData->statusRegister));
-		*(taskData->statusRegister) |= (PWM_BERR | PWM_GAPO2);
-		
+		*(taskData->statusRegister) |= (PWM_BERR | PWM_GAPO2);	
 #endif
 	}
 	while (!(*(taskData->statusRegister) & PWM_FULL1)){
@@ -116,13 +115,17 @@ PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channels){
 	// ensure peripherals for PWM controller are mapped
 	int mapResult = PWM_thread::mapPeripherals ();
 	if (mapResult){
+#if beVerbose
 		printf ("Could not map peripherals for PWM access with return code %d.\n", mapResult);
+#endif
 		return nullptr;
 	}
 	// set clock for PWM from input parmamaters
 	float realPWMfreq = PWM_thread::setClock (PWM_UPDATE_FREQ, PWM_RANGE);
 	if (realPWMfreq < 0){
+#if beVerbose
 		printf ("Could not set clock for PWM with frequency = %d and range = %d.\n", PWM_UPDATE_FREQ, PWM_RANGE);
+#endif
 		return nullptr;
 	}
 #if beVerbose

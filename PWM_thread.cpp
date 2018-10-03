@@ -224,7 +224,7 @@ void ptPWM_FIFO_2 (void * taskDataP){
 	}
 	/* printf ("arrayPos2 = %d\n", taskData->arrayPos2);
 	if we let this printf statement execute, we always get 8. In other words, we fill the buffer, but the 
-	buffer never gets written out to the PWM, and the PWM value never changes
+	buffer never gets written out to the PWM, and the PWM value never changes WHY????
 	*/
 }
 
@@ -472,12 +472,12 @@ int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask){
 	ptPWMArrayModStructPtr modDataPtr = (ptPWMArrayModStructPtr) modData;
 	// channel 1
 	if ((modDataPtr->channel) & 1){
-		// check if array data is being changed
+		// check if array data is being changed (bit 3 =8)
 		if ((modDataPtr->modBits) & 8){
 			taskData->arrayData1 = modDataPtr->arrayData;
 			taskData->nData1 = modDataPtr->nData;
 		}
-		// check for changing start pos or changing array data
+		// check for changing start pos (bit 0 =1) or changing array data (bit 3 =8)
 		if ((modDataPtr->modBits) & 9){
 			if (modDataPtr->startPos < taskData->nData1 -1){
 				taskData ->startPos1 = modDataPtr->startPos;
@@ -485,7 +485,7 @@ int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask){
 				taskData ->startPos1 = taskData->nData1-1;
 			}
 		}
-		// check stop position or changing array data
+		// check stop position (bit 1 =2) or changing array data (bit 3 =8)
 		if ((modDataPtr->modBits) & 10){
 			if (modDataPtr->stopPos > 0){
 				if (modDataPtr->stopPos < taskData->nData1){
@@ -497,7 +497,7 @@ int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask){
 				taskData ->stopPos1 =1;
 			}
 		}
-		// make sure start position <= stop position if data or positions changed
+		// make sure start position <= stop position if data (bit 3 =8) or start (bit 0 =1) or stop (bit 1 =2) positions changed
 		if ((modDataPtr->modBits) & 11){
 			if (taskData ->startPos1 > taskData->stopPos1){
 				unsigned int temp = taskData ->startPos1;
@@ -593,8 +593,10 @@ int ptPWM_ArrayModCalback  (void * modData, taskParams * theTask){
 Call these 2 methods before making a PWM_thread object. In this order:
 1) map the peripherals
 2) set the clock
-3) make a PWM_thread
-4) configure a PWM channel, 0 or 1 
+3) make a PWM_thread, only make 1 because there is only 1 PWM peripheral
+4) make an array and configure a PWM channel, 0 or 1, to output it
+5) enable output on the channel
+The ststic thread makers do the first three of these
 
 ****************************** Memory maps Peripherals for PWM *********PWM_thread.cpp:687:1:*********************************
  static function maps peripherals (GPIO, PWM, and PWM clock) needed for PWM. Does not set PWM clock. Does not set up any channels 
@@ -650,6 +652,7 @@ float PWM_thread::setClock (float PWMFreq, unsigned int PWMrange){
 	if (reqClockFreq > (PLLD_CLOCK_RATE/2)){
 		printf ("Requested PWM frequency %.3f and range %d require PWM clock rate of %.3f.\n", PWMFreq, PWMrange, (PWMFreq * PWMrange));
 		printf ("Highest available PWM clock rate using PLL D with MASH=1 is %.3f.\n", (PLLD_CLOCK_RATE/2));
+		return -1;
 	}else{
 		if (reqClockFreq > (PLLD_CLOCK_RATE/3)){
 			mash = CM_MASH1;
