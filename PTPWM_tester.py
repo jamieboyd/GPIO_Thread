@@ -1,8 +1,25 @@
 #! /usr/bin/python
 #-*-coding: utf-8 -*-
 
+from PTSimpleGPIO import PTSimpleGPIO, SingletonForGPIO
 from PTPWM import PTPWM, PTPWMsin
 from time import sleep
+from array import array
+
+
+a1 = array ('i', (i for i in range (0, 100)))
+w0 = PTPWM (PTSimpleGPIO.MODE_PULSES, 1000, 100, 0, 1e04, 1000, 1)
+sleep (0.1)
+w0.add_channel (1, 0, PTPWM.PWM_MARK_SPACE, 0, 0, a1)
+sleep (0.1)
+w0.set_PWM_enable (1, 1, 0)
+w0.start_train()
+sleep (10)
+w0.stop_train()
+w0.set_PWM_enable (0, 1, 0)
+sleep (0.1)
+del w0
+sleep (0.1)
 
 tone = 1.12246
 semi_tone = 1.05946
@@ -47,4 +64,4 @@ sleep (0.5)
 w1.stop()
 sleep (0.1)
 del w1
-sleep (0.5)
+sleep (0.1)

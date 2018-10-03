@@ -57,25 +57,21 @@ class PTPWM (metaclass = SingletonForGPIO):
 
     def start_train (self):
         if self.train_type == PTPWM.INFINITE_TRAIN:
-            errVal = ptPWM.startTrain (self.task_ptr)
+            ptPWM.startTrain (self.task_ptr)
         elif self.train_type == PTPWM.TRAIN:
-            errVal = ptPWM.doTask (self.task_ptr)
-        return errVal
+            ptPWM.doTask (self.task_ptr)
 
-    def start_trains (num_trains):
+    def start_trains (self, num_trains):
         if self.train_type == PTPWM.INFINITE_TRAIN:
-            errVal = ptPWM.startTrain (self.task_ptr)
+            ptPWM.startTrain (self.task_ptr)
         elif self.train_type == PTPWM.TRAIN:
-            errVal =ptPWM.doTasks (self.task_ptr, num_trains)
-        return errVal
+            ptPWM.doTasks (self.task_ptr, num_trains)
     
-
     def stop_train (self):
         if self.train_type == PTPWM.INFINITE_TRAIN:
-            errVal =ptPWM.stopTrain (self.task_ptr)
+            ptPWM.stopTrain (self.task_ptr)
         elif self.train_type == PTPWM.TRAIN:
-            errVal =ptPWM.unDoTasks (self.task_ptr)
-        return errVal
+            ptPWM.unDoTasks (self.task_ptr)
     
 
     def set_PWM_enable (self, enable_state, channel, is_locking):

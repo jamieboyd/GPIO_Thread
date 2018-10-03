@@ -16,6 +16,7 @@ static void ptPWM_del(PyObject * PyPtr){
 	delete static_cast<PWM_thread *> (PyCapsule_GetPointer (PyPtr, "pulsedThread"));
 }
 
+
 /* ****************************************  Constructors ******************************************************
 Sets up the PWM clock with the given frequency and range, and creates and configures a PWM_thread object to feed data to the PWM peripheral.
 There is only 1 PWM controller, so do not call constructor more than once.  Make is_inited a class field in Python
@@ -32,10 +33,11 @@ Last Modified;
 	unsigned int nPulses;
 	int accuracyLevel;
 	if (!PyArg_ParseTuple(args,"fIiIIi", &pwmFreq, &pwmRange, &useFIFO, &durUsecs, &nPulses, &accuracyLevel)){
-		PyErr_SetString (PyExc_RuntimeError, "Could not parse inputs for PWM frequency, PWM range, pulse useconds, number of pulses, and thread accuracy.");
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse inputs for PWM frequency, PWM range, useFIFO,  pulse useconds, number of pulses, and thread accuracy.");
 		return NULL;
 	}
 	PWM_thread * threadObj = PWM_thread::PWM_threadMaker (pwmFreq, pwmRange, useFIFO, durUsecs, nPulses, accuracyLevel);
+	usleep (200);
 	if (threadObj == nullptr){
 		PyErr_SetString (PyExc_RuntimeError, "PWM_threadMaker was not able to make a PWM object");
 		return NULL;
@@ -57,27 +59,13 @@ static PyObject* ptPWM_freqDuty (PyObject *self, PyObject *args) {
 	float trainDur;
 	int accuracyLevel;
 	if (!PyArg_ParseTuple(args,"fIiffi", &pwmFreq, &pwmRange, &useFIFO, &trainFreq, &trainDur, &accuracyLevel)) {
-		PyErr_SetString (PyExc_RuntimeError, "Could not parse inputs for PWM frequency, PWM range, train frequency, train duration, and thread accuracy.");
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse inputs for PWM frequency, useFIFO, PWM range, train frequency, train duration, and thread accuracy.");
 		return NULL;
 	}
 	PWM_thread * threadObj = PWM_thread::PWM_threadMaker (pwmFreq, pwmRange, useFIFO, trainFreq, trainDur, accuracyLevel);
+	usleep (200);
 	if (threadObj == nullptr){
 		PyErr_SetString (PyExc_RuntimeError, "PWM_threadMaker was not able to make a PWM object");
-		return NULL;
-	}else{
-		return PyCapsule_New (static_cast <void *>(threadObj), "pulsedThread", ptPWM_del);
-	}
-}
-
-static PyObject* ptPWM_sin (PyObject *self, PyObject *args) {
-	int chans;
-	if (!PyArg_ParseTuple(args,"i", &chans)) {
-		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for channel.");
-		return NULL;
-	}
-	PWM_sin_thread * threadObj = PWM_sin_thread::PWM_sin_threadMaker (chans);
-	if (threadObj == nullptr){
-		PyErr_SetString (PyExc_RuntimeError, "PWM_sin threadMaker was not able to make a PWM_sin object");
 		return NULL;
 	}else{
 		return PyCapsule_New (static_cast <void *>(threadObj), "pulsedThread", ptPWM_del);
@@ -227,35 +215,6 @@ static PyObject* ptPWM_setArraySubrange (PyObject *self, PyObject *args){
 	return Py_BuildValue("i", threadPtr ->setArraySubrange(startPos, stopPos, channel, isLocking));
 }
 
-static PyObject* ptPWM_setSinFreq (PyObject *self, PyObject *args){
-	PyObject *PyPtr;
-	unsigned int newFrequency;
-	int channel;
-	int isLocking;
-	if (!(PyArg_ParseTuple(args,"OIIi", &PyPtr, &newFrequency, &channel, &isLocking))) {
-		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object, frequency, channel, and isLocking.");
-		return NULL;
-	}
-	// get pointer to PWM_sin_thread
-	PWM_sin_thread * threadPtr = static_cast<PWM_sin_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
-	// Call thread's setFreq function and return the result
-	return Py_BuildValue("i", threadPtr ->setSinFrequency(newFrequency, channel, isLocking));
-}
-
-/* ************************************************** Gets the frequency of sine wave being output **************************************
-Last Modified:
-2018/09/25 by Jamie Boyd - initial version */
-static PyObject* ptPWM_getSinFrequency (PyObject *self, PyObject *args){
-	PyObject *PyPtr;
-	int channel;
-	if (!(PyArg_ParseTuple(args,"Oi", &PyPtr, &channel))) {
-		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object and channel.");
-		return NULL;
-	}
-	// get pointer to PWM_sin_thread
-	PWM_sin_thread * threadPtr = static_cast<PWM_sin_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
-	return Py_BuildValue("I", threadPtr ->getSinFrequency (channel));
-}
 
 /* **********************************Sets a new array of data to be output next ************************
 Last Modified:
@@ -321,6 +280,68 @@ static PyObject* ptPWM_getChannels (PyObject *self, PyObject *PyPtr){
 	return Py_BuildValue("i", threadPtr ->getChannels ());
 }
 
+
+/* ************************************************** Extra functions for PWM_sin_thread subclass ****************************************************
+
+***************************************** destructor, called automatically when python PyCapcule object is deleted ***********************************
+Last Modified:
+2018/10/03 by Jamie Boyd - initial version */
+static void ptPWM_sin_del(PyObject * PyPtr){
+	delete static_cast<PWM_sin_thread *> (PyCapsule_GetPointer (PyPtr, "pulsedThread"));
+}
+
+
+/* ******************************* constructor for PWM_sin_thread *******************************************************
+Last Modified:
+2018/10/03 by Jamie Boyd - added usleep for no apparent benefit */
+static PyObject* ptPWM_sin (PyObject *self, PyObject *args) {
+	int chans;
+	if (!PyArg_ParseTuple(args,"i", &chans)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for channel.");
+		return NULL;
+	}
+	PWM_sin_thread * threadObj = PWM_sin_thread::PWM_sin_threadMaker (chans);
+	usleep (200);
+	if (threadObj == nullptr){
+		PyErr_SetString (PyExc_RuntimeError, "PWM_sin threadMaker was not able to make a PWM_sin object");
+		return NULL;
+	}else{
+		return PyCapsule_New (static_cast <void *>(threadObj), "pulsedThread", ptPWM_sin_del);
+	}
+}
+
+/* ******************************************** sets frequency of Sin wave to be output *******************************************
+Last Modified:
+2018/10/03 by Jamie Boyd */
+static PyObject* ptPWM_setSinFreq (PyObject *self, PyObject *args){
+	PyObject *PyPtr;
+	unsigned int newFrequency;
+	int channel;
+	int isLocking;
+	if (!(PyArg_ParseTuple(args,"OIIi", &PyPtr, &newFrequency, &channel, &isLocking))) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object, frequency, channel, and isLocking.");
+		return NULL;
+	}
+	// get pointer to PWM_sin_thread
+	PWM_sin_thread * threadPtr = static_cast<PWM_sin_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	// Call thread's setFreq function and return the result
+	return Py_BuildValue("i", threadPtr ->setSinFrequency(newFrequency, channel, isLocking));
+}
+
+/* ************************************************** Gets the frequency of sine wave being output **************************************
+Last Modified:
+2018/09/25 by Jamie Boyd - initial version */
+static PyObject* ptPWM_getSinFrequency (PyObject *self, PyObject *args){
+	PyObject *PyPtr;
+	int channel;
+	if (!(PyArg_ParseTuple(args,"Oi", &PyPtr, &channel))) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object and channel.");
+		return NULL;
+	}
+	// get pointer to PWM_sin_thread
+	PWM_sin_thread * threadPtr = static_cast<PWM_sin_thread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	return Py_BuildValue("I", threadPtr ->getSinFrequency (channel));
+}
 
 /* Module method table - those starting with ptPWM are defined here, those starting with pulsedThread are defined in pyPulsedThread.h*/
 static PyMethodDef ptPWMMethods[] = {
