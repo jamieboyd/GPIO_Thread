@@ -39,6 +39,27 @@ int main(int argc, char **argv){
 	if (isSin){
 		printf ("******************* PWM_sin_thread *******************\n");
 		PWM_sin_thread * my_sin_PWM  =  PWM_sin_thread::PWM_sin_threadMaker (channel);
+		if ((channel & 3) == 3){
+			printf ("********** Testing Both Channels Simultaneously **********\n");
+			// set initial frequency
+			my_sin_PWM->setSinFrequency (100 ,1,1);
+			my_sin_PWM->setSinFrequency (1e04 ,2,1);
+			// enable the PWM to output
+			my_sin_PWM->setEnable (1, 3, 1);
+			// start train 
+			my_sin_PWM->startInfiniteTrain ();
+			float freq1, freq2 ;
+			for (freq1= 200, freq2 = 10e03; freq1 < 10e03; ){
+				printf ("Frequency of channel 1 is %dHz, and of channel 2 is %dHz.\n", my_sin_PWM->getSinFrequency (1), my_sin_PWM->getSinFrequency (2));
+				my_sin_PWM->waitOnBusy (0.5);
+				my_sin_PWM->setSinFrequency ((unsigned int)freq1 ,1,1);usleep (100);
+				my_sin_PWM->setSinFrequency ((unsigned int)freq2 ,2,1);usleep (100);
+				freq1 *= 1.12246;
+				freq2 /= 1.12246;
+			}
+			my_sin_PWM->stopInfiniteTrain ();
+			my_sin_PWM->setEnable (0, 3, 1);
+		}			
 		if (channel & 1){
 			printf ("************** Testing Channel 1 **************\n");
 			// set initial frequency
@@ -73,25 +94,7 @@ int main(int argc, char **argv){
 			my_sin_PWM->stopInfiniteTrain ();
 			my_sin_PWM->setEnable (0, 2, 0);
 		}
-		if ((channel & 3) == 3){
-			printf ("********** Testing Both Channels Simultaneously **********\n");
-			// set initial frequency
-			my_sin_PWM->setSinFrequency (100 ,1,1);
-			my_sin_PWM->setSinFrequency (1e04 ,2,1);
-			// enable the PWM to output
-			my_sin_PWM->setEnable (1, 3, 1);
-			// start train 
-			my_sin_PWM->startInfiniteTrain ();
-			float freq1, freq2 ;
-			for (freq1= 200, freq2 = 1e04; freq1 < 10e03; freq1 *= 1.12246, freq2 /= 1.12246){
-				printf ("Frequency of channel 1 is %dHz, and of channel 2 is %dHz.\n", my_sin_PWM->getSinFrequency (1), my_sin_PWM->getSinFrequency (2));
-				my_sin_PWM->waitOnBusy (0.2);
-				my_sin_PWM->setSinFrequency ((unsigned int)freq1 ,1,1);
-				my_sin_PWM->setSinFrequency ((unsigned int)freq2 ,2,1);
-			}
-			my_sin_PWM->stopInfiniteTrain ();
-			my_sin_PWM->setEnable (0, 3, 1);
-		}			
+		
 	}else{
 		printf ("******************* PWM_thread *******************\n");
 		printf ("Parameters: channel = %d, useFIFO = %d, audioOnly = %d, PWM mode = %d, output polarity = %d, output off state = %d.\n", channel, useFIFO, audioOnly, mode, polarity, offState);
