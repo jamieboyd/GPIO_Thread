@@ -37,6 +37,7 @@ Last Modified;
 		return NULL;
 	}
 	PWM_thread * threadObj = PWM_thread::PWM_threadMaker (pwmFreq, pwmRange, useFIFO, durUsecs, nPulses, accuracyLevel);
+	usleep (100000);
 	if (threadObj == nullptr){
 		PyErr_SetString (PyExc_RuntimeError, "PWM_threadMaker was not able to make a PWM object");
 		return NULL;
@@ -62,6 +63,7 @@ static PyObject* ptPWM_freqDuty (PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	PWM_thread * threadObj = PWM_thread::PWM_threadMaker (pwmFreq, pwmRange, useFIFO, trainFreq, trainDur, accuracyLevel);
+	usleep (100000);
 	if (threadObj == nullptr){
 		PyErr_SetString (PyExc_RuntimeError, "PWM_threadMaker was not able to make a PWM object");
 		return NULL;
@@ -299,6 +301,7 @@ static PyObject* ptPWM_sin (PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	PWM_sin_thread * threadObj = PWM_sin_thread::PWM_sin_threadMaker (chans);
+	usleep (100000);
 	if (threadObj == nullptr){
 		PyErr_SetString (PyExc_RuntimeError, "PWM_sin threadMaker was not able to make a PWM_sin object");
 		return NULL;

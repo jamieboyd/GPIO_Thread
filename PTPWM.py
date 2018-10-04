@@ -144,9 +144,11 @@ class PTPWMsin (PTPWM):
 
     def start (self):
         ptPWM.setEnable(self.task_ptr, 1, self.PWM_channels, 0)
+        sleep (0.1)
         ptPWM.startTrain(self.task_ptr)
         
 
     def stop (self):
         ptPWM.stopTrain(self.task_ptr)
+        sleep (0.1)
         ptPWM.setEnable (self.task_ptr, 0, self.PWM_channels, 0)
