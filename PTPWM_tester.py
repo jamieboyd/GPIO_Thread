@@ -10,12 +10,13 @@ tone = 1.12246
 semi_tone = 1.05946
 init_freq = 110
 
+
 w1 = PTPWMsin (1)
 print ('made object')
-sleep (0.1)
+sleep (0.5)
 w1.set_sin_freq(init_freq,1,0)
 print ('set initial frequency')
-sleep (0.1)
+sleep (0.5)
 w1.start()
 freq = init_freq
 print ("starting frequency = ", freq)

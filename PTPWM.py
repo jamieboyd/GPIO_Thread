@@ -6,7 +6,7 @@ from PTSimpleGPIO import PTSimpleGPIO,SingletonForGPIO
 from array import array
 from time import sleep
 
-class PTPWM (metaclass = SingletonForGPIO):
+class PTPWM (object):
     TRAIN =1
     INFINITE_TRAIN = 0
     PWM_MARK_SPACE =0
@@ -143,12 +143,12 @@ class PTPWMsin (PTPWM):
         return ptPWM.getSinFreq(self.task_ptr,channel)
 
     def start (self):
-        ptPWM.setEnable(self.task_ptr, 1, self.PWM_channels, 0)
-        sleep (0.1)
         ptPWM.startTrain(self.task_ptr)
+        sleep (1)
+        ptPWM.setEnable(self.task_ptr, 1, self.PWM_channels, 0)
         
 
     def stop (self):
-        ptPWM.stopTrain(self.task_ptr)
-        sleep (0.1)
         ptPWM.setEnable (self.task_ptr, 0, self.PWM_channels, 0)
+        sleep (1)
+        ptPWM.stopTrain(self.task_ptr)
