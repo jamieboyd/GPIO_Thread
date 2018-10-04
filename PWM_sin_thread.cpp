@@ -148,11 +148,6 @@ PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channels){
 		return nullptr;
 	}
 	usleep (10000);
-	// set custom task delete function
-	newPWM_thread->setTaskDataDelFunc (&ptPWM_delTask);
-	// set fields for PWMfreq and PWM Range,
-	newPWM_thread->PWMfreq = realPWMfreq;
-	newPWM_thread->PWMrange = PWM_RANGE;
 	// make sine wave array data and add channels
 	unsigned int arraySize = (unsigned int)(realPWMfreq);
 	newPWM_thread->dataArray= new int [arraySize];
@@ -167,7 +162,14 @@ PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channels){
 	if (channels & 2){
 		newPWM_thread->addChannel (2, 1, PWM_BALANCED, 0, 0, newPWM_thread->dataArray, arraySize);
 	}
+	// set custom task delete function
+	newPWM_thread->setTaskDataDelFunc (&ptPWM_delTask);
+	// set fields for PWMfreq and PWM Range,
+	newPWM_thread->PWMfreq = realPWMfreq;
+	newPWM_thread->PWMrange = PWM_RANGE;
 	newPWM_thread->PWMchans = channels;
+	newPWM_thread->enabled1 = 0;
+	newPWM_thread->enabled2 = 0;
 	// return new thread
 	return newPWM_thread;
 }

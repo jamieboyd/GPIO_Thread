@@ -774,6 +774,8 @@ PWM_thread * PWM_thread::PWM_threadMaker (float PWMFreq, unsigned int PWMrange, 
 	newPWM_thread->PWMfreq = setFrequency;
 	newPWM_thread->PWMrange = PWMrange;
 	newPWM_thread->PWMchans = 0;
+	newPWM_thread->enabled1 = 0;
+	newPWM_thread->enabled2 = 0;
 	// return new thread
 	return newPWM_thread;
 }
@@ -927,8 +929,8 @@ int PWM_thread::setEnable (int enableState, int channel, int isLocking){
 	}
 	int * newEnableVal = new int;
 	* newEnableVal =  (enableState * 4) + channel;
-	int returnVal = modCustom (&ptPWM_setEnableCallback, (void *) newEnableVal, isLocking);
-	return returnVal;
+	modCustom (&ptPWM_setEnableCallback, (void *) newEnableVal, isLocking);
+	return 0;
 }
 
 /* ****************************** sets Polarity ************************************
