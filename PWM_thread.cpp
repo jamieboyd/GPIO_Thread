@@ -19,6 +19,8 @@ int ptPWM_Init (void * initDataP, void * &taskDataP){
 	taskDataP = taskData;
 	// start with channels at 0,
 	taskData->channels = 0;
+	taskData->enable1=0;
+	taskData->enable2 =0;
 	// save ctl and data register addresses in task data for easy access
 	taskData->ctlRegister = PWMperi->addr + PWM_CTL;
 	taskData->statusRegister = PWMperi->addr + PWM_STA;
@@ -308,7 +310,7 @@ int ptPWM_setEnableCallback (void * modData, taskParams * theTask){
 	ptPWMStructPtr taskData = (ptPWMStructPtr) theTask->taskData;
 	int * enablePtr =(int *)modData;
 	unsigned int registerVal =  *(PWMperi ->addr + PWM_CTL);
-	 *(taskData->ctlRegister) =0;
+	*(taskData->ctlRegister) =0;
 	if ((taskData->useFIFO) && ((*enablePtr) & 4)){
 		*(PWMperi ->addr + PWM_CTL)= PWM_CLRF1;
 	}
@@ -765,7 +767,6 @@ PWM_thread * PWM_thread::PWM_threadMaker (float PWMFreq, unsigned int PWMrange, 
 #endif
 		return nullptr;
 	}
-	usleep (10000);
 	// set custom task delete function
 	newPWM_thread->setTaskDataDelFunc (&ptPWM_delTask);
 	// set FIFO state
@@ -817,7 +818,6 @@ PWM_thread * PWM_thread::PWM_threadMaker (float pwmFreq, unsigned int pwmRangeP,
 #endif
 		return nullptr;
 	}
-	usleep (10000);
 	// set custom task delete function
 	newPWM_thread->setTaskDataDelFunc (&ptPWM_delTask);
 	// set FIFO use
@@ -922,10 +922,10 @@ Last Modified:
 2018/08/08 by Jamie Boyd - Initial Version  */
 int PWM_thread::setEnable (int enableState, int channel, int isLocking){
 	if (channel & 1){
-		enabled1 = enableState;
+		this->enabled1 = enableState;
 	}
 	if ((channel & 2) ==2){
-		enabled2 = enableState;
+		this->enabled2 = enableState;
 	}
 	int * newEnableVal = new int;
 	* newEnableVal =  (enableState * 4) + channel;

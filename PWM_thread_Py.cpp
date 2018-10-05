@@ -294,7 +294,7 @@ static void ptPWM_sin_del(PyObject * PyPtr){
 /* ******************************* constructor for PWM_sin_thread *******************************************************
 Last Modified:
 2018/10/03 by Jamie Boyd - added usleep for no apparent benefit */
-static PyObject* ptPWM_sin (PyObject *self, PyObject *args) {
+static PyObject* ptPWM_sin_NEW (PyObject *self, PyObject *args) {
 	int chans;
 	if (!PyArg_ParseTuple(args,"i", &chans)) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for channel.");
@@ -370,10 +370,11 @@ static PyMethodDef ptPWMMethods[] = {
 	{"setTaskFuncObj", pulsedThread_SetPythonTaskObj, METH_VARARGS, "(PyCapsule, PythonObj) sets a Python object to provide LoFunc and HiFunc for pulsedThread"},
 	{"setArrayEndFunc", pulsedThread_setArrayFunc, METH_VARARGS, "(PyCapsule, Python float array, endFuncType, isLocking) sets pulsedThread endFunc to set frequency (type 0) or duty cycle (type 1) from a Python float array"},
 	{"cosDutyCycleArray", pulsedThread_cosineDutyCycleArray, METH_VARARGS, "(Python float array, pointsPerCycle, offset, scaling) fills passed-in array with cosine values of given period, with applied scaling and offset expected to range between 0 and 1"},
-		
+	{"getModFuncStatus", pulsedThread_modCustomStatus, METH_O, "(PyCapsule) Returns 1 if the pulsedThread object is waiting for the thread to call a modFunction, else 0"},
+
 	{"newDelayDur", ptPWM_delayDur, METH_VARARGS, "(pwmFreq, pwmRange, useFIFO, durUsecs, nPulses, accuracyLevel) Creates and configures new PWM task"},
 	{"newFreqDuty", ptPWM_freqDuty, METH_VARARGS, "(pwmFreq, pwmRange, useFIFO, trainFreq , trainDuration, accuracyLevel) Creates and configures new PWM task"},
-	{"newSin", ptPWM_sin, METH_VARARGS, "(channels) creates a new PWM_sin task for the given channel."},
+	{"newSin", ptPWM_sin_NEW, METH_VARARGS, "(channels) creates a new PWM_sin task for the given channel."},
 	{"addChannel", ptPWM_addChannel,METH_VARARGS, "(PyCapsule,channel, audioOnly, mode, polarity, offState, dataArray)"},
 	{"setEnable", ptPWM_setEnable, METH_VARARGS, "(PyCapsule, enableState, channel, isLocking) Enables or disables the PWM channel"},
 	{"setPolarity", ptPWM_setpolarity, METH_VARARGS, "(PyCapsule, polarity, channel, isLocking) Sets polarity of the PWM channel"},
