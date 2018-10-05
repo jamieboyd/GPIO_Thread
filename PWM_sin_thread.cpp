@@ -4,6 +4,8 @@
 /* ******************************************  PWM_sin_thread functions for pulsedThread *****************************************
 
 
+
+
  *********************************** PWM_sin Hi functions (no low function) ******************************
 gets the next value from the array data to be output, depending on frequency, and writes it to the FIFO register
 arrayData contains a sine wave with PWM_UPDATE_FREQ points.  When output at PWM_UPDATE_FREQ, you get a 1 Hz output.  The idea is to make a sine wave at
@@ -19,8 +21,8 @@ void ptPWM_sin_FIFO_1 (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
 	if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO1)){
 #if beVerbose
-		printf ("status reg = 0x%x\n", *(taskData->statusRegister));
-		*(taskData->statusRegister) |= (PWM_BERR | PWM_GAPO1);
+		//printf ("sin_FIFO_1: status reg = 0x%x\n", *(taskData->statusRegister));
+		//*(taskData->statusRegister) |= (PWM_BERR | PWM_GAPO1);
 #endif
 	}
 	while (!(*(taskData->statusRegister) & PWM_FULL1)){
@@ -40,7 +42,7 @@ void ptPWM_sin_FIFO_2 (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
 		if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO2)){
 #if beVerbose
-		printf ("status reg = 0x%x\n", *(taskData->statusRegister));
+		printf ("sin_FIFO_1: status reg = 0x%x\n", *(taskData->statusRegister));
 		*(taskData->statusRegister) |= (PWM_BERR | PWM_GAPO2);	
 #endif
 	}
@@ -61,7 +63,7 @@ void ptPWM_sin_FIFO_dual (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
 		if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO1 | PWM_GAPO2)){
 #if beVerbose
-		printf ("status reg = 0x%x\n", *(taskData->statusRegister));
+		printf ("sin_FIFO_dual: status reg = 0x%x\n", *(taskData->statusRegister));
 		*(taskData->statusRegister) |= (PWM_BERR | PWM_GAPO1 | PWM_GAPO2);
 #endif
 	}
@@ -132,22 +134,21 @@ PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channels){
 		printf ("Calculated PWM update frequency = %.3f\n", realPWMfreq);
 #endif
 	// make init data struct
-	ptPWM_init_StructPtr initData = new ptPWM_init_Struct;
-	initData->useFIFO = 1;
-	initData-> hiFuncREG = nullptr;
-	initData->hiFuncFIF1 = &ptPWM_sin_FIFO_1;
-	initData->hiFuncFIF2 = &ptPWM_sin_FIFO_2;
-	initData->hiFuncFIFdual = &ptPWM_sin_FIFO_dual;	
+	ptPWM_init_StructPtr sin_initData = new ptPWM_init_Struct;
+	sin_initData->useFIFO = 1;
+	sin_initData-> hiFuncREG = nullptr;
+	sin_initData->hiFuncFIF1 = &ptPWM_sin_FIFO_1;
+	sin_initData->hiFuncFIF2 = &ptPWM_sin_FIFO_2;
+	sin_initData->hiFuncFIFdual = &ptPWM_sin_FIFO_dual;	
 	// call PWM_sin_thread constructor with init data, which calls pulsedThread constructor
 	int errCode =0;
-	PWM_sin_thread * newPWM_thread = new PWM_sin_thread (initData, errCode);
+	PWM_sin_thread * newPWM_thread = new PWM_sin_thread (sin_initData, errCode);
 	if (errCode){
 #if beVerbose
 		printf ("PWM_threadMaker failed to make PWM_sin_thread with errCode %d.\n", errCode);
 #endif
 		return nullptr;
 	}
-	usleep (10000);
 	// make sine wave array data and add channels
 	unsigned int arraySize = (unsigned int)(realPWMfreq);
 	newPWM_thread->dataArray= new int [arraySize];

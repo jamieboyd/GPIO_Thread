@@ -52,8 +52,8 @@ int main(int argc, char **argv){
 			for (freq1= 200, freq2 = 10e03; freq1 < 10e03; ){
 				printf ("Frequency of channel 1 is %dHz, and of channel 2 is %dHz.\n", my_sin_PWM->getSinFrequency (1), my_sin_PWM->getSinFrequency (2));
 				my_sin_PWM->waitOnBusy (0.5);
-				my_sin_PWM->setSinFrequency ((unsigned int)freq1 ,1,1);usleep (100);
-				my_sin_PWM->setSinFrequency ((unsigned int)freq2 ,2,1);usleep (100);
+				my_sin_PWM->setSinFrequency ((unsigned int)freq1 ,1,1);
+				my_sin_PWM->setSinFrequency ((unsigned int)freq2 ,2,1);
 				freq1 *= 1.12246;
 				freq2 /= 1.12246;
 			}

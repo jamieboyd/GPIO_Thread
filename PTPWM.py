@@ -6,7 +6,7 @@ from PTSimpleGPIO import PTSimpleGPIO,SingletonForGPIO
 from array import array
 from time import sleep
 
-class PTPWM (object):
+class PTPWM (metaclass = SingletonForGPIO):
     TRAIN =1
     INFINITE_TRAIN = 0
     PWM_MARK_SPACE =0
@@ -124,15 +124,13 @@ class PTPWM (object):
         return self.enable1. + (2 * self.enable2
 
 
+
 class PTPWMsin (PTPWM):
+    
     
     def __init__(self, chans):
         self.task_ptr = ptPWM.newSin (chans)
         self.PWM_channels = chans
-        self.useFIFO = 1
-        self.respectTheGIL = False
-        self.train_type = PTPWM.INFINITE_TRAIN
-
 
     def set_sin_freq (self, new_frequency, channel, is_Locking):
         ptPWM.setSinFreq(self.task_ptr, new_frequency, channel, is_Locking)
@@ -143,12 +141,18 @@ class PTPWMsin (PTPWM):
         return ptPWM.getSinFreq(self.task_ptr,channel)
 
     def start (self):
-        ptPWM.startTrain(self.task_ptr)
-        sleep (1)
         ptPWM.setEnable(self.task_ptr, 1, self.PWM_channels, 0)
+        sleep (0.05)
+        while (ptPWM.getModFuncStatus(self.task_ptr)):
+            print ('waiting to start train')
+        ptPWM.startTrain(self.task_ptr)
+        #sleep (1)
+       
         
 
     def stop (self):
-        ptPWM.setEnable (self.task_ptr, 0, self.PWM_channels, 0)
-        sleep (1)
+        ptPWM.setEnable (self.task_ptr, 0, self.PWM_channels, 1)
+        sleep (0.05)
+        while (ptPWM.getModFuncStatus(self.task_ptr)):
+            print ('waiting to start train')
         ptPWM.stopTrain(self.task_ptr)
