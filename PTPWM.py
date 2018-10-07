@@ -89,7 +89,7 @@ class PTPWM (metaclass = SingletonForGPIO):
         if errVal == 0:
             if channel & 1:
                 self.polarity1 = polarity
-             if channel & 2:
+            if channel & 2:
                 self.polarity2 = polarity
         return errVal
     
@@ -99,7 +99,7 @@ class PTPWM (metaclass = SingletonForGPIO):
         if errVal == 0:
             if channel & 1:
                 self.offState1 = offState
-           if channel & 2:
+            if channel & 2:
                 self.offState1 = offState
         return errVal
 
