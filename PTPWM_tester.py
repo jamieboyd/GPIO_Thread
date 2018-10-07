@@ -11,13 +11,9 @@ semi_tone = 1.05946
 init_freq = 110
 
 w1 = PTPWMsin (1)
-print ('made object')
 w1.set_sin_freq(init_freq,1,0)
-print ('set initial frequency')
-try:
-    w1.start()
-except exception as e:
-    print ("exception")
+sleep (0.5)
+w1.start()
 freq = init_freq
 print ("starting frequency = ", freq)
 for ii in range (0,4):
