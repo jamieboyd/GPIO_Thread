@@ -42,7 +42,6 @@ class PWM_sin_thread : public PWM_thread{
 	unsigned int sinFrequency1 ;
 	unsigned int sinFrequency2 ;
 	int * dataArray ;
-	
 };
 
 #endif

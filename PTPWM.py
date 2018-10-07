@@ -77,9 +77,9 @@ class PTPWM (metaclass = SingletonForGPIO):
     def set_PWM_enable (self, enable_state, channel, is_locking):
         errVal = ptPWM.setEnable(self.task_ptr, enable_state, channel, is_locking)
         if errVal == 0:
-            if channel ==1:
+            if channel & 1:
                 self.enable1 = enable_state
-            else:
+            if channel & 2:
                 self.enable2 = enable_state
         return errVal
     
@@ -87,9 +87,9 @@ class PTPWM (metaclass = SingletonForGPIO):
     def set_PWM_polarity (self, polarity, channel, is_locking):
         errVal = ptPWM.setPolarity(self.task_ptr, polarity, channel, is_locking)
         if errVal == 0:
-            if channel ==1:
+            if channel & 1:
                 self.polarity1 = polarity
-            else:
+             if channel & 2:
                 self.polarity2 = polarity
         return errVal
     
@@ -97,9 +97,9 @@ class PTPWM (metaclass = SingletonForGPIO):
     def set_PWM_off_state(self, offState, channel, is_locking):
         errVal = ptPWM.setOffState (self.task_ptr, offState, channel, is_locking)
         if errVal == 0:
-            if channel ==1:
+            if channel & 1:
                 self.offState1 = offState
-            else:
+           if channel & 2:
                 self.offState1 = offState
         return errVal
 
@@ -114,14 +114,14 @@ class PTPWM (metaclass = SingletonForGPIO):
     def set_new_array(self, data_array, channel, is_locking):
         errVal = ptPWM.setArray (self.task_ptr, data_array, channel, is_locking)
         if errVal == 0:
-            if channel == 1:
+            if channel & 1:
                 self.dataArray1 = data_array
-            elif channel == 2:
+            if channel & 2:
                 self.dataArray2 = data_array
         return errVal
     
     def get_enable (self):
-        return self.enabled
+        return self.enable1 + 2 * self.enable2
 
 
 

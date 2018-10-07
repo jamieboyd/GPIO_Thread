@@ -1,9 +1,8 @@
 #include "PWM_sin_thread.h"
 
 
-/* ******************************************  PWM_sin_thread functions for pulsedThread *****************************************
-
-
+/****************************************** PWM_sin_thread *******************************************************
+PWM_sin_thread subclasses PWM_thread to put out a sine wave 
 
 
  *********************************** PWM_sin Hi functions (no low function) ******************************
@@ -21,8 +20,8 @@ void ptPWM_sin_FIFO_1 (void * taskDataP){
 	ptPWMStructPtr taskData = (ptPWMStructPtr)taskDataP;
 	if (*(taskData->statusRegister)  & (PWM_BERR | PWM_GAPO1)){
 #if beVerbose
-		//printf ("sin_FIFO_1: status reg = 0x%x\n", *(taskData->statusRegister));
-		//*(taskData->statusRegister) |= (PWM_BERR | PWM_GAPO1);
+		printf ("sin_FIFO_1: status reg = 0x%x\n", *(taskData->statusRegister));
+		*(taskData->statusRegister) |= (PWM_BERR | PWM_GAPO1);
 #endif
 	}
 	while (!(*(taskData->statusRegister) & PWM_FULL1)){
@@ -85,7 +84,6 @@ void ptPWM_sin_FIFO_dual (void * taskDataP){
 		}
 	}	
 }
-
 
 /* *************************** Sets frequency of sine wave to be output ***************
 modData is a pointer to an unsigned int, the frequency in Hz, to be next output, and outputs it
@@ -175,6 +173,11 @@ PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channels){
 	return newPWM_thread;
 }
 
+/* ***************************************** Destructor for PWM_sin_thread *******************************
+Note that unlike PWM_thread, PWM_sin_thread creates and "owns" the array used for output, so must delete it
+The base class destructor will be called as well
+Last Modified:
+2018/09/24 by Jamie Boyd - initial version */
 PWM_sin_thread::~PWM_sin_thread (){
 #if beVerbose
 	printf ("PWM_sin_thread destructor called.\n");
@@ -182,10 +185,10 @@ PWM_sin_thread::~PWM_sin_thread (){
 	delete dataArray;
 }
 
-/* ****************************** sets Frequency ************************************
+/* ****************************** sets sine wave Frequency ************************************
 Last Modified:
-2018/08/08 by Jamie Boyd - Initial Version
-2018/09/24 by Jamie Boyd added 2 channel stuff */
+2018/09/24 by Jamie Boyd  - added 2 channel stuff
+2018/08/08 by Jamie Boyd - Initial Version */
 int PWM_sin_thread::setSinFrequency (unsigned int newFrequency, int channel, int isLocking){
 	if (channel & 1){
 		sinFrequency1 = newFrequency;
@@ -200,6 +203,10 @@ int PWM_sin_thread::setSinFrequency (unsigned int newFrequency, int channel, int
 	return returnVal;
 }
 
+/* ********************************************* gets sin frequency ********************
+returns an unsigned integer for Sine wave frequency for selected channel
+Last Modified:
+2018/09/24 by Jamie Boyd - Initial Version */
 unsigned int PWM_sin_thread::getSinFrequency (int channel){
 	if (channel ==1){
 		return sinFrequency1;
