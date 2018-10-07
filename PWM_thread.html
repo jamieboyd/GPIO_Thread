@@ -13,18 +13,37 @@
 <li>PWM_thread_setup.py -- Python code to make and install the ptPWM Python library</li>
 <li>PTPWM.py -- Python code that wraps the ptPWM module in a Python object interface</li>
 <li>PTPWM_test.py -- Python code with tests for PTPWM. May require speakers, oscilloscope, LED</li></ul>
-</p>
-<h3>The Pulse Width Modulation (PWM)Peripheral</h3>
-<p>The PWM peripheral outputs a square wave with a duty cycle set by its input.  Once configured, the output is continuously cycled with no CPU involvement. The time period of each cycle is set by the PWM range (how many clock ticks there are in one cycle), and the PWM clock rate (the number of clock ticks per second).  The PWM range sets the precision of the PWMM output; the PWM input is an integer, and the ratio of this input to the PWM range sets the duty cycle of the output. The refresh time of the PWM output is thus the the PWM range / PWM clock rate.
-</p>
+PWM_thread depends on the pulsedThread library.  The library must be installed before using PWM_thread from C++ or Python.</p>
+
+<p>Using PWM_thread from C++ is demonstrated with the PWM_thread_test.cpp. The PWMtester application can be installed from this code with the g++ command:<br>
+g++ -O3 -std=gnu++11 -Wall -lpulsedThread GPIOlowlevel.cpp PWM_thread.cpp PWM_sin_thread.cpp PWM_thread_test.cpp -o PWMtester<br>
+Note the inclusion of the pulsedThread library, -lpulsedThread. The Python C module ptPWM can be compiled and installed by running the setup file:<br>
+sudo python3 PWM_thread_setup.py install</p>
+
+<h3>The Pulse Width Modulation (PWM) Peripheral</h3>
+<p>The PWM peripheral has two channels each of which outputs a square wave with a duty cycle set by its input.  Once configured, the output is continuously cycled with no CPU involvement except for changing the duty cycle or other re-configuration.  Morover, the timing of the output is remarkably stable with almost no jitter.  The PWM peripheral is useful for setting the position of servo motors, for controlling the brightness of LEDs, for adjusting power of DC motors, and for analog output, including sound output on the audio jack. The PWM_thread class configures a pulsedThread to control the PWM peripheral, scheduling regular updates of the PWM duty cycle, as for smoothly driving a servo motor, or for outputting analog wave forms. </p>
+
 <h3>PWM Range and Frequency and Clock Configuration </h3>
-<p>The clock source for the PWM peripheral is The Audio clocks run from the peripherals clock sources and use clock generators with noise- shaping MASH dividers. MASH noise-shaping is incorporated to push the fractional divider jitter out of the audio band if required. The MASH can be programmed for 1, 2 or 3-stage filtering. It is beyond the scope of this specification to describe the operation of a MASH filter or 
-to determine under what conditions the available levels of filtering are beneficial. Fractional divider jitter is reduced by increasing the input frequency to the clock generators
-therefore the fastest clock available should be supplied to the audio clock generators when jitter 
-is a concern.
-The PWM frequency is 1/(time taken to output a single value) which is determined by range and PWM clock frequency. The PWM range is the number of clock ticks needed to output a single value, i.e., the number of bits in the inputs. This PWM frequency is only accurate for the given PWMrange The two PWM channels could use different ranges, and thus have different PWM frequencies even though they use the same PWM clock. We don't do that here; we always use the same range for both channels.
-	Returns the actual PWM frequency, else returns -1 if the requested PWMFreq, PWMrange combination requires too high a clock speed or -2 if the requested PWMFreq, PWMrange combination combination requires too low a clock speed Call this function before configuring any channels, because it zeros the PWM_CTL register, losing any channel configuration information
+<p>To best use the PWM_thread class, you need to know how the PWM peripheral is configured.  The time period of the PWM signal is set by the PWM range (how many clock ticks there are in one cycle), and the PWM clock rate (the number of clock ticks per second).  The PWM range sets the precision of the PWMM output; the PWM input is an integer, and the ratio of this input to the PWM range sets the duty cycle of the output.  The refresh time of the PWM output is thus the the PWM range / PWM clock rate.  The inverse of the refresh time is referred to as the PWM frequency.  The user sets the PWM Range and PWM clock rate by calling the static function PWM_thread::setClock (float PWMFreq, unsigned int PWMrange) with the desired PWM frequency and PWM Range before making a PWM_thread object.</p>
+
+<p>The clock for the PWM peripheral is created by the Clock Manager peripheral.  The signal from an existing high frequency clock source (one of 500 Mhz PLL D, 216 MHz HDMI Aux, or 19.2 MHz crystal oscillator) is divided down to give the requested PWM clock rate, or as near to it as is possible.  The two stage MASH noise-shaping option is used by PWM_thread::setClock, which means the smallest posisble divider is 3.  As the largest possible divider is 4095, the clock source can be configured from 500Mhz/3 = 166 MHz to 19.2MHz/4095 = 4688 Hz.  PWM_thread::setClock uses the fastest possible of the three clock sources that can provide the requested PWM clock rate.  PWM_thread::setClock returns the actual PWM frequency, else returns -1 if the requested PWMFreq, PWMrange combination requires too high a clock speed or -2 if the requested PWMFreq, PWMrange combination combination requires too low a clock speed.  Remember that increasing the PWM range lowers the clock speed needed to give a particular PWM update rate, and increasing the range increases the needed clock speed.  Thus, you can adjust the PWM range to increase the range of PWM update frequencies available.  For audio output, you will want a PWM frequency in the kilohertz range, while for a servo motor you may want around 100 Hz.</p>
+
+<p>Note that although the PWM range for each of the two channels can be set independently, PWM_thread keeps the same range for both channels. That way, the PWM update frequency of both channels is held the same, and the data for the two channels can be sent out in lock-step fashion, keeping the two channels perfectly synchronized.  As both PWM channels are handled by the same PWM_thread object, there is never any sense in having more than one PWM_thread object in existence.</p>
+
+<h3>PulsedThread Timing and the First In First Out Buffer (FIFO)</h3>
+<p>The PWM clock rate and PWM Range determine the rate at which the PWM output refreshes.  This is independent of the PWM data </p>
+
+<h3>Other PWM Peripheral Options</h3>
+<p>There are several options that can be configured for the PWM peripheral.  Using int audioOnly, int PWMmode, int polarity, int offState
 </p>
+
+<h3>PWM_thread Constructor and Thread Makers</h3>
+<p>PWM_thread * PWM_thread::PWM_threadMaker (float PWMFreq, unsigned int PWMrange, int useFIFO, unsigned int durUsecs, unsigned int nPulses, int accuracyLevel) {</p>
+
+</p>
+<h3>Using PWM for Analog Output</h3>
+<p>The Pi's normal audio output is done by running the buffered outputs of the PWM peripheral through an <a href = "https://learn.adafruit.com/assets/28850/">audio output filtering circuit</a> consisting of a low-pass filter to map the PWM duty cycle onto an analog voltage between 0 and 3.3 V and a high-pass filter to remove DC offset.  The low-pass filter is tuned for 22KHz per channel CD-quality sound.  The result is a signal that varies around 0 V, which is good for driving speakers, but it means if you put out a constant duty cycle of ANY value from the PWM it will be filtered to 0 V.  Only use the audio output for waveforms that are constantly updated.  If you want to generate a analog output with the possibility of holding a DC value, use the (possibly buffered) output from GPIO pins 18 and 19, and feed them through your own low-pass filter, skipping the high pass filter. The low-pass filter consists of a 33 nF capacitor and a 150 ohm resistor in parallel from the GPIO output to ground.  Also, be sure to use the PWM_Balanced mode instead of the PWM_Mark_Space mode for best results from the low-pass filter.</p>
+<p>Note that the Pi's stero minijack will always output the PWM signal, even if the PWM peripheral has not been configured for an audio type signal.  Don't leave the speakers plugged in and turned on if you are using the PWM for non-audio tasks from GPIO 18 and 19 or you might hear loud static or worse. You can configure GPIO 18 and 19 to output PWM or to be regular GPIO pins, but you can not configure the stereo minijack to NOT output the PWM signal without making a hardware overlay to completely disable audio output and rebooting the Pi.</p>
 <hr>
 <a href = "./GPIO_Thread.html">Back to GPIO Thread index</a>
 </body>
