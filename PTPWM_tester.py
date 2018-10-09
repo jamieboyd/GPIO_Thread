@@ -13,7 +13,8 @@ init_freq = 110
 w1 = PTPWMsin (1)
 print ('made object')
 w1.set_sin_freq(init_freq,1,0)
-print ('set initial frequency')
+print ('initial frequency', w1.get_sin_freq(1))
+
 try:
     w1.start()
 except exception as e:
