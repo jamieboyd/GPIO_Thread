@@ -9,8 +9,8 @@ from time import sleep
 class PTPWM (metaclass = SingletonForGPIO):
     TRAIN =1
     INFINITE_TRAIN = 0
-    PWM_MARK_SPACE =0
-    PWM_BALANCED =1
+    PWM_MARK_SPACE =1
+    PWM_BALANCED =0
     
     def __init__(self, mode, pwmFreq, pwmRange, useFIFO, pulseDurationOrTrainFreq, nPulsesOrTrainDuration, accuracyLevel):
         if mode == PTSimpleGPIO.MODE_PULSES:

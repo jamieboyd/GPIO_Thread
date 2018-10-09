@@ -924,12 +924,102 @@ int PWM_thread::setEnable (int enableState, int channel, int isLocking){
 	if (channel & 1){
 		this->enabled1 = enableState;
 	}
-	if ((channel & 2) ==2){
+	if (channel & 2){
 		this->enabled2 = enableState;
 	}
-	int * newEnableVal = new int;
-	* newEnableVal =  (enableState * 4) + channel;
-	modCustom (&ptPWM_setEnableCallback, (void *) newEnableVal, isLocking);
+	ptPWMStructPtr taskDataPtr = (ptPWMStructPtr ) this->getTaskData ();
+	unsigned int registerVal =  *(taskDataPtr->ctlRegister);
+	*(PWMperi ->addr + PWM_CTL)=0;
+	if ((this->useFIFO) && (enableState != 0)){
+		*(PWMperi ->addr + PWM_CTL)= PWM_CLRF1;
+	}
+	if (enableState !=0){ // we are enabling
+		if (channel & 1){
+#if beVerbose
+			printf("Enabling channel 1\n");
+#endif
+			taskDataPtr->enable1 =1;
+			if (this->useFIFO){
+				registerVal |= (PWM_PWEN1 | PWM_USEF1);  //set enable and use FIFO
+				if (*(PWMperi ->addr + PWM_STA) & PWM_EMPT1){  // set PWM value first so we are putting out a value
+					*(PWMperi->addr + PWM_FIF) = taskDataPtr->arrayData1[taskDataPtr->arrayPos1];
+					taskDataPtr->chanFIFO =2;
+				}
+			}else{ // not using FIFO 
+				registerVal &= ~PWM_USEF1;
+				registerVal |= PWM_PWEN1; // set enable
+				*(PWMperi ->addr +PWM_DAT1) = taskDataPtr->arrayData1[taskDataPtr->arrayPos1];
+			}
+		}
+		if (channel & 2){
+			// set PWM value first so we are putting out current value
+#if beVerbose
+			printf("Enabling channel 2\n");
+#endif
+			taskDataPtr->enable2 =1;
+			if (this->useFIFO){
+				registerVal |= (PWM_PWEN2 | PWM_USEF2);  //set enable and use FIFO
+				if (*(PWMperi ->addr + PWM_STA) & PWM_EMPT1){
+					*(PWMperi->addr + PWM_FIF) = taskDataPtr->arrayData2[taskDataPtr->arrayPos2];
+					taskDataPtr->chanFIFO =1;
+				}
+			}else{
+				registerVal &= ~PWM_USEF2;
+				registerVal |= PWM_PWEN2;
+				*(PWMperi ->addr +PWM_DAT2) = taskDataPtr->arrayData2[taskDataPtr->arrayPos2];
+			}
+		}
+	}else{ // we are un-enabling
+		if (channel & 1){
+#if beVerbose
+			printf("Un-Enabling channel 1\n");
+#endif
+			registerVal &= ~PWM_PWEN1;
+			taskDataPtr->enable1 =0;
+		}
+		if (channel & 2){
+#if beVerbose
+			printf("Un-Enabling channel 2\n");
+#endif
+			registerVal &= ~PWM_PWEN2;
+			taskDataPtr->enable2 =0;
+		}
+	}
+	// set hiFUnc
+	
+	if (this->useFIFO){ 
+		if ((this->enabled1) && (this->enabled2)){
+			this->theTask.hiFunc = *(taskDataPtr->hiFuncFIFdual);
+#if beVerbose
+			printf ("Set highfunc FIFO_dual.\n");
+#endif
+			// can't use repeat last when both channels are active
+			registerVal &= ~(PWM_RPTL1 | PWM_RPTL2);
+		}else{
+			if (this->enabled2){
+				this->theTask.hiFunc = *(taskDataPtr->hiFuncFIF2);
+#if beVerbose
+				printf ("Set highfunc FIFO_2.\n");
+#endif
+				registerVal |=  PWM_RPTL2 ;
+
+			}else{
+				if (this->enabled1){
+					this->theTask.hiFunc = *(taskDataPtr->hiFuncFIF1);
+#if beVerbose
+					printf ("Set highfunc FIFO_1\n");
+#endif
+					registerVal |=  PWM_RPTL1 ;
+				}
+			}
+		}
+	}else{
+		this->theTask.hiFunc = *(taskDataPtr->hiFuncREG);
+#if beVerbose
+		printf ("Set highfunc REG\n");
+#endif
+	}
+	*(PWMperi ->addr + PWM_CTL)= registerVal;
 	return 0;
 }
 
@@ -958,13 +1048,13 @@ Last Modified:
 int PWM_thread::setOffState (int offStateP, int channel, int isLocking){
 	
 	if (channel & 1){
-		offState1 = offStateP;
+		this->offState1 = offStateP;
 	}
 	if (channel & 2){
-		offState2 = offStateP;
+		this->offState2 = offStateP;
 	}
 	int * newOffstateVal = new int;
-	* newOffstateVal =  (offStateP << 2) + channel;
+	* newOffstateVal =  (offStateP * 4) + channel;
 	int returnVal = modCustom (&ptPWM_setOffStateCallback, (void *) newOffstateVal, isLocking);
 	return returnVal;
 }
