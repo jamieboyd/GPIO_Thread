@@ -169,6 +169,7 @@ PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channels){
 	newPWM_thread->PWMchans = channels;
 	newPWM_thread->enabled1 = 0;
 	newPWM_thread->enabled2 = 0;
+	newPWM_thread->useFIFO =1;
 	// return new thread
 	return newPWM_thread;
 }

@@ -2,21 +2,23 @@
 #-*-coding: utf-8 -*-
 
 import ptPWM
+import PTSimpleGPIO
 from PTSimpleGPIO import PTSimpleGPIO,SingletonForGPIO
 from array import array
 from time import sleep
 
-class PTPWM (metaclass = SingletonForGPIO):
+class PTPWM (PTSimpleGPIO):
     TRAIN =1
     INFINITE_TRAIN = 0
-    PWM_MARK_SPACE =0
-    PWM_BALANCED =1
+    PWM_MARK_SPACE =1
+    PWM_BALANCED =0
     
     def __init__(self, mode, pwmFreq, pwmRange, useFIFO, pulseDurationOrTrainFreq, nPulsesOrTrainDuration, accuracyLevel):
         if mode == PTSimpleGPIO.MODE_PULSES:
             self.task_ptr = ptPWM.newDelayDur (pwmFreq, pwmRange, useFIFO, pulseDurationOrTrainFreq, nPulsesOrTrainDuration, accuracyLevel)
         elif mode == PTSimpleGPIO.MODE_FREQ:
             self.task_ptr = ptPWM.newFreqDuty (pwmFreq, pwmRange, useFIFO, pulseDurationOrTrainFreq, nPulsesOrTrainDuration, accuracyLevel)
+        self.respectTheGIL = False
         self.PWM_channels = 0
         self.useFIFO = useFIFO
         self.respectTheGIL = False
@@ -124,7 +126,6 @@ class PTPWM (metaclass = SingletonForGPIO):
         return self.enable1 + 2 * self.enable2
 
 
-
 class PTPWMsin (PTPWM):
     
     
@@ -142,17 +143,9 @@ class PTPWMsin (PTPWM):
 
     def start (self):
         ptPWM.setEnable(self.task_ptr, 1, self.PWM_channels, 0)
-        sleep (0.05)
-        while (ptPWM.getModFuncStatus(self.task_ptr)):
-            print ('waiting to start train')
         ptPWM.startTrain(self.task_ptr)
-        #sleep (1)
-       
-        
+ 
 
     def stop (self):
-        ptPWM.setEnable (self.task_ptr, 0, self.PWM_channels, 1)
-        sleep (0.05)
-        while (ptPWM.getModFuncStatus(self.task_ptr)):
-            print ('waiting to start train')
         ptPWM.stopTrain(self.task_ptr)
+        ptPWM.setEnable (self.task_ptr, 0, self.PWM_channels, 1)
