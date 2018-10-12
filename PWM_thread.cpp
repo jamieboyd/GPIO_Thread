@@ -72,6 +72,7 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 		taskData->arrayData1 = chanAddPtr->arrayData;
 		taskData->nData1 = chanAddPtr->nData;
 		taskData->startPos1 =0;
+		taskData->arrayPos1 =0;
 		taskData->stopPos1 = chanAddPtr->nData;
 		// set up GPIO
 		if (chanAddPtr->audioOnly ){
@@ -98,6 +99,7 @@ int ptPWM_addChannelCallback (void * modData, taskParams * theTask){
 			taskData->arrayData2 = chanAddPtr->arrayData;
 			taskData->nData2 = chanAddPtr->nData;
 			taskData->startPos2 =0;
+			taskData->arrayPos2 =0;
 			taskData->stopPos2= chanAddPtr->nData;
 			// set up GPIO
 			if (chanAddPtr->audioOnly){
