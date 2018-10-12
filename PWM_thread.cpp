@@ -865,7 +865,7 @@ int PWM_thread::addChannel (int channel, int audioOnly, int PWMmode, int polarit
 	
 	if (!((channel ==1) || (channel ==2))){
 #if beVerbose
-		printf ("The channel to be enabled, %d, does not exist.\n", channel);
+		printf ("The channel to be added, %d, does not exist.\n", channel);
 #endif
 		return 1;
 	}
