@@ -13,7 +13,7 @@ less intensive ACC_MODE_SLEEPS_AND_SPINS thread timing mode.
 
 ******************************************** Constants for PWM_sin_thread ***************************************************/
 static const unsigned int PWM_UPDATE_FREQ = 60E03; // 				the PWM output is updated at this frequency
-static const float THREAD_UPDATE_FREQ = (PWM_UPDATE_FREQ/10); //		pulsed thread update frequency, slower than PWM update, try 8-10X slower
+static const float THREAD_UPDATE_FREQ = (PWM_UPDATE_FREQ/8); //		pulsed thread update frequency, slower than PWM update, try 8-10X slower
 static const unsigned int PWM_RANGE = 1000; //					data for sine wave ranges from 0 to 999
 static const double PHI = 6.2831853071794;  //						this is just pi * 2, used for making a sin wave
 
@@ -42,7 +42,6 @@ class PWM_sin_thread : public PWM_thread{
 	unsigned int sinFrequency1 ;
 	unsigned int sinFrequency2 ;
 	int * dataArray ;
-	
 };
 
 #endif

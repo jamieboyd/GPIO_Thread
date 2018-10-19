@@ -17,6 +17,7 @@ static void ptPWM_del(PyObject * PyPtr){
 }
 
 
+
 /* ****************************************  Constructors ******************************************************
 Sets up the PWM clock with the given frequency and range, and creates and configures a PWM_thread object to feed data to the PWM peripheral.
 There is only 1 PWM controller, so do not call constructor more than once.  Make is_inited a class field in Python
