@@ -111,7 +111,7 @@ SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int pola
 	}
 	int errCode =0;
 	// call SimpleGPIO_thread constructor, which calls pulsedThread contructor
-	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (pin, polarity, delayUsecs, durUsecs, nPulses, (void *) initStruct, accuracyLevel, errCode);
+	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (pin, polarity, delayUsecs, durUsecs, nPulses, (void *) initStruct, &SimpleGPIO_Init, accuracyLevel, errCode);
 	if (errCode){
 #if beVerbose
 		printf ("SimpleGPIO_threadMaker failed to make SimpleGPIO_thread.\n");
@@ -142,7 +142,7 @@ SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int pola
 	}	
 	int errCode =0;
 	// call SimpleGPIO_thread constructor, which calls pulsedThread contructor
-	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (pin, polarity, frequency, dutyCycle, trainDuration, (void *) initStruct, accuracyLevel, errCode);
+	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (pin, polarity, frequency, dutyCycle, trainDuration, (void *)initStruct, &SimpleGPIO_Init, accuracyLevel, errCode);
 	if (errCode){
 #if beVerbose
 		printf ("Failed to make pulsed thread.\n");

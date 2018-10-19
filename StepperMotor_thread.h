@@ -6,13 +6,13 @@
  
 /***********************************************************************************************
 StepperMotor drives a 2 phase bipolar stepper motor, in full step mode using 2 GPIO pins, or in half step mode, 
-using 4 GPIO pins.  
+using 4 GPIO pins.
 
 A two phase bipolar stepper motor has 4 inputs, A, B, A\, and B\,. A and A\ are used to drive
 the same coil/phase, but with opposite polarity.  B and B\ drive the other coil/phase.
 
 In full mode sequence, A and A\ are always in opposite states, like wise
-B and B\, so 2 GPIO lines and a hex-inverter can be used. The full step motor here only uses 
+B and B\, so 2 GPIO lines and an inverting buffer can be used. The full step motor here only uses 
 two pins, so feed A and B into an inverter to get A\ and B\.
 
 Full Mode Sequence

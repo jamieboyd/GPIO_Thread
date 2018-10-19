@@ -12,7 +12,7 @@ void Countermand_Hi (void *  taskData);
 void Countermand_Lo (void *  taskData);
 int countermandSetTaskData (void * modData, taskParams * theTask);
 
-/* ******************** Custom Data Struct is same as  Simple GPIO with added bool for countermanding ****************************/
+/* ******************** Custom Data Struct is same as Simple GPIO with added bool for countermanding ****************************/
 typedef struct CountermandPulseStruct{
 	unsigned int * GPIOperiHi; // address of register to write pin bit to on Hi
 	unsigned int * GPIOperiLo; // address of register to write pin bit to on Lo

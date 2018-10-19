@@ -923,6 +923,8 @@ Last Modified:
 2018/08/08 by Jamie Boyd - Initial Version  */
 int PWM_thread::setEnable (int enableState, int channel, int isLocking){
 	
+	int * setEnablePtr;
+	
 	ptPWMStructPtr taskDataPtr = (ptPWMStructPtr ) this->getTaskData ();
 
 	int newChan1State;

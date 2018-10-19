@@ -115,11 +115,14 @@ CountermandPulse * CountermandPulse::CountermandPulse_threadMaker (int pin, int 
 // 4 when countermaned and waiting for duration
 
 bool CountermandPulse::doCountermandPulse (void){
+	pthread_mutex_lock (&theTask.taskMutex);
     if (taskStructPtr->countermand== 0){
         taskStructPtr->countermand= 1;
+		pthread_mutex_unlock (&theTask.taskMutex);
         DoTask();
         return true;
     }else{
+		pthread_mutex_unlock (&theTask.taskMutex);
         return false;
     }
 }
