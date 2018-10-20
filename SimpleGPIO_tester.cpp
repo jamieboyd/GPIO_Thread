@@ -3,7 +3,7 @@
 
 /* ******************************** makes a GPIO output that does software pulse width modulation *********************************************/
 
-static const int GPIO_PIN =40;
+static const int GPIO_PIN =17;
 static const int POLARITY = 0;
 
 int main(int argc, char **argv){

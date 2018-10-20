@@ -40,7 +40,7 @@ class SimpleGPIO_thread : public pulsedThread{
 	};
 	
 	/* the other constructor expects floats for frequency, duty cycle, and train duration */
-	SimpleGPIO_thread (int pinP, int polarityP, float frequency, float dutyCycle, float trainDuration, void * initData, int accLevel, int &errCode) : pulsedThread (frequency, dutyCycle, trainDuration, initData, &SimpleGPIO_Init, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accLevel,errCode) {
+	SimpleGPIO_thread (int pinP, int polarityP, float frequency, float dutyCycle, float trainDuration, void * initData, int (*initFunc)(void *, void * &), int accLevel , int &errCode): pulsedThread (frequency, dutyCycle, trainDuration, initData, initFunc, &SimpleGPIO_Lo, &SimpleGPIO_Hi, accLevel,errCode) {
 	pinNumber = pinP;
 	polarity = polarityP;
 	};

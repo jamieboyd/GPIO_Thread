@@ -8,7 +8,7 @@ and if you have an oscilloscope or LED, you should  2 pulses  or 2 flashes, 0.25
 */
 int main(int argc, char **argv){
 	// make a countermanable pulse on pin 23, polarity = low-to-high, delay = 2 seconds, duration = 0.25 seconds,
-	CountermandPulse * cp = CountermandPulse::CountermandPulse_threadMaker(23, 0, 2000000, 250000, ACC_MODE_SLEEPS_AND_SPINS);
+	CountermandPulse * cp = CountermandPulse::CountermandPulse_threadMaker(17, 0, 2000000, 250000, ACC_MODE_SLEEPS_AND_SPINS);
 	// calling doTask igives the standard pulse, not countermandable
 	cp->DoTask();
 	cp->waitOnBusy(3);
@@ -29,4 +29,6 @@ int main(int argc, char **argv){
 	printf ("pulse 3 was countermanded = %d.\n", cp->wasCountermanded());
 }
 
- //g++ -O3 -std=gnu++11 -Wall -lpulsedThread GPIOlowlevel.cpp SimpleGPIO_thread.cpp CountermandPulse.cpp CountermandPulseRunner.cpp -o cmpTester
+ /*
+g++ -O3 -std=gnu++11 -Wall -lpulsedThread GPIOlowlevel.cpp SimpleGPIO_thread.cpp CountermandPulse.cpp CountermandPulseRunner.cpp -o cmpTester
+*/
