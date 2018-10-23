@@ -1,7 +1,7 @@
 #include "SR_stepper_thread.h"
 
 
-/* *************************** Functions that are called from thread can not be class methods *********************
+/* *************************** Functions that are called from thread *********************
 
 ***************************************Initialization callback function ****************************************
 
@@ -34,28 +34,116 @@ int SR_stepper_init (void * initDataP, void *  &taskDataP){
 	// put pins in selected start state, shift_reg starts high, stor_reg starts low, data doesn't matter
 	*(taskData->GPIOperiHi ) = taskData->shift_reg_bit ;
 	*(taskData->GPIOperiLo ) = taskData->stor_reg_bit ;
+	// init iterators
+	taskData->iMotorAB =0;
+	taskData->iMotor = nMotors -1;
+	taskData->iTrain =0;
 	delete initDataPtr;
 	return 0; // 
 	
 }
 
 /* ********************************* High function, runs at start of pulse ************************************
-sets shift_reg_pin low, sets next value of data pin for the motor we are working on, on first train sets stor_reg low */ 
-void SR_stepper_Hi (void *  taskData){
+sets shift_reg_pin low, sets value of data pin for the motor we are working on, sets up counters for next value 
+Last Modified:
+2018/10/22 by Jamie Boyd - initial version */ 
+void SR_stepper_Hi (void * taskDataP){
+	// cast void pointer to taskdataPtr
+	SR_StepperStructPtr taskData = (SR_StepperStructPtr) taskDataP;
+	// set shift register pin lo
 	*(taskData->GPIOperiLo ) = taskData->shift_reg_bit ;
-	
+	// set data pin high or low, getting data for motor and position from shiftData
+	int dataBit = shiftData [(4 * motorDataPos [iMotor]) + iMotorAB];
+	if (dataBit == 0){
+		*(taskData->GPIOperiLo ) = taskData->data_bit;
+	}else{
+		*(taskData->GPIOperiLo ) = taskData->data_bit;
+	}
+	// increment position, iMotorAB
+	taskData->iMotorAB +=1;
+	// reset motorAB to 0 if we have done all 4 positions
+	if (taskData->iMotorAB == 3){
+		taskData->iMotorAB = 0;
+		// if iTrain < number of trains requested for this motor, move to start of next set of 4 positions for this motor
+		if (taskData->iTrain < taskData->nTrains[taskData->iMotor]){
+			// handle wrap-around for positive direction
+			if (([motorDataPos [iMotor] == 7) && (taskData->motorDir [taskData->iMotor] == 1)){
+				[motorDataPos [iMotor] = 0;
+			}else{
+				// handle wrap-around for negative direction
+				if (([motorDataPos [iMotor] == 0) && (taskData->motorDir [taskData->iMotor] == -1)){
+					[motorDataPos [iMotor] =7;
+				}else{
+					// handle normal progression of +1 or -1, or not going anywhere, based on motorDir
+					taskData->motorDataPos[taskData->iMotor] += taskData->motorDir [taskData->iMotor];
+				}
+			}
+		}
+		// decrement iMotor, as we have finished 4 positions for this motor
+		taskData->iMotor -= 1;
+		// if we have reached end of motors, reset to top of motors, increment iTrain
+		if (taskData->iMotor < 0){
+			taskData->iMotor = taskData->nMotors -1;
+			taskData->iTrain +=1;
+		}
+	}
 }
 
 /* ******************************* Low Function ********************************************** 	
-sets shift_reg pin HIGH */
-void SR_stepper_Lo (void *  taskData){
+sets shift_reg pin HIGH. Sets storage resgister low on first pulse of train
+Last Modified:
+2018/10/22 by Jamie Boyd - initial version */
+void SR_stepper_Lo (void *  taskDataP){
+	// cast void pointer to taskdataPtr
+	SR_StepperStructPtr taskData = (SR_StepperStructPtr) taskDataP;
+	// set shift register pin HIGH
 	*(taskData->GPIOperiHi ) = taskData->shift_reg_bit ;
+	// on 1st pulse of train (it could be any pulse), set storage register pin LOW
+	if ((taskData->iMotor == taskData->nMotors -1) && (taskData->iMotorAB == 0)) {
+		*(taskData->GPIOperiLo ) = taskData->stor_reg_bit;
+	}
 }
 
-/* ********************************** end function after each train **************************************
-sets stor_reg high, increments counters for motors,*/
-void SR_stepper_End (void * endFuncData, taskParams * theTask){
+/* ********************************** End function after each train **************************************
+sets stor_reg pin high.  Needs no endFunc data, uses same taskData used by hi and lo funcs
+Last Modified:
+2018/10/22 by Jamie Boyd - initial version */
+void SR_stepper_EndFunc (void * endFuncData, taskParams * theTask){
+	SR_StepperStructPtr taskData = (SR_StepperStructPtr)theTask->taskData;
+	*(taskData->GPIOperiHi ) = taskData->stor_reg_bit;
 }
-		
-	
-SR_stepper_thread (int data_pin, int shift_reg_pin, int stor_reg_pin, int nMotors, float meters_per_step, float meters_per_sint accuracyLevel) : 
+
+/* ********************************* SR_stepper_thread class methods *****************************************
+
+*************************************** Static thread maker ***********************************************
+returns a new SR_stepper_thread
+Last Modified:
+2018/10/23 by Jamie Boyd - initial version */
+SR_stepper_thread * SR_stepper_thread::SR_stepper_threadMaker (int data_pinP, int shift_reg_pinP, int stor_reg_pinP, int nMotorsP, float steps_per_secP, int accuracyLevel) {
+	// make and fill an init struct
+	SR_StepperInitStructPtr  initStruct = new SR_StepperInitStruct;
+	initStruct->data_Pin = data_pinP;
+	initStruct->shift_reg_pin = shift_reg_pinP;
+	initStruct->stor_reg_pin=stor_reg_pinP;
+	initStruct->GPIOperiAddr = useGpioPeri ();
+	if (initStruct->GPIOperiAddr == nullptr){
+#if beVerbose
+        printf ("SR_stepper_threadMaker failed to map GPIO peripheral.\n");
+#endif
+		return nullptr;
+	}
+	int errCode =0;
+	unsigned int durUsecs = (unsigned int) (5e05/steps_per_secP);
+	// call SR_stepper_thread constructor, which calls pulsedThread contructor
+	SR_stepper_thread * newSR_stepper = new SR_stepper_thread (data_pinP, shift_reg_pinP, stor_reg_pinP, nMotorsP, durUsecs, (void *) initStruct, &SR_stepper_init, accuracyLevel, errCode);
+	if (errCode){
+#if beVerbose
+		printf ("SimpleGPIO_threadMaker failed to make SimpleGPIO_thread.\n");
+#endif
+		return nullptr;
+	}
+	// set custom task delete function
+	newSR_stepper->setTaskDataDelFunc (&SimpleGPIO_delTask);
+	return newSR_stepper;
+}
+(int data_pinP, int shift_reg_pinP, int stor_reg_pinP, int nMotorsP, unsigned int durUsecs, void * initData, int accuracyLevel, int &errCode)

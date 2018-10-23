@@ -38,7 +38,7 @@ Q4 -	4	13 - OE (Output Enable, active low, tie to ground)
 Q5 -	5	12 - STCP - Storage Register clock input,  data shifted from serial register to parallel ouputs on low-to-high transitions
 Q6 -	6	11 - SHCP Shift register clock input, serial data shifted one stage on low-to-high transition
 Q7 -	7	10 - Master Reset, active low, tie to 5V
-GND	8	9 - QS7 - serial data output, use for daisy-chaining multiple shift registers together, connect to DS of next 595
+GND -	8	9 - QS7 - serial data output, use for daisy-chaining multiple shift registers together, connect to DS of next 595
 
 
 atttach the outputs to the stepper motor wires as follows, 
@@ -51,12 +51,22 @@ concatenate multiple 595 together as follows to drive multiple motors (this arra
 ___________________595 #1______________   ________________595 #2_____________________
 q0	q1	q2	q3	q4	q5	q6	q7		q0	q1	q2	q3	q4	q5	q6	q7
 A	B	A\	B\	A	B 	A\	B\		A	B	A\	B\	A	B 	A\	B\
-____motor 1______    _____motor 2____		_____motor 3______    _____motor 4______  */
+____motor 1______    _____motor 2____		_____motor 3______    _____motor 4______  
 
 
+     __    __    __    __    __    __    __    __
+ |__|  |__|  |__|  |__|  |__|  |__|  |__|  |__|     shift reg clock, starts high, set low in SR_stepper_Hi
+                                                                                  set high in SR_stepper_Lo, data shifted on low-to-high
+  __1__   0   __1_____1__   0   __1_____1__   0
+ |     |_____|           |_____|           |_____    serial data, written on high-to-low of shift register clock,in SR_stepper_Hi
 
+____                                             
+    |____________________________________________|    storage reg clock, set low on first low-to-high transition of shift register clock, in SR_stepper_Lo
+                                                                         set Hi at end of each train, from endFunc
+
+*/
 /* ********************************** constant for maximum number of motors we wish to drive at once ********************************/
-const int MAX_MOTORS = 64; //  "should be enough for anybody" but if you want more, make it bigger
+const int MAX_MOTORS = 16 ; //  "should be enough for anybody" but if you want more, make it bigger
 
 
 /* *********************************** Declare Non-class methods used by thread ***************************************************/
@@ -85,21 +95,17 @@ typedef struct SR_StepperStruct{
 	unsigned int data_bit;	// pin number translated to bit position in register
 	unsigned int shift_reg_bit; // pin number translated to bit position in register
 	unsigned int stor_reg_bit; // pin number translated to bit position in register
-	int shiftData [32] = {0,0,0,1,  0,0,1,1,  0,0,1,0,  0,1,1,0,   0,1,0,0,   1,1,0,0,   1,0,0,0,   1,0,0,1};  // the half step sequence, 4 of 8
+	int shiftData [32] = {0,0,0,1,  0,0,1,1,  0,0,1,0,  0,1,1,0,  0,1,0,0,  1,1,0,0,  1,0,0,0,  1,0,0,1};  // the half step sequence, 8 groups of 4
 	int motorDataPos [MAX_MOTORS]; // position of each motor output in the array of shiftData, increment for each motor as we pass through the array
 	int nMotors; // number of motors hooked up in series, needs to be no bigger than MAX_MOTORS
-	int iMotor; // the motor for which we are currently shifting out bits from its array, 4 at a time
+	int iMotor; // the motor for which we are currently shifting out bits from the Data array, 4 at a time
+	int iMotorAB; // we send out data for each motor 4 in a row, one for each of A,B, A\, B\, iterating iMotorAB from 0 to 3
 	int motorDir [MAX_MOTORS]; // direction each motor is traveling, 1 for forward, -1 for negative, 0 for not moving (send same data)
+	int iTrain; // number of train we are doing, each train is nMotors * 4 pulses long
+	int nTrains [MAX_MOTORS]; // Not each motor will be moving the same number of steps, so will stop progressing through shiftData at different times
 }SR_StepperStruct, *SR_StepperStructPtr;
 
-/* ************************* struct for endFunc data *****************************************/
-typedef struct SR_StepperEndStruct {
-	int iTrain; // number of train we are doing, each train is nMotors * 4 pulses long
-	int nTrains [MAX_MOTORS]; // Not each motor will be moving the same number of steps, so will stop progressing through shiftData at different times in requested move
-}SR_StepperEndStruct, * SR_StepperEndStruct *
-
-
-myGPIO->setEndFunc (&pulsedThreadDutyCycleFromArrayEndFunc);
+//myGPIO->setEndFunc (&pulsedThreadDutyCycleFromArrayEndFunc);
 
 
 /* *********************SR_stepper_thread class extends pulsedThread ****************
@@ -108,7 +114,7 @@ Last modified:
 2018/10/22 by jamie Boyd - initial version modified from un-shift registered code */
 class SR_stepper_thread : public pulsedThread{
 	public:
-	SR_stepper_thread (int data_pinP, int shift_reg_pinP, int stor_reg_pinP, int nMotorsP, unsigned int durUsecs, void * initData,  int accuracyLevel,  int &errCode) : pulsedThread (durUsecs, durUsecs, (nMotorsP * 4), initData, &SR_stepper_init, &SR_stepper_Lo, &SR_stepper_Hi, accLevel, errCode) {
+	SR_stepper_thread (int data_pinP, int shift_reg_pinP, int stor_reg_pinP, int nMotorsP, unsigned int durUsecs, void * initData, int accuracyLevel, int &errCode) : pulsedThread (durUsecs, durUsecs, (nMotorsP * 4), initData, &SR_stepper_init, &SR_stepper_Lo, &SR_stepper_Hi, accLevel, errCode) {
 	data_pin = data_pinP;
 	shift_reg_pin=shift_reg_pinP;
 	stor_reg_pin = stor_reg_pinP;
