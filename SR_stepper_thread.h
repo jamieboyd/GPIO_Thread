@@ -3,9 +3,9 @@
 #include "pulsedThread.h"
 #include "GPIOlowlevel.h"
 
-/***********************************************************************************************
-SR_stepper_thread uses a 8 bit Serial in/Parallel out shift register (595, e.g.) to drive a pair
-of 2 phase bipolar stepper motors in half step mode using 3 GPIO pins instead of the 8 it
+/* **********************************************************************************************
+SR_stepper_thread uses a 8 bit Serial in/Parallel out Shift register (595, e.g.) to drive a pair (or more)
+of 2 phase bipolar stepper motors in half step mode using 3 GPIO pins instead of the 8 (or more) it
 would require without the shift register.
 
 A two phase bipolar stepper motor has 4 inputs, A, B, A\, and B\,. A and A\ are used to drive
@@ -27,7 +27,7 @@ Step	A	B	A\	B\
 
 Using the shift register as a serial to parallel converter, only 3 GPIO lines, serial data, 
 shift register clock, and storage register clock are needed.  moreover, the 595 can
-be daisy chained, so that this approach could be used to drive many more motors
+be daisy chained, so that this approach can be used to drive many more motors
 at once, still only using 3 GPIO lines.
 
 Pinout for 595 IC
@@ -41,18 +41,91 @@ Q7 -	7	10 - Master Reset, active low, tie to 5V
 GND	8	9 - QS7 - serial data output, use for daisy-chaining multiple shift registers together, connect to DS of next 595
 
 
+atttach the outputs to the stepper motor wires as follows, 
+q0	q1	q2	q3	q4	q5	q6	q7
+A	B	A\	B\	A	B 	A\	B\
+____motor 1______    _____motor 2______
+
+
+concatenate multiple 595 together as follows to drive multiple motors (this arrangement means we iterate backwards through nMotors when moving)
+___________________595 #1______________   ________________595 #2_____________________
+q0	q1	q2	q3	q4	q5	q6	q7		q0	q1	q2	q3	q4	q5	q6	q7
+A	B	A\	B\	A	B 	A\	B\		A	B	A\	B\	A	B 	A\	B\
+____motor 1______    _____motor 2____		_____motor 3______    _____motor 4______  */
+
+
+
+/* ********************************** constant for maximum number of motors we wish to drive at once ********************************/
+const int MAX_MOTORS = 64; //  "should be enough for anybody" but if you want more, make it bigger
+
+
+/* *********************************** Declare Non-class methods used by thread ***************************************************/
+int SR_stepper_init (void * initDataP, void *  &taskDataP);
+void SR_stepper_Lo (void *  taskData);
+void SR_stepper_Hi (void *  taskData);
+void SR_stepper_End (void * endFuncData, taskParams * theTask);
+
+
+/* ******************** Initialization struct for SR_Stepper *******************************
+ pin, polarity, and address base for memory mapped addresses to write to on HI and Lo */
+typedef struct SR_StepperInitStruct{
+	int data_pin; // pin to use for the data output
+	int shift_reg_pin; // pin to use for shift register clock
+	int stor_reg_pin; // pin to use for storage register clock (toggles at end of a train, could do it in an end-function)
+	int nMotors; // how many motors are hooked up to this thing
+	volatile unsigned int * GPIOperiAddr; // base address needed when writing to registers for setting and unsetting
+}SR_StepperInitStruct, *SR_StepperInitStructPtr;
+
+
+/* ******************** Custom Data Struct for SR_Stepper***************************
+ memory mapped addresses to write to on HI and Lo, GPIO pin bits, shiftPos and direction data for each motor */
+typedef struct SR_StepperStruct{
+	unsigned int * GPIOperiHi; // address of register to write pin bit to on Hi
+	unsigned int * GPIOperiLo; // address of register to write pin bit to on Lo
+	unsigned int data_bit;	// pin number translated to bit position in register
+	unsigned int shift_reg_bit; // pin number translated to bit position in register
+	unsigned int stor_reg_bit; // pin number translated to bit position in register
+	int shiftData [32] = {0,0,0,1,  0,0,1,1,  0,0,1,0,  0,1,1,0,   0,1,0,0,   1,1,0,0,   1,0,0,0,   1,0,0,1};  // the half step sequence, 4 of 8
+	int motorDataPos [MAX_MOTORS]; // position of each motor output in the array of shiftData, increment for each motor as we pass through the array
+	int nMotors; // number of motors hooked up in series, needs to be no bigger than MAX_MOTORS
+	int iMotor; // the motor for which we are currently shifting out bits from its array, 4 at a time
+	int motorDir [MAX_MOTORS]; // direction each motor is traveling, 1 for forward, -1 for negative, 0 for not moving (send same data)
+}SR_StepperStruct, *SR_StepperStructPtr;
+
+/* ************************* struct for endFunc data *****************************************/
+typedef struct SR_StepperEndStruct {
+	int iTrain; // number of train we are doing, each train is nMotors * 4 pulses long
+	int nTrains [MAX_MOTORS]; // Not each motor will be moving the same number of steps, so will stop progressing through shiftData at different times in requested move
+}SR_StepperEndStruct, * SR_StepperEndStruct *
+
+
+myGPIO->setEndFunc (&pulsedThreadDutyCycleFromArrayEndFunc);
+
 
 /* *********************SR_stepper_thread class extends pulsedThread ****************
-Does pulses and trains of pulses on Raspberry Pi GPIO pins */
+Each step is defined by a single train. The length of the train is  nMotors * 4.  
+Last modified:
+2018/10/22 by jamie Boyd - initial version modified from un-shift registered code */
 class SR_stepper_thread : public pulsedThread{
 	public:
-	SR_stepper_thread (int pinA, int pinB, int pinAbar, int pinBbar, int mode, float scaling, float speed, int accuracyLevel) : 
-	/* constructors, similar to pulsedThread, one expects unsigned ints for pulse delay and duration times in microseconds and number of pulses */
-	SimpleGPIO_thread (int pinP, int polarityP, unsigned int delayUsecs, unsigned int durUsecs, unsigned int nPulses, void * initData, int accLevel , int &errCode) : 
-	pinNumber = pinP;
-	polarity = polarityP;
+	SR_stepper_thread (int data_pinP, int shift_reg_pinP, int stor_reg_pinP, int nMotorsP, unsigned int durUsecs, void * initData,  int accuracyLevel,  int &errCode) : pulsedThread (durUsecs, durUsecs, (nMotorsP * 4), initData, &SR_stepper_init, &SR_stepper_Lo, &SR_stepper_Hi, accLevel, errCode) {
+	data_pin = data_pinP;
+	shift_reg_pin=shift_reg_pinP;
+	stor_reg_pin = stor_reg_pinP;
+	nMotors = nMotorsP;
 	};
+	~SR_stepper_thread();
+	static SR_stepper_thread * SR_stepper_threadMaker (int data_pinP, int shift_reg_pinP, int stor_reg_pinP, int nMotorsP, float steps_per_secP, int accuracyLevel) ; // static thread maker
+	void moveSteps (int mDists [MAX_MOTORS]);
+	protected:
+	data_pin;
+	shift_reg_pin;
+	stor_reg_pin;
+	nMotors ;
+	
+};
 
+/*
 class ptStepperMotor{
 	public:
 		ptStepperMotor(int pinA, int pinB, int pinAbar, int pinBbar, int mode, float scaling, float speed, int accuracyLevel); // base constructor 
@@ -73,7 +146,7 @@ class ptStepperMotor{
 		float speed;	// units/second
 		float position;		// in units (can be positive or negative, need to have 0 set)
 		pulsedThread * stepperThread;  // pointer to the pulsedThread that makes and controls the threaded task to drive stepper motor
-};
+}; */
 
 
 #endif
