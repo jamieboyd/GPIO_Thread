@@ -147,9 +147,9 @@ SR_stepper_thread * SR_stepper_thread::SR_stepper_threadMaker (int data_pinP, in
 		return nullptr;
 	}
 	int errCode =0;
-	unsigned int durUsecs = (unsigned int) (5e05/steps_per_secP);
+	unsigned int durUsecs = (unsigned int) (5e05/(steps_per_secP * nMOtors * 4));
 	// call SR_stepper_thread constructor, which calls pulsedThread contructor
-	SR_stepper_thread * newSR_stepper = new SR_stepper_thread (data_pinP, shift_reg_pinP, stor_reg_pinP, nMotorsP, durUsecs, (void *) initStruct, &SR_stepper_init, accuracyLevel, errCode);
+	SR_stepper_thread * newSR_stepper = new SR_stepper_thread (durUsecs, (void *) initStruct, &SR_stepper_init, accuracyLevel, errCode);
 	if (errCode){
 #if beVerbose
 		printf ("SimpleGPIO_threadMaker failed to make SimpleGPIO_thread.\n");
@@ -338,6 +338,23 @@ int SR_stepper_thread::emergStop (){
 	this.taskPtr->iMotor = this.nMotors -1;
 	this.giveUpTaskMutex(); // give up taskMutex
 	return 0
+}
+
+/* **************************** Setters and Getters ********************************************
+
+*************************** gets motor speed in steps per second *******************************
+All motors move at same number of steps/second; train pulse time decreases with increasing number of motors
+Last Modified:
+2018/10/23 by Jamie Boyd - initial Version */
+float SR_stepper_thread::getStepsPerSec (){
+	return (float)this.getTrainFrequency()/((4 * this.taskPtr->nMotors));
+}
+
+/* ******************************* sets motor speed in steps per second *******************
+Last Modified:
+2018/10/23 by Jamie Boyd - initial Version */
+int SR_stepper_thread::setStepsPerSec (float stepsPerSec){
+	return this.modFreq (stepsPerSec * 4 * this.taskPtr->nMotors);
 }
 
 /* ****************************** Destructor handles GPIO peripheral mapping*************************

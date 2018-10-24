@@ -119,11 +119,7 @@ Last modified:
 2018/10/22 by jamie Boyd - initial version modified from un-shift registered code */
 class SR_stepper_thread : public pulsedThread{
 	public:
-	SR_stepper_thread (int data_pinP, int shift_reg_pinP, int stor_reg_pinP, int nMotorsP, unsigned int durUsecs, void * initData, int accuracyLevel, int &errCode) : pulsedThread (durUsecs, durUsecs, (unsigned int) (nMotorsP * 4), initData, &SR_stepper_init, &SR_stepper_Lo, &SR_stepper_Hi, accLevel, errCode) {
-	data_pin = data_pinP;
-	shift_reg_pin=shift_reg_pinP;
-	stor_reg_pin = stor_reg_pinP;
-	nMotors = nMotorsP;
+	SR_stepper_thread (unsigned int durUsecs, void * initData, int accuracyLevel, int &errCode) : pulsedThread (durUsecs, durUsecs, (unsigned int) (nMotorsP * 4), initData, &SR_stepper_init, &SR_stepper_Lo, &SR_stepper_Hi, accLevel, errCode) {
 	};
 	~SR_stepper_thread();
 	static SR_stepper_thread * SR_stepper_threadMaker (int data_pinP, int shift_reg_pinP, int stor_reg_pinP, int nMotorsP, float steps_per_secP, int accuracyLevel) ; // static thread maker
@@ -131,11 +127,9 @@ class SR_stepper_thread : public pulsedThread{
 	void Free (int mFree [MAX_MOTORS]); // an array where a 1 means unhold the motor by setting all 4 outputs to 0, and a 0 means to leave the motor as it is
 	void Hold (int mHold [MAX_MOTORS]); // an array where a 1 means to hold the motor firm by setting to position 7 where both coils are energized, and 0 is to leave the motor as is
 	int emergStop (); // stops all motors ASAP
+	float getStepsPerSec ();
+	int setStepsPerSec (float stepsPerSec);
 	protected:
-	int data_pin;
-	int shift_reg_pin;
-	int stor_reg_pin;
-	int nMotors ;
 	// an SR_StepperStructPtr for easy direct access to thread's task data 
 	SR_StepperStructPtr taskPtr;
 };
