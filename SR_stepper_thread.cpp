@@ -42,7 +42,6 @@ int SR_stepper_init (void * initDataP, void *  &taskDataP){
 	taskData-> iMotor = this.nMotors -1;
 	delete initDataPtr;
 	return 0; // 
-	
 }
 
 /* ********************************* High function, runs at start of pulse ************************************
@@ -161,6 +160,8 @@ SR_stepper_thread * SR_stepper_thread::SR_stepper_threadMaker (int data_pinP, in
 	newSR_stepper->setTaskDataDelFunc (&SR_stepper_delTask);
 	// Set the SR_StepperStructPtr  used for easy direct access to thread task data 
 	newSR_stepper->taskPtr = (SR_StepperStructPtr)newSR_stepper->getTaskData ();
+	// set the end function (it does not use any any special data, so no need to set endFunc data)
+	newSR_stepper->setEndFunc (&SR_stepper_EndFunc);
 	return newSR_stepper;
 }
 
