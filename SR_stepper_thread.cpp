@@ -38,7 +38,7 @@ int SR_stepper_init (void * initDataP, void *  &taskDataP){
 		taskData->nSteps[iMotor] = 0;
 		taskData->motorDir[iMotor] = 0;
 	}
-	taskData->iMotorAB =0;
+	taskData->iMotorAB =-1;
 	taskData-> iMotor = taskData->nMotors -1;
 	delete initDataPtr;
 	return 0; // 
@@ -53,13 +53,6 @@ void SR_stepper_Hi (void * taskDataP){
 	SR_StepperStructPtr taskData = (SR_StepperStructPtr) taskDataP;
 	// set shift register pin lo
 	*(taskData->GPIOperiLo ) = taskData->shift_reg_bit ;
-	// set data pin high or low, getting data for motor and position from shiftData
-	int dataBit = taskData->shiftData [(4 * taskData->motorDataPos [taskData->iMotor]) + taskData->iMotorAB];
-	if (dataBit){
-		*(taskData->GPIOperiHi ) = taskData->data_bit;
-	}else{
-		*(taskData->GPIOperiLo) = taskData->data_bit;
-	}
 	// increment ABA/B/ position, iMotorAB
 	taskData->iMotorAB +=1;
 	// reset motorAB to 0 if we have done all 4 positions for this motor
@@ -89,6 +82,13 @@ void SR_stepper_Hi (void * taskDataP){
 		if (taskData->iMotor < 0){
 			taskData->iMotor = taskData->nMotors -1;
 		}
+	}
+	// set data pin high or low, getting data for motor and position from shiftData
+	int dataBit = taskData->shiftData [(4 * taskData->motorDataPos [taskData->iMotor]) + taskData->iMotorAB];
+	if (dataBit){
+		*(taskData->GPIOperiHi ) = taskData->data_bit;
+	}else{
+		*(taskData->GPIOperiLo) = taskData->data_bit;
 	}
 }
 
