@@ -9,7 +9,7 @@ Last Modified:
 2018/10/22 by Jamie Boyd - initial Version */
 int SR_stepper_init (void * initDataP, void *  &taskDataP){
 	// task data pointer is a void pointer that needs to be initialized to a pointer to taskData and filled from our custom init structure 
-	SR_stepperStructPtr taskData  = new SR_stepperStruct;
+	SR_StepperStructPtr taskData  = new SR_StepperStruct;
 	taskDataP = taskData;
 	// initData is a pointer to our custom init structure
 	SR_StepperInitStructPtr initDataPtr = (SR_StepperInitStructPtr) initDataP;
@@ -38,8 +38,8 @@ int SR_stepper_init (void * initDataP, void *  &taskDataP){
 		taskData->nSteps[iMotor] = 0;
 		taskData->motorDir[iMotor] = 0;
 	}
-	taskData->iMotorAB =0;
-	taskData-> iMotor = this.nMotors -1;
+	taskData->iMotorAB =-1;
+	taskData-> iMotor = taskData->nMotors -1;
 	delete initDataPtr;
 	return 0; // 
 }
@@ -53,13 +53,6 @@ void SR_stepper_Hi (void * taskDataP){
 	SR_StepperStructPtr taskData = (SR_StepperStructPtr) taskDataP;
 	// set shift register pin lo
 	*(taskData->GPIOperiLo ) = taskData->shift_reg_bit ;
-	// set data pin high or low, getting data for motor and position from shiftData
-	int dataBit = shiftData [(4 * motorDataPos [iMotor]) + iMotorAB];
-	if (dataBit){
-		*(taskData->GPIOperiHi ) = taskData->data_bit;
-	}else{
-		*(taskData->GPIOperiLo) = taskData->data_bit;
-	}
 	// increment ABA/B/ position, iMotorAB
 	taskData->iMotorAB +=1;
 	// reset motorAB to 0 if we have done all 4 positions for this motor
@@ -71,12 +64,12 @@ void SR_stepper_Hi (void * taskDataP){
 			taskData->nSteps[taskData->iMotor] -= taskData->motorDir [taskData->iMotor];
 			// move to start of next set of 4 positions for this motor
 			// handle wrap-around for positive direction
-			if (([motorDataPos [iMotor] == 7) && (taskData->motorDir [taskData->iMotor] == 1)){
-				[motorDataPos [iMotor] = 0;
+			if ((taskData->motorDataPos [taskData->iMotor] == 7) && (taskData->motorDir [taskData->iMotor] == 1)){
+				taskData->motorDataPos [taskData->iMotor] = 0;
 			}else{
 				// handle wrap-around for negative direction
-				if (([motorDataPos [iMotor] == 0) && (taskData->motorDir [taskData->iMotor] == -1)){
-					[motorDataPos [iMotor] =7;
+				if ((taskData->motorDataPos [taskData->iMotor] == 0) && (taskData->motorDir [taskData->iMotor] == -1)){
+					taskData->motorDataPos [taskData->iMotor] =7;
 				}else{
 					// handle normal progression of +1 or -1, or not going anywhere, based on motorDir
 					taskData->motorDataPos[taskData->iMotor] += taskData->motorDir [taskData->iMotor];
@@ -89,6 +82,13 @@ void SR_stepper_Hi (void * taskDataP){
 		if (taskData->iMotor < 0){
 			taskData->iMotor = taskData->nMotors -1;
 		}
+	}
+	// set data pin high or low, getting data for motor and position from shiftData
+	int dataBit = taskData->shiftData [(4 * taskData->motorDataPos [taskData->iMotor]) + taskData->iMotorAB];
+	if (dataBit){
+		*(taskData->GPIOperiHi ) = taskData->data_bit;
+	}else{
+		*(taskData->GPIOperiLo) = taskData->data_bit;
 	}
 }
 
@@ -136,7 +136,7 @@ Last Modified:
 SR_stepper_thread * SR_stepper_thread::SR_stepper_threadMaker (int data_pinP, int shift_reg_pinP, int stor_reg_pinP, int nMotorsP, float steps_per_secP, int accuracyLevel) {
 	// make and fill an init struct
 	SR_StepperInitStructPtr  initStruct = new SR_StepperInitStruct;
-	initStruct->data_Pin = data_pinP;
+	initStruct->data_pin = data_pinP;
 	initStruct->shift_reg_pin = shift_reg_pinP;
 	initStruct->stor_reg_pin=stor_reg_pinP;
 	initStruct->GPIOperiAddr = useGpioPeri ();
@@ -147,9 +147,10 @@ SR_stepper_thread * SR_stepper_thread::SR_stepper_threadMaker (int data_pinP, in
 		return nullptr;
 	}
 	int errCode =0;
-	unsigned int durUsecs = (unsigned int) (5e05/(steps_per_secP * nMOtors * 4));
+	unsigned int durUsecs = (unsigned int) (5e05/(steps_per_secP * nMotorsP * 4));
+	unsigned int nPulses = nMotorsP * 4;
 	// call SR_stepper_thread constructor, which calls pulsedThread contructor
-	SR_stepper_thread * newSR_stepper = new SR_stepper_thread (durUsecs, (void *) initStruct, &SR_stepper_init, accuracyLevel, errCode);
+	SR_stepper_thread * newSR_stepper = new SR_stepper_thread (durUsecs, nPulses, (void *) initStruct, accuracyLevel, errCode);
 	if (errCode){
 #if beVerbose
 		printf ("SimpleGPIO_threadMaker failed to make SimpleGPIO_thread.\n");
@@ -172,23 +173,24 @@ Last Modified:
 void SR_stepper_thread::moveSteps (int mDists [MAX_MOTORS]){
 	// need maximum steps of all motors to get number of trains to request
 	// also need to set counter variables in thread data
-	this.getTaskMutex(); // get taskMutex - can, in theroy, be calling move with trains left to do
-	int trainsInHand = this.isBusy();
-	unsigned int neededTrains =0;
-	for (int iMotor = 0; iMotor < this.nMotors; iMotor +=1){
+	this->getTaskMutex(); // get taskMutex - can, in theroy, be calling move with trains left to do
+	int trainsInHand = this->isBusy();
+	int neededTrains =0;
+	for (int iMotor = 0; iMotor < this->taskPtr->nMotors; iMotor +=1){
 		if (mDists [iMotor] > 0){
-			this.taskPtr->motorDir [iMotor] = 1;
-			this.taskPtr->nSteps [iMotor] += mDists [iMotor] ;
+			this->taskPtr->motorDir [iMotor] = 1;
+			this->taskPtr->nSteps [iMotor] += mDists [iMotor] ;
 		}else{
 			if (mDists [iMotor] < 0){
-				this.taskPtr->motorDir [iMotor] = -1;
-				this.taskPtr->nSteps [iMotor] += mDists [iMotor] ;
+				this->taskPtr->motorDir [iMotor] = -1;
+				this->taskPtr->nSteps [iMotor] += mDists [iMotor] ;
 			}
 		}
-		neededTrains = max (neededTrains, abs (this.taskPtr->nSteps [iMotor] )) ;
+		neededTrains = neededTrains >= abs (this->taskPtr->nSteps [iMotor] ) ? neededTrains : abs (this->taskPtr->nSteps [iMotor] ) ;
+		//neededTrains = max  (neededTrains, abs (this->taskPtr->nSteps [iMotor] )) ;
 	}
-	this.giveUpTaskMutex(); // give up taskMutex
-	this.doTasks (neededTrains - trainsInHand); // call doTasks with required number of trains
+	this->giveUpTaskMutex(); // give up taskMutex
+	this->DoTasks (neededTrains - trainsInHand); // call doTasks with required number of trains
 }
 
 
@@ -199,65 +201,65 @@ Last modified:
 2018/10/23 by Jamie Boyd - Initial Version */
 int SR_stepper_thread::Free (int mFree [MAX_MOTORS]){
 	// wait until we are no longer moving
-	if (this.waitOnBusy(10)){
+	if (this->waitOnBusy(10)){
 #if beVerbose
 		printf (" waited for 10 seconds and thread was still busy, so could not set Free state.\n");
 #endif
 		return 1;
 	}
 	// get pulse timeing
-	int pulseDurUsecs = this.getPulseDurUsecs ();
+	int pulseDurUsecs = this->getpulseDurUsecs ();
 	// make a timespec for sleeping
 	struct timespec sleeper; // used to sleep between ticks of the clock
-	Sleeper->tv_sec = pulseDurUsecs/1e06;
-	Sleeper->tv_nsec = (pulseDurUsecs - (Sleeper->tv_sec * 1e06))* 1e03; 
+	sleeper.tv_sec = pulseDurUsecs/1e06;
+	sleeper.tv_nsec = (pulseDurUsecs - (sleeper.tv_sec * 1e06))* 1e03; 
 	// lock the thread. 
-	this.getTaskMutex(); // lock the thread, but thread should not be active
+	this->getTaskMutex(); // lock the thread, but thread should not be active
 	// set storage register pin lo
-	*(this.taskPtr->GPIOperiLo ) = this.taskPtr->stor_reg_bit ;
+	*(this->taskPtr->GPIOperiLo ) = this->taskPtr->stor_reg_bit ;
 	// loop through A,B,A/,B/ for all motors
 	int iMotorAB =0;
 	int iMotor;
-	int dataBit 
-	for (iMotor = this.taskPtr->nMotors -1; iMotor >= 0; iMotor -=1){
+	int dataBit;
+	for (iMotor = this->taskPtr->nMotors -1; iMotor >= 0; iMotor -=1){
 		if (mFree [iMotor]){ // zero this motor to free it
 			for (iMotorAB =0; iMotorAB < 4; iMotorAB += 1){
 				// set shift register pin low
-				*(this.taskPtr->GPIOperiLo ) = this.taskPtr->shift_reg_bit ;
+				*(this->taskPtr->GPIOperiLo ) = this->taskPtr->shift_reg_bit ;
 				// set data pin low
-				*(this.taskPtr->GPIOperiLo ) = this.taskPtr->data_bit ;
+				*(this->taskPtr->GPIOperiLo ) = this->taskPtr->data_bit ;
 				// sleep for a bit
 				nanosleep (&sleeper, NULL);
 				// set shift register pin high
-				*(this.taskPtr->GPIOperiHi) = this.taskPtr->shift_reg_bit ;
+				*(this->taskPtr->GPIOperiHi) = this->taskPtr->shift_reg_bit ;
 				// sleep for a bit
 				nanosleep (&sleeper, NULL);
 			}
 		}else{ // leave this motor how it is by outputting current data
 			for  (iMotorAB =0; iMotorAB < 4; iMotorAB += 1){
 				// set shift register pin low
-				*(this.taskPtr->GPIOperiLo ) = this.taskPtr->shift_reg_bit ;
+				*(this->taskPtr->GPIOperiLo ) = this->taskPtr->shift_reg_bit ;
 				// set data pin
-				dataBit = this.taskPtr->shiftData [(4 * this.taskPtr->motorDataPos [iMotor]) + iMotorAB];
+				dataBit = this->taskPtr->shiftData [(4 * this->taskPtr->motorDataPos [iMotor]) + iMotorAB];
 				if (dataBit){
-					*(this.taskPtr->GPIOperiHi) = this.taskPtr->data_bit ;
+					*(this->taskPtr->GPIOperiHi) = this->taskPtr->data_bit ;
 				}else{
-					*(this.taskPtr->GPIOperiLo ) = this.taskPtr->data_bit ;
+					*(this->taskPtr->GPIOperiLo ) = this->taskPtr->data_bit ;
 				}
 				// sleep for a bit
 				nanosleep (&sleeper, NULL);
 				// set shift register pin hi
-				*(this.taskPtr->GPIOperiHi) = this.taskPtr->shift_reg_bit ;
+				*(this->taskPtr->GPIOperiHi) = this->taskPtr->shift_reg_bit ;
 				// sleep for a bit
 				nanosleep (&sleeper, NULL);
 			}
 		}
 	}
 	// set storage register pin High
-	*(this.taskPtr->GPIOperHi ) = this.taskPtr->stor_reg_bit ;
+	*(this->taskPtr->GPIOperiHi ) = this->taskPtr->stor_reg_bit ;
 	// unlock the thread
-	this.giveUpTaskMutex(); // give up taskMutex
-	return 0
+	this->giveUpTaskMutex(); // give up taskMutex
+	return 0;
 }
 
 /* *********************************************** after freeing, this function holds motors steady in place *************************
@@ -265,53 +267,53 @@ mHolds is an array where a 1 means to hold the motor firm by setting to position
 2018/10/23 by Jamie Boyd - Initial Version */
 int SR_stepper_thread::Hold (int mHold [MAX_MOTORS]){
 	// wait until we are no longer moving
-	if (this.waitOnBusy(10)){
+	if (this->waitOnBusy(10)){
 #if beVerbose
 		printf (" waited for 10 seconds and thread was still busy, so could not set Hold state.\n");
 #endif
 		return 1;
 	}
 	// get pulse timeing
-	int pulseDurUsecs = this.getPulseDurUsecs ();
+	int pulseDurUsecs = this->getpulseDurUsecs ();
 	// make a timespec for sleeping
 	struct timespec sleeper; // used to sleep between ticks of the clock
-	Sleeper->tv_sec = pulseDurUsecs/1e06;
-	Sleeper->tv_nsec = (pulseDurUsecs - (Sleeper->tv_sec * 1e06))* 1e03; 
+	sleeper.tv_sec = pulseDurUsecs/1e06;
+	sleeper.tv_nsec = (pulseDurUsecs - (sleeper.tv_sec * 1e06))* 1e03; 
 	// lock the thread. 
-	this.getTaskMutex(); // lock the thread, but thread should not be active
+	this->getTaskMutex(); // lock the thread, but thread should not be active
 	// set storage register pin lo
-	*(this.taskPtr->GPIOperiLo ) = this.taskPtr->stor_reg_bit ;
+	*(this->taskPtr->GPIOperiLo ) = this->taskPtr->stor_reg_bit ;
 	// loop through A,B,A/,B/ for all motors
 	int iMotorAB =0;
 	int iMotor;
-	int dataBit 
-	for (iMotor = this.taskPtr->nMotors -1; iMotor >= 0; iMotor -=1){
+	int dataBit; 
+	for (iMotor = this->taskPtr->nMotors -1; iMotor >= 0; iMotor -=1){
 		if (mHold [iMotor]){ // set this motor to position 7 in the array of A,B,A/,B/ positions
-			this.taskPtr->motorDataPos [iMotor] =7;
+			this->taskPtr->motorDataPos [iMotor] =7;
 		}
 		for  (iMotorAB =0; iMotorAB < 4; iMotorAB += 1){
 			// set shift register pin low
-			*(this.taskPtr->GPIOperiLo ) = this.taskPtr->shift_reg_bit ;
+			*(this->taskPtr->GPIOperiLo ) = this->taskPtr->shift_reg_bit ;
 			// set data pin
-			dataBit = this.taskPtr->shiftData [(4 * this.taskPtr->motorDataPos [iMotor]) + iMotorAB];
+			dataBit = this->taskPtr->shiftData [(4 * this->taskPtr->motorDataPos [iMotor]) + iMotorAB];
 			if (dataBit){
-				*(this.taskPtr->GPIOperiHi) = this.taskPtr->data_bit ;
+				*(this->taskPtr->GPIOperiHi) = this->taskPtr->data_bit ;
 			}else{
-				*(this.taskPtr->GPIOperiLo ) = this.taskPtr->data_bit ;
+				*(this->taskPtr->GPIOperiLo ) = this->taskPtr->data_bit ;
 			}
 			// sleep for a bit
 			nanosleep (&sleeper, NULL);
 			// set shift register pin hi
-			*(this.taskPtr->GPIOperiHi) = this.taskPtr->shift_reg_bit ;
+			*(this->taskPtr->GPIOperiHi) = this->taskPtr->shift_reg_bit ;
 			// sleep for a bit
 			nanosleep (&sleeper, NULL);
 		}
 	}
 	// set storage register pin High
-	*(this.taskPtr->GPIOperHi ) = this.taskPtr->stor_reg_bit ;
+	*(this->taskPtr->GPIOperiHi ) = this->taskPtr->stor_reg_bit ;
 	// unlock the thread
-	this.giveUpTaskMutex(); // give up taskMutex
-	return 0
+	this->giveUpTaskMutex(); // give up taskMutex
+	return 0;
 }
 
 
@@ -320,24 +322,24 @@ calls unDoTasks and sets nSteps to 0 for all motors
 Last Modified:
 2018/10/23 by Jamie Boyd - initial Version */
 int SR_stepper_thread::emergStop (){
-	this.UnDoTasks (); 
-	if (this.waitOnBusy(10)){
+	this->UnDoTasks (); 
+	if (this->waitOnBusy(10)){
 #if beVerbose
 		printf (" waited for 10 seconds and thread was still busy, emergeStop not successful.\n");
 #endif
 		return 1;
 	}
 	// lock the thread. 
-	this.getTaskMutex(); // lock the thread, but thread should not be active
+	this->getTaskMutex(); // lock the thread, but thread should not be active
 	// zero steps and direction arrays
-	for (int iMotor = 0; iMotor < this.taskPtr->nMotors; iMotor +=1){
-		this.taskPtr->nSteps[iMotor] = 0;
-		this.taskPtr->motorDir[iMotor] = 0;
+	for (int iMotor = 0; iMotor < this->taskPtr->nMotors; iMotor +=1){
+		this->taskPtr->nSteps[iMotor] = 0;
+		this->taskPtr->motorDir[iMotor] = 0;
 	}
-	this.taskPtr->iMotorAB =0;
-	this.taskPtr->iMotor = this.nMotors -1;
-	this.giveUpTaskMutex(); // give up taskMutex
-	return 0
+	this->taskPtr->iMotorAB =0;
+	this->taskPtr->iMotor = this->taskPtr->nMotors -1;
+	this->giveUpTaskMutex(); // give up taskMutex
+	return 0;
 }
 
 /* **************************** Setters and Getters ********************************************
@@ -347,14 +349,14 @@ All motors move at same number of steps/second; train pulse time decreases with 
 Last Modified:
 2018/10/23 by Jamie Boyd - initial Version */
 float SR_stepper_thread::getStepsPerSec (){
-	return (float)this.getTrainFrequency()/((4 * this.taskPtr->nMotors));
+	return (float)this->getTrainFrequency()/((4 * this->taskPtr->nMotors));
 }
 
 /* ******************************* sets motor speed in steps per second *******************
 Last Modified:
 2018/10/23 by Jamie Boyd - initial Version */
 int SR_stepper_thread::setStepsPerSec (float stepsPerSec){
-	return this.modFreq (stepsPerSec * 4 * this.taskPtr->nMotors);
+	return this->modFreq (stepsPerSec * 4 * this->taskPtr->nMotors);
 }
 
 /* ****************************** Destructor handles GPIO peripheral mapping*************************
