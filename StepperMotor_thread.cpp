@@ -10,15 +10,7 @@ last Modified:
 2017/03/04 by Jamie Boyd - replacing wiringPi
 */
 int StepperMotor_Init (void * initDataP, void *  volatile &taskDataP){
-	// make sure GPIO peripheral is mapped
-	int errCode;
-	if (GPIOperi == nullptr){
-		GPIOperi = new bcm_peripheral {GPIO_BASE};
-		errCode = map_peripheral(GPIOperi, IFACE_DEV_GPIOMEM);
-		if (errCode){
-			return 1;
-		}
-	}
+	
 	// initData is a pointer to our init structure
 	StepperMotorInitPtr initData = (StepperMotorInitPtr)initDataP;
 	// task data is a pointer to taskCustomData that needs to be initialized with our custom structure
@@ -51,60 +43,39 @@ int StepperMotor_Init (void * initDataP, void *  volatile &taskDataP){
 /************************************************************************************
 callback functions for FullStep. Move motor forward or backward one step.
 last Modified:
-2016/12/12 by Jamie Boyd - initial version
+2018/10/30 by Jamie Boyd - modified functions for stepper mode
 2016/12/27 by Jamie Boyd - modified functions for forwards and reverse directions
+2016/12/12 by Jamie Boyd - initial version
 */
-void StepperMotor_Full_forward (void * volatile taskDataP){
+void StepperMotor_Full (void * volatile taskDataP){
 	StepperMotorPtr taskData = (StepperMotorPtr)taskDataP;
+	//
+	taskData->curPos += curDir;
+	if (taskData->curPos == 8){
+		taskData->curPos =0;
+	}else{
+		if (taskData->curPos == -1){
+			taskData->curPos =7;
+		}
+	}
 	switch (taskData->curPos){
 		case 0:
 			*(taskData->GPIOaddr + 10) =taskData->pinBits[0];
-			//digitalWrite (taskData->pins[0], LOW);
-			taskData->curPos = 1;
+			*(taskData->GPIOaddr + 7) =taskData->pinBits[2];
 			break;
 		case 1:
 			*(taskData->GPIOaddr + 10) =taskData->pinBits[1];
-			//digitalWrite (taskData->pins[1], LOW);
-			taskData->curPos = 2;
+			*(taskData->GPIOaddr + 7) =taskData->pinBits[3];
 			break;
 		case 2:
 			*(taskData->GPIOaddr + 7) =taskData->pinBits[0];
-			//digitalWrite (taskData->pins[0], HIGH);
-			taskData->curPos = 3;
 			break;
 		case 3:
 			*(taskData->GPIOaddr + 7) =taskData->pinBits[1];
-			//digitalWrite (taskData->pins[1], HIGH);
-			taskData->curPos = 0;
 			break;
 		}
 	}
 	
-void StepperMotor_Full_backward (void * volatile taskDataP){
-	StepperMotorPtr taskData = (StepperMotorPtr)taskDataP;
-	switch (taskData->curPos){
-		case 0:
-			*(taskData->GPIOaddr + 10) =taskData->pinBits[1];
-			//digitalWrite (taskData->pins[1], LOW);
-			taskData->curPos = 3;
-			break;
-		case 1:
-			*(taskData->GPIOaddr + 10) =taskData->pinBits[0];
-			//digitalWrite (taskData->pins[0], LOW);
-			taskData->curPos = 0;
-			break;
-		case 2:
-			*(taskData->GPIOaddr + 7) =taskData->pinBits[1];
-			//digitalWrite (taskData->pins[1], HIGH);
-			taskData->curPos = 1;
-			break;
-		case 3:
-			*(taskData->GPIOaddr + 7) =taskData->pinBits[0];
-			//digitalWrite (taskData->pins[0], HIGH);
-			taskData->curPos = 2;
-			break;
-	}
-}
 
 /************************************************************************************
 callback functions for HalfStep. Moves motor forward or backward half a step.
@@ -297,7 +268,33 @@ int StepperMotorHalf_setHoldCallBack (void * modData, taskParams *  theTask){
 /******************************************************************************************
 *************************** pulsed Thread Stepper Motor Class ****************************/
 // Constructor makes fullStep or halfStep stepper motor
-ptStepperMotor::ptStepperMotor(int pinA, int pinB, int pinAbar, int pinBbar, int mode, float p_scaling, float p_speed, int accuracyLevel){
+StepperMotor_thread * StepperMotor_thread::StepperMotor_threadMaker(int pinA, int pinB, int pinAbar, int pinBbar, int mode, float p_scaling, float p_speed, int accuracyLevel){
+	
+	// make and fill an init struct
+	StepperMotorInitStructPtr InitStruct = new StepperMotorInitStruct;
+	initStruct->GPIOperiAddr = useGpioPeri ();
+	if (initStruct->GPIOperiAddr == nullptr){
+#if beVerbose
+        printf ("StepperMotor_threadMaker failed to map GPIO peripheral.\n");
+#endif
+		return nullptr;
+	}
+	initStruct->stepperMode=mode;
+	initStruct->pins [0] = pinA;
+	initStruct->pins [1] = pinB;
+	if (mode < 3){
+		initStruct->pins [2] = pinAbar;
+		initStruct->pins [3] = pinBbar;
+	}
+	// call StepperMotor_thread constructor with appropriate Hi and Lo, which calls pulsedThread contructor	
+	int errCode =0;
+	StepperMotor_thread * newStepper;
+	switch (mode){
+		case 1: // full, all 4 pins
+		
+	}
+	
+	
 	// set scaling
 	scaling = p_scaling;	// steps/unit (calibrated for whatever your unit is in, metres, degrees)
 	speed = p_speed;	// units/second
