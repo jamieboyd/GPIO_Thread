@@ -30,14 +30,14 @@ Last Modified;
 	float pwmFreq;
 	unsigned int pwmRange;
 	int useFIFO;
-	unsigned int durUsecs;
+	float durSecs;
 	unsigned int nPulses;
 	int accuracyLevel;
-	if (!PyArg_ParseTuple(args,"fIiIIi", &pwmFreq, &pwmRange, &useFIFO, &durUsecs, &nPulses, &accuracyLevel)){
-		PyErr_SetString (PyExc_RuntimeError, "Could not parse inputs for PWM frequency, PWM range, useFIFO,  pulse useconds, number of pulses, and thread accuracy.");
+	if (!PyArg_ParseTuple(args,"fIifIi", &pwmFreq, &pwmRange, &useFIFO, &durSecs, &nPulses, &accuracyLevel)){
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse inputs for PWM frequency, PWM range, useFIFO,  pulse seconds, number of pulses, and thread accuracy.");
 		return NULL;
 	}
-	PWM_thread * threadObj = PWM_thread::PWM_threadMaker (pwmFreq, pwmRange, useFIFO, durUsecs, nPulses, accuracyLevel);
+	PWM_thread * threadObj = PWM_thread::PWM_threadMaker (pwmFreq, pwmRange, useFIFO, (unsigned int) (1E06 * durSecs), nPulses, accuracyLevel);
 	usleep (100000);
 	if (threadObj == nullptr){
 		PyErr_SetString (PyExc_RuntimeError, "PWM_threadMaker was not able to make a PWM object");
