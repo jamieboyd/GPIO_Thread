@@ -7,12 +7,12 @@
 
  #include <stdio.h>
  
-/* ************************************** declaration of trhead functions *********************************/
+/* ************************************** declaration of non-class thread functions *********************************/
 void Countermand_Hi (void *  taskData);
 void Countermand_Lo (void *  taskData);
-int countermandSetTaskData (void * modData, taskParams * theTask);
+int countermand_Init (void * initDataP, void *  &taskDataP);
 
-/* ******************** Custom Data Struct is same as  Simple GPIO with added bool for countermanding ****************************/
+/* ******************** Custom Data Struct is same as Simple GPIO with added bool for countermanding ****************************/
 typedef struct CountermandPulseStruct{
 	unsigned int * GPIOperiHi; // address of register to write pin bit to on Hi
 	unsigned int * GPIOperiLo; // address of register to write pin bit to on Lo
@@ -26,14 +26,12 @@ typedef struct CountermandPulseStruct{
 /* ***************************** CountermandPulse subclasses SimpleGPIO_thread **************************************************/
 class CountermandPulse : public SimpleGPIO_thread{
 public:
-	CountermandPulse (int pinP, int polarityP, unsigned int delayUsecs, unsigned int durUsecs, void * initData, int accLevel , int &errCode) : SimpleGPIO_thread (pinP, polarityP, (unsigned int) delayUsecs, (unsigned int) durUsecs, (unsigned int) 1, initData, accLevel, errCode) {};
+	CountermandPulse (int pinP, int polarityP, unsigned int delayUsecs, unsigned int durUsecs, void * initData, int accLevel , int &errCode) : SimpleGPIO_thread (pinP, polarityP, (unsigned int) delayUsecs, (unsigned int) durUsecs, (unsigned int) 1, initData, &countermand_Init, accLevel, errCode) {};
 	static CountermandPulse * CountermandPulse_threadMaker (int pin, int polarity, unsigned int delayUsecs, unsigned int durUsecs, int accuracyLevel);
     bool doCountermandPulse (void);
 	bool countermand(void);
 	bool wasCountermanded (void);
 protected:
-	int pinNumber;
-	int polarity;
 	CountermandPulseStructPtr taskStructPtr;
 };
 #endif

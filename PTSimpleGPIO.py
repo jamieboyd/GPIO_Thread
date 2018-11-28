@@ -4,6 +4,22 @@
 import ptSimpleGPIO
 from abc import ABCMeta, abstractmethod
 from time import sleep
+
+"""
+A simple singleton class to ensure only one instance of certain GPIO classes like PWM
+lifted from https://sourcemaking.com/design_patterns/singleton/python/1
+"""
+class SingletonForGPIO (type):
+
+    def __init__ (cls, name, bases, attrs, **kwargs):
+        super().__init__(name, bases, attrs)
+        cls._instance = None
+
+    def __call__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__call__(*args, **kwargs)
+        return cls._instance
+
 """
     PTSimpleGPIO does control of GPIO access using the C++ module ptSimpleGPIO,
     which provides pulsed thread timing for setting GPIO lines high or low.

@@ -3,14 +3,14 @@
 
 /* ******************************** makes a GPIO output that does software pulse width modulation *********************************************/
 
-static const int GPIO_PIN = 23;
+static const int GPIO_PIN =17;
 static const int POLARITY = 0;
 
 int main(int argc, char **argv){
 	
 	// Use threadMaker function to make a simpleGPIO_thread, an infinite train with frequency = 1kHz, and duty cycle = 0.001
 	// SimpleGPIO_threadMaker calls pulsedThread constructor
-	SimpleGPIO_thread *  myGPIO= SimpleGPIO_thread::SimpleGPIO_threadMaker (GPIO_PIN, POLARITY, (float)1000,(float)0.001, (float)0, ACC_MODE_SLEEPS_AND_OR_SPINS);
+	SimpleGPIO_thread *  myGPIO= SimpleGPIO_thread::SimpleGPIO_threadMaker (GPIO_PIN, POLARITY, (float)100,(float)0.001, (float)0, ACC_MODE_SLEEPS_AND_OR_SPINS);
 	printf ("GPIO peri users = %d.\n", GPIOperi_users);
 	if (myGPIO == nullptr){
 		printf ("SimpleGPIO_thread object was not created. Now exiting...\n");
@@ -63,5 +63,5 @@ int main(int argc, char **argv){
 
 
 /*
- g++ -O3 -std=gnu++11 -Wall -lpulsedThread GPIOlowlevel.cpp SimpleGPIO_thread.cpp SimpleGPIO_tester.cpp -o Tester
+ g++ -O3 -std=gnu++11 -Wall -lpulsedThread GPIOlowlevel.cpp SimpleGPIO_thread.cpp SimpleGPIO_tester.cpp -o SimpleGPIOtester
 */

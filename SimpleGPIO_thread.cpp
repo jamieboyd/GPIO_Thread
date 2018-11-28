@@ -3,7 +3,7 @@
 /* *************************** Functions that are called from thread can not be class methods *********************
 
 ***************************************Initialization callback function ****************************************
-Copies pinBit and set/unset register adressses to  task data
+Copies pinBit and set/unset register adressses to task data
 last modified:
 2018/02/09 by Jamie Boyd - copied some functionality over from thread make function
 2018/02/01 by Jamie Boyd - initial version  */
@@ -111,7 +111,7 @@ SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int pola
 	}
 	int errCode =0;
 	// call SimpleGPIO_thread constructor, which calls pulsedThread contructor
-	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (pin, polarity, delayUsecs, durUsecs, nPulses, (void *) initStruct, accuracyLevel, errCode);
+	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (pin, polarity, delayUsecs, durUsecs, nPulses, (void *) initStruct, &SimpleGPIO_Init, accuracyLevel, errCode);
 	if (errCode){
 #if beVerbose
 		printf ("SimpleGPIO_threadMaker failed to make SimpleGPIO_thread.\n");
@@ -136,13 +136,13 @@ SimpleGPIO_thread * SimpleGPIO_thread::SimpleGPIO_threadMaker (int pin, int pola
 	initStruct->GPIOperiAddr =  useGpioPeri ();
 	if (initStruct->GPIOperiAddr == nullptr){
 #if beVerbose
-        printf ("SimpleGPIO_threadMaker failed to map GPIO peripheral.\n");
+		printf ("SimpleGPIO_threadMaker failed to map GPIO peripheral.\n");
 #endif
 		return nullptr;
 	}	
 	int errCode =0;
 	// call SimpleGPIO_thread constructor, which calls pulsedThread contructor
-	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (pin, polarity, frequency, dutyCycle, trainDuration, (void *) initStruct, accuracyLevel, errCode);
+	SimpleGPIO_thread * newGPIO_thread = new SimpleGPIO_thread (pin, polarity, frequency, dutyCycle, trainDuration, (void *)initStruct, &SimpleGPIO_Init, accuracyLevel, errCode);
 	if (errCode){
 #if beVerbose
 		printf ("Failed to make pulsed thread.\n");

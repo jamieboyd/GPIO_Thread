@@ -3,6 +3,7 @@
 
 /* ********************** Low Level access to Raspberry Pi GPIO Peripherals ************************ 
 last modified:
+2018/09/18 by Jamie Boyd - PWM constants improved
 2018/02/01 by Jamie Boyd - renaming some files for gitHub
 2017/10/11 by Jamie Boyd - reorganizing by peripheral, and working on I2C
 2017/05/02 by Jamie Boyd - added I2C
@@ -46,7 +47,6 @@ typedef struct bcm_peripheral {
 #define PAGE_SIZE 	4096
 #define BLOCK_SIZE 	4096
 
-
 /* ******************************* Define memory interface Method *************************************
 Low level memory for GPIO can be accessed through the new /dev/gpiomem interface
 which does not require root access. Unfortunately, the PWM and clock hardware are
@@ -61,49 +61,9 @@ This function takes a pointer to a bcm_peripheral struct, p, whose addr_p field 
 to the base addresss of the peripheral you wish to control. It maps the low level memory
 of the peripheral and fills out the rest of the fields in the bcm_peripheral struct.
 The memInterface paramater determines which method to use. */
-inline int map_peripheral(bcm_peripheralPtr p, int memInterface){
-	if (memInterface == IFACE_DEV_GPIOMEM){
-		// Open newfangled dev/gpiomem instead of /dev/mem for access without sudo
-		if ((p->mem_fd = open("/dev/gpiomem", O_RDWR|O_SYNC) ) < 0) {
-			perror("Failed to open /dev/gpiomem");
-			return 1;
-		}
-	}else{
-		if ((p->mem_fd = open("/dev/mem", O_RDWR|O_SYNC) ) < 0) {
-			perror("Failed to open /dev/mem. Did you forget to sudo");
-			return 1;
-		}
-	}	
-	/* mmap IO */
-	p->map = mmap(
-		NULL,							//Any address in our space will do
-		BLOCK_SIZE,						//Map length
-		PROT_READ|PROT_WRITE|PROT_EXEC,	// Enable reading & writing to mapped memory
-		MAP_SHARED| MAP_LOCKED,			//Shared with other processes
-		p->mem_fd,						//File to map
-		p->addr_p						//Offset to base address
-	);
-	//p->map = mmap(NULL, BLOCK_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, p->mem_fd, p->addr_p);
-	if (p->map == MAP_FAILED) {
-		perror("mmap error");
-		close (p->mem_fd);
-		return 1;
-	}
-	p ->addr = (volatile unsigned int *)p->map;
-	// close file descriptor
-	if (close(p -> mem_fd) < 0){
-		perror("couldn't close memory file descriptor");
-		return 1;
-	}
-	return 0;
-}
-
-/* ******************** Un-Map a Peripheral *******************************************/
-inline void unmap_peripheral(bcm_peripheralPtr p) {
-	munmap(p->map, BLOCK_SIZE);
-}
-
-/**************************************************GPIO Peripheral************************************************
+int map_peripheral(bcm_peripheralPtr p, int memInterface);
+void unmap_peripheral(bcm_peripheralPtr p);
+/* *************************************************GPIO Peripheral************************************************
 GPIO_BASE is the base address of GPIO peripherals, and its offset from the physical address is 0x200000. */
 #define GPIO_BASE       	(BCM_PERI_BASE + 0x200000)	// GPIO controller
 
@@ -120,53 +80,89 @@ extern int GPIOperi_users;
 volatile unsigned int * useGpioPeri (void);
 void unUseGPIOperi (void);
 
-
 /* **************************************************PWM Periperal**********************************************************
 PWM_BASE is defined by 0x20C000 offset from the base peripheral addresss */
 #define PWM_BASE			(BCM_PERI_BASE + 0x20C000)
-/* PWM control registers addresses are defined by an offset to PWM_BASE. */
-#define PWM_CTL		0             // PWM Control
-#define PWM_STATUS  	1		// PWM Status
-#define PWM0_RNG		4            // PWM Channel 0 Range
-#define PWM0_DAT		5            // PWM Channel 0 Data
-#define PWM1_RNG		8            // PWM Channel 1 Range
-#define PWM1_DAT		9            // PWM Channel 1 Data
-#define PWMCLK_CNTL 	40        // PWM Clock Control
-#define PWMCLK_DIV	41         // PWM Clock Divisor
-/* *****************defined bits for PWM  control registers ****************************
-*******************************channel 0******************************************/
-#define	PWM0_MS_MODE    0x0080  // Run in MS mode
-#define	PWM0_USEFIFO    0x0020  // Data from FIFO
-#define	PWM0_REVPOLAR   0x0010  // Reverse polarity
-#define	PWM0_OFFSTATE   0x0008  // Ouput Off state
-#define	PWM0_REPEATFF   0x0004  // Repeat last value if FIFO empty
-#define	PWM0_SERIAL     0x0002  // Run in serial mode
-#define	PWM0_ENABLE     0x0001  // Channel Enable
-/* ******************channel 1 ******************************************************/
-#define	PWM1_MS_MODE    0x8000  // Run in MS mode
-#define	PWM1_USEFIFO    0x2000  // Data from FIFO
-#define	PWM1_REVPOLAR   0x1000  // Reverse polarity
-#define	PWM1_OFFSTATE   0x0800  // Ouput Off state
-#define	PWM1_REPEATFF   0x0400  // Repeat last value if FIFO empty
-#define	PWM1_SERIAL       0x0200  // Run in serial mo
-#define	PWM1_ENABLE     0x0100  // Channel Enable
+/* ********************PWM control registers addresses defined by an offset to PWM_BASE. *************/
+#define PWM_CTL		0x0          // PWM Control
+#define PWM_STA		0x1		// PWM status
+#define PWM_DMAC		0x2		// PWM DMA configuration
+#define PWM_RNG1		0x4        // PWM Channel 1 Range
+#define PWM_DAT1		0x5		// PWM Channel 1 Data
+#define PWM_FIF		0x6	//PWM FIFO input, for both channels
+#define PWM_RNG2		0x8	// PWM Channel 2 Range
+#define PWM_DAT2		0x9	// PWM Channel 2 Data
 
 
-#define PWM_MARK_SPACE 0
-#define PWM_BALANCED 1
+/* ******************************* Defined Bits for Control Register (PWM_CTL) *******************************************/
+#define PWM_MSEN2	0x8000	//  bit 15, when set, run channel 2 in Mark/Space mode, when cleared run in balanced mode
+#define PWM_USEF2	0x2000	// bit 13, when set, use FIFO for input for channel 2, when cleared, use data register
+#define PWM_POLA2	0x1000	// bit 12, when set, output of channel 2 is reversed
+#define PWM_SBIT2		0x800	// bit 11, when set, channel 2 output is high when PWM is not transmitting, when cleared, output is low when not transmitting
+#define PWM_RPTL2		0x400	// bit 10, when set, last data is transmitted when FIFO is empty, when cleared, transmission is interrupted
+#define PWM_MODE2	0x200	// bit 9, when set, channel 2 uses serializer mode. when clear, channel 2 uses PWM mode
+#define PWM_PWEN2	0x100	// bit 8, when set, channel 2 is enabled, when cleared, channel 2 is not transmitting
+#define PWM_MSEN1	0x80	// bit 7, when set, run channel 1 in Mark/Space mode, when cleared run in balanced mode
+#define PWM_CLRF1		0x40	// bit 6, when set, clears the FIFO used by both channels, one shot, when cleared, has no effect
+#define PWM_USEF1	0x20	// bit 5, use FIFO for input for channel 1, when cleared, use data register
+#define PWM_POLA1	0x10	// bit 4, when set, output of channel 1 is reversed
+#define PWM_SBIT1		0x8		// bit 3, when set, channel 1 output is high when PWM is not transmitting, when cleared, output is low when not transmitting
+#define PWM_RPTL1		0x4		// bit 2 when set, last data is transmitted when FIFO is empty, when cleared, transmission is interrupted
+#define PWM_MODE1	0x2		// bit 1, when set, channel 1 uses serializer mode. when clear, channel 1 uses PWM mode
+#define PWM_PWEN1	0x1		// bit 0, when set, channel 1 is enabled, when cleared, channel 1 is not transmitting
+
+/* ******************************* Defined Bits for Status Register (PWM_STA) *******************************************/
+#define PWM_STA4		0x1000	// bit 12, channel 4 state, if set, channel is transmitting, if clear, channel is not transmitting. There is no channel 4?
+#define PWM_STA3		0x800	// bit 11, channel 3 state, if set, channel is transmitting, if clear, channel is not transmitting. There is no channel 3?
+#define PWM_STA2		0x400	// bit 10, channel 2 state, if set, channel is transmitting, if clear, channel is not transmitting. 
+#define PWM_STA1		0x200	// bit 9, channel 1 state, if set, channel is transmitting, if clear, channel is not transmitting. 
+#define PWM_BERR		0x100	// bit 8, set if error has occurred while writing to registers
+#define PWM_GAPO4	0x80	// bit 7, flag set when gap occurred writing to FIFO on channel 4.There is no channel 4?
+#define PWM_GAPO3	0x40	// bit 6, flag set when gap occurred writing to FIFO on channel 3.There is no channel 3?
+#define PWM_GAPO2	0x20	// bit 5, flag set when gap occurred writing to FIFO on channel 2.
+#define PWM_GAPO1	0x10	// bit 4, flag set when gap occurred writing to FIFO on channel 1.
+#define PWM_RERR1	0x8		// bit 3, FIFO read error flag
+#define PWM_WERR1	0x4		// bit 2, FIFO write error flag
+#define PWM_EMPT1	0x2		// bit 1, FIFO empty flag
+#define PWM_FULL1		0x1		// bit 0, FIFO full flag
+
+#define PWM_MARK_SPACE 1
+#define PWM_BALANCED 0
 
 extern bcm_peripheralPtr PWMperi ;
 extern int PWMperi_users;
 volatile unsigned int * usePWMPeri (void);
 void unUsePWMperi (void);
 
-/* ************************************************* PWM Clock Control*********************************************************
-Values for setting some registers need to be ORed with this magic number, the clock manager password */
-#define	BCM_PASSWORD 0x5A000000
-/* CLOCK_BASE is defined by 0x101000 offset from the base peripheral addresss */
-#define PWM_CLOCK_BASE (BCM_PERI_BASE + 0x101000)
+/* ************************************************* Clock Manager - Audio Clock (PWM) control *********************************************************
+CM_PWMCTL is defined by 0x101000 offset from the base peripheral addresss */
+#define CM_PWMBASE	(BCM_PERI_BASE + 0x101000)
+/* ********************CLock manager Divisor register address defined by an offset to CM_PWMCTL *************/
+
+#define CM_PWMCTL	0x28		// PWM clock control
+#define CM_PWMDIV	0x29		// PWM Divisor
+
+/* ******************************* Defined Clock Manager Control Register (CM_PWMCTL) Bits *******************************************/
+#define CM_PASSWD	0x5A000000 	// bits 31-24, some values need to be ORed with this magic number, the clock manager password */
+#define CM_MASH0		0x0			// bits 9 and 10 control MASH divider, 0 means integer division
+#define CM_MASH1		0x200		// bit 9, 1-stage MASH
+#define CM_MASH2		0x400		// bit 10, 2-stage mash
+#define CM_MASH3		0x600		// bits 9 and 10 set, 3 stage mash
+#define CM_FLIP		0x100		// bit 8, if set, inverts clock generator output
+#define CM_BUSY		0x80		// bit 7, indicates if the clock generator is running
+#define CM_KILL		0x20		//  bit 5, when set, stops and resets the clock generator
+#define CM_ENAB		0x10		// bit 4, setting with OR requests the clock to start, BUSY flag will go high when final cycle is completed
+#define CM_DISAB		0xffffffef		// bit 4, unsetting with AND requests the clock to stop, BUSY flag will go low when final cycle is completed
+#define CM_SRCOSC		0x1			// use Pi's on board oscillator as input for clock source at 19.2 Mhz
+#define CM_SRCPLL		0x6			// use Pi's Phase Locked Loop D as  input for clock source at 500 MHz 
+#define CM_SRCHDMI	0x7			// use HDMI auxillary clock as nput for clock source at 216 Mhz
+
+/* ******************************* Defined Divisor Register (CM_PWMDIV) Bits *******************************************/
+#define CM_DIVI		12			// integer part of divisor, from 23-12 bits, need to shift left 12 bits. Fractional from 0 to 11, AND with 4096
+
 /*Frequency of oscillators that we use as source for things like PWM clock*/
 #define PI_CLOCK_RATE 19.2e6	//19.2 Mhz
+#define HDMI_CLOCK_RATE 216e06 // 216 Mhz HDMI auxillary
 #define PLLD_CLOCK_RATE 500e6	// 500 MHz phase locked loop D 
 
 extern bcm_peripheralPtr PWMClockperi;
@@ -175,7 +171,7 @@ volatile unsigned int * usePWMClockPeri (void);
 void unUsePWMClockperi (void);
 
 
-/*********************************************** GPU CLock ******************************************************/
+/* ********************************************** GPU CLock ******************************************************/
 #define GPU_CLOCK1		(0x7E801000 - 0x7e000000 + BCM_PERI_BASE)
 #define GPU_CLOCK2		0x3F801000
 #define GPU_CLOCK3		0x3F003000
@@ -226,7 +222,6 @@ I2C  Control, done with one of the Broadcom Serial Controllers, BSC0 for Pi 1, B
 inline unsigned int dump_bsc_status(bcm_peripheralPtr I2Cperi){
 	
 	unsigned int s = *((I2Cperi->addr) + BSC_S); 
-
 	printf("BSC_S: ERR=%d  RXF=%d  TXE=%d  RXD=%d  TXD=%d  RXR=%d  TXW=%d  DONE=%d  TA=%d\n",
         (s & BSC_S_ERR) != 0,
         (s & BSC_S_RXF) != 0,
@@ -238,9 +233,6 @@ inline unsigned int dump_bsc_status(bcm_peripheralPtr I2Cperi){
         (s & BSC_S_DONE) != 0,
         (s & BSC_S_TA) != 0 );
 	return s;
-	
-	
-
 }
 
 inline void wait_i2c_done(bcm_peripheralPtr I2Cperi){

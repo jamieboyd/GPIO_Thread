@@ -4,8 +4,9 @@
 <title>GPIO_Thread:Simple GPIO</title>
 <META NAME="AUTHOR" CONTENT="Jamie Boyd">
 </head>
+<body>
 <H2>Simple GPIO</H2>
-<p>Simple GPIO controls the simplest GPIO task, outputting digital pulses or trains of pulses from a single GPIO pin. The relevant files are:
+<p>Simple GPIO controls the simplest GPIO task, outputting digital pulses or trains of pulses from a single GPIO pin by repeatedly setting the output to be high or low.  The polarity of the pulses can be reversed, so the normal resting state can be high instead of low. The relevant files are:
 <ul><li>SimpleGPIO_thread.cpp/h -- C++ class subclassed from pulsedThread to do a pulse or a train of pulses on a GPIO pin</li>
 <li>SimpleGPIO_tester.cpp -- C++ application using SimpleGPIO_thread to do software pulse width modulation</li>
 <li>SimpleGPIO_Py.cpp -- C++ code for a Python module to make and use a SimpleGPIO_thread from Python</li>
@@ -13,11 +14,44 @@
 <li>PTSimpleGPIO.py -- Python code that wraps the ptSimpleGPIO module in a Python object interface</li>
 <li>PTSimpleGPIO_test.py -- Python code with tests for PTSimpleGPIO. May require oscilloscope, LED</li></ul>
 
+<h3>SimpleGPIO_thread Thread Makers</h3>
+<p>The SimpleGPIO_thread class extends the pulsedThread class. The constructors call a pulsedThread constructor with a structure holding data for initilization, a function for initialization, high and low callbacks, and parameters for pulse timing and number. The SimpleGPIO_thread class simplifies thread creation a little bit by providing two static ThreadMaker functions that make an initStruct and call a constructor with it, returning a pointer to a SimpleGPIO_thread:
+<ul><li>static SimpleGPIO_thread * SimpleGPIO_threadMaker (
+	<dl><dt>int pin</dt>
+	<dd>GPIO pin number to use, in Broadcom numbering</dd>
+	<dt>int polarity</dt>
+	<dd>Zero for normally low, non-zero for normally high</dd>
+	<dt>unsigned int delayUsecs</dt>
+	<dd>time of low period of pulse, in microseconds</dd>
+	<dt>unsigned int durUsecs</dt>
+	<dd>time of high period of pulse, in microseconds</dd>
+	<dt>unsigned int nPulses</dt>
+	<dd>number of pulses in a train, or 1 for a single pulse, or 0 for an infnite train</dd>
+	<dt>int accuracyLevel</dt>
+	<dd>controls how timing is done, see pulsedThread</dd>);
+</dl></li><br>
+<li>static SimpleGPIO_thread * SimpleGPIO_threadMaker (
+	<dl><dt>int pin</dt>
+	<dd>GPIO pin number to use, in Broadcom numbering</dd>
+	<dt>int polarity</dt>
+	<dd>Zero for normally low, non-zero for normally high</dd>
+	<dt>float frequency</dt>
+	<dd>frequency of train, in Hz</dd>
+	<dt>float dutyCycle</dt>
+	<dd>duty cycle in train, from 0 to 1</dd>
+	<dt>float trainDuration</dt>
+	<dd>Duration of train, in seconds</dd>
+	<dt>int accuracyLevel</dt>
+	<dd>controls how timing is done, see pulsedThread</dd>);
+</dl></li>
+</ul>
+One ThreadMaker sets timing parameters in microsecond delays and durations, and the other sets timing parameters in frequency and duty cycle; each threadMaker calls the corresponding constructor that takes either unsigned integer microsecond delays and durations, or floating point frequency and duty cycle. Each threadMaker makes a simple initStruct with the passed-in pin number and polarity, plus the base address of the GPIO peripheral obtained by useGpioPeri ().</p>
 
-int pin, int polarity, unsigned int delayUsecs, unsigned int durUsecs, unsigned int nPulses, int accuracyLevel
+<h3>SimpleGPIO_thread Thread Functions</h3>
+SimpleGPIO_thread is all about setting the level of a single GPIO pin, high and low, in a pulse or train. The low callback sets the GPIO pin low, and the high callback sets the GPIO pin high. Initializing with a reversed polarity will, of course, reverse these. The initialization function calculates the addresses to ON and OFF register as Hi or Lo as appropriate to save a level of indirection later.
 
 
-
+</p>
 
 <hr>
 <a href = "./GPIO_Thread.html">Back to GPIO Thread index</a>
