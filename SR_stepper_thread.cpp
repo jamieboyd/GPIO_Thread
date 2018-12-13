@@ -139,6 +139,7 @@ SR_stepper_thread * SR_stepper_thread::SR_stepper_threadMaker (int data_pinP, in
 	initStruct->data_pin = data_pinP;
 	initStruct->shift_reg_pin = shift_reg_pinP;
 	initStruct->stor_reg_pin=stor_reg_pinP;
+	initStruct->nMotors = nMotorsP;
 	initStruct->GPIOperiAddr = useGpioPeri ();
 	if (initStruct->GPIOperiAddr == nullptr){
 #if beVerbose
@@ -173,7 +174,7 @@ Last Modified:
 void SR_stepper_thread::moveSteps (int mDists [MAX_MOTORS]){
 	// need maximum steps of all motors to get number of trains to request
 	// also need to set counter variables in thread data
-	this->getTaskMutex(); // get taskMutex - can, in theroy, be calling move with trains left to do
+	//this->getTaskMutex(); // get taskMutex - can, in theroy, be calling move with trains left to do
 	int trainsInHand = this->isBusy();
 	int neededTrains =0;
 	for (int iMotor = 0; iMotor < this->taskPtr->nMotors; iMotor +=1){
@@ -189,7 +190,10 @@ void SR_stepper_thread::moveSteps (int mDists [MAX_MOTORS]){
 		neededTrains = neededTrains >= abs (this->taskPtr->nSteps [iMotor] ) ? neededTrains : abs (this->taskPtr->nSteps [iMotor] ) ;
 		//neededTrains = max  (neededTrains, abs (this->taskPtr->nSteps [iMotor] )) ;
 	}
-	this->giveUpTaskMutex(); // give up taskMutex
+#if beVerbose
+		printf ("Needed trains = %d\n", neededTrains);
+#endif
+	//this->giveUpTaskMutex(); // give up taskMutex
 	this->DoTasks (neededTrains - trainsInHand); // call doTasks with required number of trains
 }
 
