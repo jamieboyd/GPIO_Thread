@@ -7,7 +7,7 @@ setup(name='ptSimpleGPIO',
       py_modules=['PTSimpleGPIO'],
       ext_modules=[
         Extension('ptSimpleGPIO',
-                  ['SimpleGPIO_thread.cpp', 'GPIOlowlevel.cpp', 'SimpleGPIO_Py.cpp'],
+                  ['SimpleGPIO_thread.cpp', 'CountermandPulse.cpp', 'GPIOlowlevel.cpp', 'SimpleGPIO_Py.cpp'],
                   include_dirs = ['./','/usr/include'],
                   library_dirs = ['./','/usr/local/lib'],
 		  extra_compile_args=["-O3", "-std=gnu++11"],

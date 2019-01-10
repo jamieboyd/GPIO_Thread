@@ -298,4 +298,24 @@ class Simple_output (object):
     """
     def  set_level (self, level):
         ptSimpleGPIO.setOutput (self.task_ptr, level)
+
+
+"""
+The CountermandPulse class is a pulse that can be countermanded after it is requested, if the delay periopd has not
+elapsed yet
+"""
+class CountermandPulse (Pulse):
+
+    def __init__(self, gpio_pin, polarity, delay, duration, accuracy_level):
+        self.task_ptr = ptSimpleGPIO.newCP(gpio_pin, polarity, delay, duration, accuracy_level)
+        self.respectTheGIL = False
+
+    def do_pulse_countermandable (self):
+        return ptSimpleGPIO.CPdoCountermandPulse(self.task_ptr)
+    
+    def countermand_pulse (self):
+        return ptSimpleGPIO.CPcountermand(self.task_ptr)
+
+    def was_countermanded (self):
+        return ptSimpleGPIO.CPwasCountermanded(self.task_ptr)
     

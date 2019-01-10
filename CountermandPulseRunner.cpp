@@ -7,8 +7,8 @@ pulse 3 was countermanded = 0.
 and if you have an oscilloscope or LED, you should  2 pulses  or 2 flashes, 0.25 seconds long, separated by 4 seconds
 */
 int main(int argc, char **argv){
-	// make a countermanable pulse on pin 23, polarity = low-to-high, delay = 2 seconds, duration = 0.25 seconds,
-	CountermandPulse * cp = CountermandPulse::CountermandPulse_threadMaker(17, 0, 2000000, 250000, ACC_MODE_SLEEPS_AND_SPINS);
+	// make a countermanable pulse on pin 20, polarity = low-to-high, delay = 2 seconds, duration = 0.25 seconds,
+	CountermandPulse * cp = CountermandPulse::CountermandPulse_threadMaker(20, 0, 2000000, 250000, ACC_MODE_SLEEPS_AND_SPINS);
 	// calling doTask igives the standard pulse, not countermandable
 	cp->DoTask();
 	cp->waitOnBusy(3);
