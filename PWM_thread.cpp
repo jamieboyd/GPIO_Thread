@@ -602,7 +602,7 @@ Call these 2 methods before making a PWM_thread object. In this order:
 5) enable output on the channel
 The ststic thread makers do the first three of these
 
-****************************** Memory maps Peripherals for PWM *********PWM_thread.cpp:687:1:*********************************
+****************************** Memory maps Peripherals for PWM *****************************************
  static function maps peripherals (GPIO, PWM, and PWM clock) needed for PWM. Does not set PWM clock. Does not set up any channels 
 Last Modified: 2018/08/06 by Jamie Boyd - first version */
  int PWM_thread::mapPeripherals(){
