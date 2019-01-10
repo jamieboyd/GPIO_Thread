@@ -2,21 +2,21 @@
 #-*-coding: utf-8 -*-
 
 import ptPWM
-import PTSimpleGPIO
-from PTSimpleGPIO import PTSimpleGPIO,SingletonForGPIO
 from array import array
 from time import sleep
 
-class PTPWM (PTSimpleGPIO):
-    TRAIN =1
+class PTPWM (object):
+    TRAIN = 1
     INFINITE_TRAIN = 0
-    PWM_MARK_SPACE =1
-    PWM_BALANCED =0
+    PWM_MARK_SPACE = 1
+    PWM_BALANCED = 0
+    MODE_FREQ = 0
+    MODE_PULSES = 1
     
     def __init__(self, mode, pwmFreq, pwmRange, useFIFO, pulseDurationOrTrainFreq, nPulsesOrTrainDuration, accuracyLevel):
-        if mode == PTSimpleGPIO.MODE_PULSES:
+        if mode == PTPWM.MODE_PULSES:
             self.task_ptr = ptPWM.newDelayDur (pwmFreq, pwmRange, useFIFO, pulseDurationOrTrainFreq, nPulsesOrTrainDuration, accuracyLevel)
-        elif mode == PTSimpleGPIO.MODE_FREQ:
+        elif mode == PTPWM.MODE_FREQ:
             self.task_ptr = ptPWM.newFreqDuty (pwmFreq, pwmRange, useFIFO, pulseDurationOrTrainFreq, nPulsesOrTrainDuration, accuracyLevel)
         self.respectTheGIL = False
         self.PWM_channels = 0
@@ -128,7 +128,6 @@ class PTPWM (PTSimpleGPIO):
 
 class PTPWMsin (PTPWM):
     
-    
     def __init__(self, chans):
         self.task_ptr = ptPWM.newSin (chans)
         self.PWM_channels = chans
@@ -149,3 +148,23 @@ class PTPWMsin (PTPWM):
     def stop (self):
         ptPWM.stopTrain(self.task_ptr)
         ptPWM.setEnable (self.task_ptr, 0, self.PWM_channels, 1)
+
+
+class PTPWMsimp (object):
+
+    def __init__(self, PWM_frequency, PWM_range):
+         self.task_ptr = ptPWM.newThreadless(PWM_frequency, PWM_range)
+
+    def add_channel (self, channel, mode, polarity, off_state):
+        ptPWM.threadlessAddChan(self.task_ptr, channel, mode, polarity, off_state)
+
+    def set_value (self, PWM_value, channels):
+        ptPWM.threadlessSetValue(self.task_ptr, PWM_value, channels)
+
+    def set_able(self, able_state, channels):
+        ptPWM.threadlessSetAble(self.task_ptr,able_state, channels)
+
+    def get_PWM_value (self, channel):
+        return ptPWM.threadlessGetValue(self.task_ptr, channel)
+        
+    

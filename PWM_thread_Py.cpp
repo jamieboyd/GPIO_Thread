@@ -544,7 +544,7 @@ static PyObject* pyPWM_no_thread_setAble (PyObject *self, PyObject *args){
 	PyObject *PyPtr;
 	int ableState;
 	int pwmChans;
-	if (!PyArg_ParseTuple(args,"Oi", &PyPtr, &ableState, &pwmChans)) {
+	if (!PyArg_ParseTuple(args,"Oii", &PyPtr, &ableState, &pwmChans)) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for PWM_no_thread pointer, able state and PWM channel.");
 		return NULL;
 	}
@@ -640,7 +640,7 @@ static PyMethodDef ptPWMMethods[] = {
 	{"threadlessAddChan", pyPWM_no_thread_addChan, METH_VARARGS, "(PyCapsule, channel, mode, polarity, offstate) configures a channel for threadless PWM"},
 	{"threadlessSetValue", pyPWM_no_thread_setValue, METH_VARARGS, "(PyCapsule, value, channels) sets PWM value to output for selected channels"},
 	{"threadlessSetAble", pyPWM_no_thread_setAble, METH_VARARGS, "(PyCapule, ableState, channels) enables or disables seletced PWM channels"},
-	{"threadlessGetValue", pyPWM_NoThread_getVal, METH_VARARGS, "(PyCapule, ableState, channel) returns PWM being output by selected channel"},
+	{"threadlessGetValue", pyPWM_NoThread_getVal, METH_VARARGS, "(PyCapule, channel) returns PWM being output by selected channel"},
 	{ NULL, NULL, 0, NULL}
   };
 
