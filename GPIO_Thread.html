@@ -39,6 +39,7 @@ This installs the pulsedThread library, C++ header files, and a C++ file with fu
 <li><a href = "./SimpleGPIO.html">Simple GPIO</a> -- ouputs digital pulses, trains, and infinite trains from a single GPIO pin</li>
 <li><a href = "./HX711.html">HX711</a> -- controls an HX711 load cell amplifier, writing clock pulses on one GPIO pin and reading data on another</li>
 <li><a href= "./PWM_thread.html">PWM Thread</a> -- controls the Pi's PWM (Pulse Width Modulation) peripheral</li>
+<li><a href = "./lever_thread.html">Lever Thread</a> -- controls a lever whose force can be controlled and position monitored, for a special behavioral task</li>
 </ol> 
 
 <h2>Acknowledgements</h2>
@@ -48,25 +49,3 @@ This installs the pulsedThread library, C++ header files, and a C++ file with fu
 <p>The timing and threading is controlled by the functions provided by pulsedThread. All of the pulsedThread functions for getting and setting timing and number of pulses can be used in the subclasses in GPIO_Thread. The biggest part of a new project's original code is providing an appropriate task data structure, an initialization function, and the HIGH and LOW functions.</p> 
 </body>
 </html>
-
-
-/* The 3 parts to running the lever pulling task  
-1) The program calling the leverThread object 
-	- may be in Python through a Python C++ module that provides an interface to a leverThread object
-	- makes an array of unsigned bytes to hold lever position data
-	- makes the leverThread object, passing it a pointer to the lever position data, plus some size info
-	- sets constant force, sets lever hold params, sets force params if doing force
-	-starts a trial 
-	- checks a trial to see if it is done. For an uncued trial, this could be while. 
-	- is responsible for saving the lever position data in the array before starting another trial
-	
-2) the leverThread object
-	- makes a leverThread struct 
-	- receives data from calling program
-	- writes to leverThreadStruct shared with the thread function to signal thread
-	- makes the array for leverForce data and passes a pointer to that data to the leverThread struct
-	
-3) the threaded function that works with leverThreadStruct
-	- timing controlled by pulsedThread superclass. Can be Trian or Infinite train with circular buffer
-	- does the hardware stuff, reading the encoder and outputting force
-	

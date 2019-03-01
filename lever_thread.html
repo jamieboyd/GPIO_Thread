@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<HTML>
+<head>
+<title>Lever_Thread</title>
+<META NAME="AUTHOR" CONTENT="Jamie Boyd">
+</head>
+<H2>Documentation for Lever Thread</H2>
+<p>Designed to be used form the  <a href="https://github.com/jamieboyd/AutoHeadFix">Auto Head Fix</a> program, lever Thread controls a specialized task involving a lever whose position can be monitored with a quadrature encoder, and whose force can be controlled with a PWM or analog output.</p>
+<pre>
+The 3 parts to running the lever pulling task  
+1) The program calling the leverThread object: 
+	- may be in Python through the Python C++ module that provides an interface to a leverThread object
+	- makes an array of unsigned 2 byte ints to hold lever position data
+	- makes the leverThread object, passing it a pointer to the lever position data, plus some size info
+	- sets constant force, sets lever hold params, sets force params if doing force
+	- starts a trial, first doing a cue for cued trials. Suppose we could have the leveThread do the cuing, as it does for goal cuing
+	- checks a trial to see if it is done. For an uncued trial, this could be while. 
+	- is responsible for saving the lever position data in the array before starting another trial
+	
+2) the leverThread object:
+	- makes a leverThread struct 
+	- receives data from calling program
+	- makes the array for leverForce data and passes a pointer to that data to the leverThread struct shared with the thread function
+	- writes configuration data to leverThreadStruct, uses pulsedThread functions to signal thread
+
+	
+3) the threaded function that works with leverThreadStruct:
+	- timing controlled by pulsedThread superclass. Can be Trian or Infinite train with circular buffer
+	- does the hardware stuff, reading the encoder and outputting force
+	- saves lever position data in buffer
+	- turns goal cue on and off, sets trialPosition and breakPos for entering goal area
+</pre>
+<hr>
+<a href = "./GPIO_Thread.html">Back to GPIO Thread index</a>
+</body>
+</html>

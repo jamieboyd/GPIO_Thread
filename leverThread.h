@@ -1,19 +1,44 @@
+
 #ifndef LEVER_THREAD_H
 #define LEVER_THREAD_H
+/* ********************* libraries needed for lever thread ***************************** */
 #include <stdlib.h>
 #include <stdint.h>
 #include <time.h>
 #include <math.h>
-#include <wiringPi.h>
+#include <wiringPi.h>	// used for spi (quad decoder) and i2c (analog out)
 #include <wiringPiSPI.h>
+#include <pulsedThread.h> // used for thread timing
+#include "SimpleGPIO_thread.h" // used for goal cue 
+
+/* ******************************************** Output Force Control*******************************
+ *  can be set by PWM from the Pi's PWM controller, channel 1 on GPIO 18, 
+ * or analog output from MCP4725 analog out chip on i2c bus.
+ * Set FORCEMODE defined below to either AOUT or PWM and recompile the code
+ * The Maxon motor driver must be configured appropriately for analog or PWM control
+ * The mcp4725 ranges from 0 to 4095, scaled from 0 to 5V, so if using PWM, use a range 
+ * of 4095 to match it. PWM frequency should be set to 1kHz. */
+#define AOUT 0
+#define PWM 1
+// set FORCEMODE to PWM or AOUT
+#define  FORCEMODE AOUT
+#if FORCEMODE == PWM
+#include "PWM_thread.h"
+#elif FORCEMODE == AOUT
 #include <wiringPiI2C.h>
-#include <pulsedThread.h>
-#include "SimpleGPIO_thread.h"
+#endif
+
+/* *********************** Lever Recording Frequency *******************************************
+ * we use kLEVER_FREQ to calculate length of array needed for however long we want to record lever position
+ * we make an array of force values for sigmoidal force transition for perturbation
+ * kFORCE_ARRAY_SIZE times kLEVER_FREQ sets the duration of the force ramp */
+const float kLEVER_FREQ = 250;
+const unsigned int kFORCE_ARRAY_SIZE = 100;
 
 /* The 3 parts to running the lever pulling task  
 1) The program calling the leverThread object 
 	- may be in Python through a Python C++ module that provides an interface to a leverThread object
-	- makes an array of unsigned bytes to hold lever position data
+	- makes an array of unsigned 2 byte ints to hold lever position data
 	- makes the leverThread object, passing it a pointer to the lever position data, plus some size info
 	- sets constant force, sets lever hold params, sets force params if doing force
 	-starts a trial, first doing a cue for cued trials. Suppose we could have the leverthread do the cuing, as it does for goal cuing
@@ -31,10 +56,10 @@
 	- timing controlled by pulsedThread superclass. Can be Trian or Infinite train with circular buffer
 	- does the hardware stuff, reading the encoder and outputting force
 	- saves lever position data in buffer
-	- turns gioal cue on and off, sets trialPosition and breakPos for entering goal area
+	- turns goal cue on and off, sets trialPosition and breakPos for entering goal area
 */
 
-/* *********************** Forward declare functions used by thread so we can refer to them in constructor *************************/
+/* *********************** Forward declaration of non-class functions used by thread *************************/
 int lever_init (void * initDataP, void *  &taskDataP);
 void lever_Hi (void * taskData);
 void leverThread_delTask (void * taskData);
@@ -43,7 +68,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask);
 
 /* ***************** Init Data for lever Task ********************************/
 typedef struct leverThreadInitStruct{
-	uint8_t * positionData;			// array for inputs from quadrature decoder. 
+	uint16_t * positionData;			// array for inputs from quadrature decoder. 
 	unsigned int nPositionData; 	// number of points in array,
 	bool isCued;					// true if lever task is started after an external cue
 	unsigned int nToGoalOrCircular;	// max points to get into goal area for cued trials, number of points for circular buffer at start, for uncued trials
@@ -57,19 +82,19 @@ typedef struct leverThreadInitStruct{
 /* ********************************************** Custom Data Struct for Lever Task********************************************************/
 typedef struct leverThreadStruct{
 	// lever position data
-	uint8_t * positionData;		// array for inputs from quadrature decoder, array passed in from calling function
+	uint16_t * positionData;		// array for inputs from quadrature decoder, array passed in from calling function
 	unsigned int nPositionData; // number of points in lever position array, this limits maximum amount of time we can set nHoldTicks
 	unsigned int iPosition; 		// current place in position array
 	bool isReversed;			// true if polarity of quadrature decoder is reversed
-	uint8_t leverPosition; 		// current lever position in ticks of the lever, 0 -255, dumped here for easy access during a trial
+	uint16_t leverPosition; 		// current lever position in ticks of the lever, 0 -255, dumped here for easy access during a trial
 	// Task control
 	bool isCued;				// true if we are running in cued mode, false for uncued mode
 	unsigned int breakPos;		// iPosition where lever crossed into goal area. Important for uncued trials
 	unsigned int nToFinish;		// tick position where trial is finished, set by pulsedThread according to nCircularOrToGoal and nHoldTicks
 	unsigned int nToGoalOrCircular;	// max points to get into goal area for cued trials, number of points for circular buffer at start, for uncued trials
 	// fields for task difficulty, lever position and time
-	uint8_t goalBottom;			// bottom of Goal area
-	uint8_t goalTop;			// top of Goal area
+	uint16_t goalBottom;			// bottom of Goal area
+	uint16_t goalTop;			// top of Goal area
 	unsigned int nHoldTicks;	// number of ticks lever needs to be held, after getting to goal area. nToGoalOrCircular + nHoldTicks must be less than nPositionData
 	// tracking trial progress. trialPos is positive for good trials, negative when the mouse fails
 	// trialPos is 1 when trial starts
@@ -81,17 +106,22 @@ typedef struct leverThreadStruct{
 	// fields for force data
 	int constForce;				// value for constant force applied to lever when no force perturbation is happening
 	int perturbForce;			// additional force used for perturbing
-	int * forceData;			// array for output to DAC for force output
+	int * forceData;			// array for output to DAC or to PWM for force output
 	unsigned int nForceData;	// number of points in force data array, we always use all of them, so transition time is constant
 	unsigned int iForce;		// current position in force array
 	unsigned int forceStartPos;	// position in decoder input array to start force output - set forceStartPos to end of decoder array for no force output and we never reach it
 	// hardware access
-	int i2c_fd; 				// file descriptor for i2c used by mcp4725 DAC
 	uint8_t spi_wpData [5];		 // buffer for spi read/write - 5 bytes is as big as we need it to be
 	SimpleGPIO_thread * goalCuer;// simpleGPIO thread to give a cue when in goal range. 
+#if FORCEMODE == AOUT
+	int i2c_fd; 				// file descriptor for i2c used by mcp4725 DAC
+#elif FORCEMODE == PWM
+	ptPWMStructPtr pwmPtr;		// pointer to PWM control struct, if using PWM from PWM channel 1 on GPIO 18
+#endif
 	int goalMode;				// for goal cuer, 1 for setHigh, setLow, 2 for startTrain, stopTrain
 	
 }leverThreadStruct, *leverThreadStructPtr;
+
 
 
 /* ******************************* LS7366R quadrature decoder constants******************************/
@@ -113,17 +143,13 @@ const uint8_t kQD_THREEBYTE_COUNTER = 0x01;
 const uint8_t kQD_TWOBYTE_COUNTER = 0x02;
 const uint8_t kQD_ONEBYTE_COUNTER = 0x03;
 
+#if FORCEMODE == AOUT
 /* *************************** MCP4725 DAC constants  *******************************************/
 const int kDAC_WRITEDAC = 0x040; // write to the DAC 
 const int kDAC_WRITEEPROM = 0x60; // to the EPROM
 const int kDAC_ADDRESS = 0x62; 	// i2c address to use
 
-
-/* Lever recording frequency, we use this to calculate length of array needed for however long we want to record*/
-const float kLEVER_FREQ = 250;
-const unsigned int kFORCE_ARRAY_SIZE = 100;
-
-/* ************************************************constants for settings **********************************/
+/* ************************************************ mnemonic constants for settings **********************************/
 const int kGOALMODE_NONE =0;	// no goal cuer
 const int kGOALMODE_HILO =1;	// goal cuer  that sets hi and lo, as for an LED
 const int kGOALMODE_TRAIN =2;	// goal cuer that turns an infinite train ON and OFF, as for a tone

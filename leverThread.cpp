@@ -10,31 +10,30 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	
 	// ensure wiringpi is setup for GPIO
 	wiringPiSetupGpio();
-	
+#if FORCEMODE == AOUT
 	// initialize the DAC - further calls to wiringPi DO use the file descriptor, so save i2c file descriptor
 	taskData->i2c_fd = wiringPiI2CSetup(kDAC_ADDRESS);
-	if (taskData->i2c_fd <= 0){
+	if (taskData->i2c_fd  <= 0){
 		return 1;
 	}
-	wiringPiI2CWrite (taskData->i2c_fd, kDAC_WRITEDAC); // initialize in DAC mode, not EEPROM
-	
+	wiringPiI2CWrite (takData->i2c_fd, kDAC_WRITEDAC);
+#endif
 	// initialize quad decoder - it returns spi file descriptor, but further calls to wiringPi don't use it
 	if (wiringPiSPISetup(kQD_CS_LINE, kQD_CLOCK_FREQ) == -1){
 		return 2;
 	}
-	// initialize the quadrature decoder
 	// clear status
 	taskData->spi_wpData[0] = kQD_CLEAR_STATUS;
 	wiringPiSPIDataRW(kQD_CS_LINE, taskData->spi_wpData, 1);
 	// clear counter
 	taskData->spi_wpData[0] = kQD_CLEAR_COUNTER;
 	wiringPiSPIDataRW(kQD_CS_LINE, taskData->spi_wpData, 1);
-	// set write mode to 4x (highest resolution) and 1 byteMode (e.g., 1 byte = 0-255 before counter rolls over)
+	// set write mode to 4x (highest resolution) and 2 byteMode (e.g., 2 bytes = 0-65535 before counter rolls over)
 	taskData->spi_wpData[0] = kQD_WRITE_MODE0;
 	taskData->spi_wpData[1] = kQD_FOURX_COUNT;
 	wiringPiSPIDataRW (kQD_CS_LINE, taskData->spi_wpData, 2);
 	taskData->spi_wpData [0] = kQD_WRITE_MODE1;
-	taskData->spi_wpData [1] =kQD_ONEBYTE_COUNTER;
+	taskData->spi_wpData [1] =kQD_TWOBYTE_COUNTER;
 	wiringPiSPIDataRW (kQD_CS_LINE, taskData->spi_wpData, 2);
 	
 	// make a goal cuer
@@ -85,12 +84,13 @@ void lever_Hi (void * taskData){
 	// read quadrature decoder into position data, and into leverPosition, so we can get lever position easily during a trial
 	leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
 	leverTaskPtr->spi_wpData[1] = 0;
-	wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
-	uint8_t leverPosition;
+	leverTaskPtr->spi_wpData[2] = 0;
+	wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 3);
+	uint16_t leverPosition;
 	if (leverTaskPtr -> isReversed){
-		leverPosition = 256 - leverTaskPtr->spi_wpData[1];
+		leverPosition = 65536 - (256 * leverTaskPtr->spi_wpData[1]  + leverTaskPtr->spi_wpData[2]);
 	}else{
-		leverPosition = leverTaskPtr->spi_wpData[1];
+		leverPosition = 256 * leverTaskPtr->spi_wpData[1] + leverTaskPtr->spi_wpData[2];
 	}
 	leverTaskPtr->leverPosition= leverPosition;
 	// this if statement is needed for un-cued trials, which are infinite trains
@@ -120,7 +120,9 @@ void lever_Hi (void * taskData){
 		// check for seting force
 		if ((leverTaskPtr->iPosition  >= leverTaskPtr->forceStartPos) && (leverTaskPtr->iForce < leverTaskPtr->nForceData)){
 			int leverForce =leverTaskPtr->forceData[leverTaskPtr->iForce] ;
+#if FORCEMODE == AOUT
 			wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverForce  >> 8) & 0x0F, leverForce  & 0xFF);
+#endif
 			leverTaskPtr->iForce +=1;
 		}
 		// increment position in lever position array, before we set it back to 0 for un-cued trial 
@@ -155,8 +157,9 @@ void lever_Hi (void * taskData){
 			leverTaskPtr->trialComplete =true;
 			// set lever to constant force, in case this was a perturb force trial
 			int leverForce =leverTaskPtr->constForce;
-			//wiringPiI2CWrite (leverTaskPtr->i2c_fd, kDAC_WRITEDAC); // DAC mode, not EEPROM
+#if FORCEMODE == AOUT
 			wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverForce  >> 8) & 0x0F, leverForce  & 0xFF);
+#endif
 			// make sure goal cuer is turned off
 			if (leverTaskPtr->goalCuer != nullptr){
 				if (leverTaskPtr->goalMode == kGOALMODE_HILO){
@@ -179,8 +182,9 @@ void leverThread_delTask (void * taskData){
 
 
 /* ************************** zero Lever **********************************************
-mod data is int, 1 for  zeroing encoder at ralied position, vs 0 for returning lever to existing set start position (if possible)
- 0 for taking the lever back to zero posiiton, 1 for  rezeroing the encoder as well as railing it,  */
+mod data is int, 0 for returning lever to existing set start position (if possible) or 1 for railing lever and
+setting a new zeroed position
+*/
 int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 	
 	leverThreadStructPtr leverTaskPtr = (leverThreadStructPtr) theTask->taskData;
@@ -193,31 +197,34 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 	int dacBase = leverTaskPtr->constForce;
 	float dacIncr = (3500 - dacBase)/20;
 	int dacOut;
-	uint8_t prevLeverPos;
-	uint8_t leverPos;
+	uint16_t prevLeverPos;
+	uint16_t leverPos;
 	int ii;
 	int returnVal =0;
 	if (mode == 0){ // 0 for just returning the lever to 0 position
 		leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
 		leverTaskPtr->spi_wpData[1] = 0;
-		wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
-		
+		leverTaskPtr->spi_wpData[2] = 0;
+		wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 3);
 		if (leverTaskPtr -> isReversed){
-			leverPos = 256 - leverTaskPtr->spi_wpData[1];
+			leverPos = 65536 - ( 256 * leverTaskPtr->spi_wpData[1] + leverTaskPtr->spi_wpData[2]);
 		}else{
-			leverPos = leverTaskPtr->spi_wpData[1];
+			leverPos = 256 * leverTaskPtr->spi_wpData[1] + leverTaskPtr->spi_wpData[2];
 		}
-		for (ii=0; (ii < 20 && (leverPos > 2 && leverPos < 253)); ii +=1){
+		for (ii=0; (ii < 20 && (leverPos > 10 && leverPos < 65525)); ii +=1){
 			dacOut = (uint16_t) (dacBase + (ii * dacIncr));
+#if FORCEMODE == AOUT
 			wiringPiI2CWriteReg8 (leverTaskPtr->i2c_fd, (dacOut  >> 8) & 0x0F, dacOut & 0xFF);
+#endif
 			nanosleep (&sleeper, NULL) ;
 			leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
 			leverTaskPtr->spi_wpData[1] = 0;
-			wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 2);
+			leverTaskPtr->spi_wpData[2] = 0;
+			wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 3);
 			if (leverTaskPtr -> isReversed){
-				leverPos = 256 - leverTaskPtr->spi_wpData[1];
+				leverPos = 65536 - (256 * leverTaskPtr->spi_wpData[1] +  leverTaskPtr->spi_wpData[2]) ;
 			}else{
-				leverPos = leverTaskPtr->spi_wpData[1];
+				leverPos = 256 * leverTaskPtr->spi_wpData[1] +  leverTaskPtr->spi_wpData[2] ;
 			}
 		}
 		if (ii < 20){

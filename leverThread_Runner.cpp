@@ -44,7 +44,7 @@ int main(int argc, char **argv){
 	printf ("leverThread reporting\n");
 	uint8_t * positionData = new uint8_t [400];
 
-	leverThread * myLeverThread= leverThread::leverThreadMaker (positionData, 400, 0, 23, 0);
+	leverThread * myLeverThread= leverThread::leverThreadMaker (positionData, 400, 0, 23, 0, 19, 1600);
 	printf ("leverThread made thread\n");
 	//myLeverThread->modTrainLength(400);
 	myLeverThread->startInfiniteTrain();
@@ -57,4 +57,3 @@ int main(int argc, char **argv){
 	}
 	printf ("\n");
 }
-	
