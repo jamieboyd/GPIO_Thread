@@ -1,5 +1,5 @@
 #include "PWM_thread.h"
-
+#include "GPIOlowlevel.h"
 /* ********************** non-class methods used from pulsed Thread *************************************
 
  ********************* PWM Initialization callback function ****************************************
@@ -898,11 +898,6 @@ int PWM_thread::addChannel (int channel, int audioOnly, int PWMmode, int polarit
 			offState2 = offState;
 		}
 	}
-	/*
-	int * useFIFOVal = new int;
-	* useFIFOVal = useFIFO;
-	modCustom (&ptPWM_setFIFOCallback, (void *) useFIFOVal, 0);
-	*/
 	return 0;
 }
 
@@ -925,10 +920,7 @@ Last Modified:
 2018/08/08 by Jamie Boyd - Initial Version  */
 int PWM_thread::setEnable (int enableState, int channel, int isLocking){
 	
-	int * setEnablePtr;
-	
 	ptPWMStructPtr taskDataPtr = (ptPWMStructPtr ) this->getTaskData ();
-
 	int newChan1State;
 	int newChan2State ;
 	if (enableState ){ // enabling, things enabled already stay enabled

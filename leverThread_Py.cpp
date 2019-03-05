@@ -32,12 +32,12 @@ static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 		PyErr_SetString (PyExc_RuntimeError,"Error getting C array from bufferObj from Python array");
 		return NULL;
 	}
-	if (strcmp (buffer.format, "B") != 0){
-		PyErr_SetString (PyExc_RuntimeError, "Error for bufferObj: data type of Python array is not unsigned byte");
+	if (strcmp (buffer.format, "H") != 0){
+		PyErr_SetString (PyExc_RuntimeError, "Error for bufferObj: data type of Python array is not unsigned short");
 		return NULL;
 	}
 	// make a leverThread object
-	leverThread * leverThreadPtr = leverThread::leverThreadMaker (static_cast <uint8_t *>(buffer.buf), (unsigned int) (buffer.len/buffer.itemsize), isCued,nCircularOrToGoal, isReversed, goalCuerPin,cuerFreq );
+	leverThread * leverThreadPtr = leverThread::leverThreadMaker (static_cast <uint16_t *>(buffer.buf), (unsigned int) (buffer.len/buffer.itemsize), isCued,nCircularOrToGoal, isReversed, goalCuerPin,cuerFreq );
 	
 	if (leverThreadPtr == nullptr){
 		PyErr_SetString (PyExc_RuntimeError, "leverThreadMaker was not able to make a leverThread object");
@@ -160,7 +160,7 @@ static PyObject* py_leverThread_setHoldParams (PyObject *self, PyObject *args){
 	uint8_t goalBottom;
 	uint8_t goalTop;
 	unsigned int nHoldTicks;
-	if (!PyArg_ParseTuple(args,"OBBI", &PyPtr, &goalBottom, &goalTop, &nHoldTicks)) {
+	if (!PyArg_ParseTuple(args,"OHHI", &PyPtr, &goalBottom, &goalTop, &nHoldTicks)) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object, goalBottom, goalTop, and holdTicks");
 		return NULL;
 	}
@@ -171,7 +171,7 @@ static PyObject* py_leverThread_setHoldParams (PyObject *self, PyObject *args){
 
 static PyObject* py_leverThread_getLeverPos(PyObject *self, PyObject *PyPtr) {
 	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
-	return Py_BuildValue("B", leverThreadPtr->getLeverPos());
+	return Py_BuildValue("H", leverThreadPtr->getLeverPos());
 }
 static PyObject* py_leverThread_abortUncuedTrial(PyObject *self, PyObject *PyPtr) {
 	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));

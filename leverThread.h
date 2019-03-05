@@ -15,13 +15,13 @@
  *  can be set by PWM from the Pi's PWM controller, channel 1 on GPIO 18, 
  * or analog output from MCP4725 analog out chip on i2c bus.
  * Set FORCEMODE defined below to either AOUT or PWM and recompile the code
- * The Maxon motor driver must be configured appropriately for analog or PWM control
+ * If using a Maxon motor driver, it must be configured appropriately for analog or PWM control
  * The mcp4725 ranges from 0 to 4095, scaled from 0 to 5V, so if using PWM, use a range 
  * of 4095 to match it. PWM frequency should be set to 1kHz. */
 #define AOUT 0
 #define PWM 1
-// set FORCEMODE to PWM or AOUT
-#define  FORCEMODE AOUT
+/* ************************************ define FORCEMODE to PWM or AOUT *************************************************/
+#define  FORCEMODE PWM
 #if FORCEMODE == PWM
 #include "PWM_thread.h"
 #elif FORCEMODE == AOUT
@@ -35,29 +35,41 @@
 const float kLEVER_FREQ = 250;
 const unsigned int kFORCE_ARRAY_SIZE = 100;
 
-/* The 3 parts to running the lever pulling task  
-1) The program calling the leverThread object 
-	- may be in Python through a Python C++ module that provides an interface to a leverThread object
-	- makes an array of unsigned 2 byte ints to hold lever position data
-	- makes the leverThread object, passing it a pointer to the lever position data, plus some size info
-	- sets constant force, sets lever hold params, sets force params if doing force
-	-starts a trial, first doing a cue for cued trials. Suppose we could have the leverthread do the cuing, as it does for goal cuing
-	- checks a trial to see if it is done. For an uncued trial, this could be while. 
-	- is responsible for saving the lever position data in the array before starting another trial
-	
-2) the leverThread object
-	- makes a leverThread struct 
-	- receives data from calling program
-	- makes the array for leverForce data and passes a pointer to that data to the leverThread struct shared with the thread function
-	- writes configuration data to leverThreadStruct, uses pulsedThread functions to signal thread
+/* ************************************************ mnemonic constants for setting goal cue **********************************/
+const int kGOALMODE_NONE =0;	// no goal cuer
+const int kGOALMODE_HILO =1;	// goal cuer  that sets hi and lo, as for an LED
+const int kGOALMODE_TRAIN =2;	// goal cuer that turns an infinite train ON and OFF, as for a tone
 
-	
-3) the threaded function that works with leverThreadStruct
-	- timing controlled by pulsedThread superclass. Can be Trian or Infinite train with circular buffer
-	- does the hardware stuff, reading the encoder and outputting force
-	- saves lever position data in buffer
-	- turns goal cue on and off, sets trialPosition and breakPos for entering goal area
-*/
+/* ******************************* LS7366R quadrature decoder constants ******************************/
+// SPI settings
+const int kQD_CS_LINE  =  0;  // CS0 on pi
+const int kQD_CLOCK_FREQ = 10000000;  // 10Mhz
+// LS7366R device-specific constants 
+const uint8_t kQD_CLEAR_COUNTER = 0x20;
+const uint8_t kQD_CLEAR_STATUS = 0x30;
+const uint8_t kQD_READ_COUNTER = 0x60;
+const uint8_t kQD_READ_STATUS = 0x70;
+const uint8_t kQD_WRITE_MODE0 = 0x88;
+const uint8_t kQD_WRITE_MODE1 = 0x90;
+const uint8_t kQD_ONEX_COUNT = 0x01;
+const uint8_t kQD_TWOX_COUNT = 0x02;
+const uint8_t kQD_FOURX_COUNT = 0x03;
+const uint8_t kQD_FOURBYTE_COUNTER = 0x00;
+const uint8_t kQD_THREEBYTE_COUNTER = 0x01;
+const uint8_t kQD_TWOBYTE_COUNTER = 0x02;
+const uint8_t kQD_ONEBYTE_COUNTER = 0x03;
+
+#if FORCEMODE == AOUT
+/* *************************** MCP4725 DAC constants  *******************************************/
+const int kDAC_WRITEDAC = 0x040; // write to the DAC 
+const int kDAC_WRITEEPROM = 0x60; // to the EPROM
+const int kDAC_ADDRESS = 0x62; 	// i2c address to use
+#elif FORCEMODE == PWM
+const unsigned int PWM_RANGE = 4095;
+const float PWM_FREQ = 1000; 
+#endif
+
+
 
 /* *********************** Forward declaration of non-class functions used by thread *************************/
 int lever_init (void * initDataP, void *  &taskDataP);
@@ -68,7 +80,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask);
 
 /* ***************** Init Data for lever Task ********************************/
 typedef struct leverThreadInitStruct{
-	uint16_t * positionData;			// array for inputs from quadrature decoder. 
+	uint16_t * positionData;		// array for inputs from quadrature decoder. 
 	unsigned int nPositionData; 	// number of points in array,
 	bool isCued;					// true if lever task is started after an external cue
 	unsigned int nToGoalOrCircular;	// max points to get into goal area for cued trials, number of points for circular buffer at start, for uncued trials
@@ -116,43 +128,16 @@ typedef struct leverThreadStruct{
 #if FORCEMODE == AOUT
 	int i2c_fd; 				// file descriptor for i2c used by mcp4725 DAC
 #elif FORCEMODE == PWM
-	ptPWMStructPtr pwmPtr;		// pointer to PWM control struct, if using PWM from PWM channel 1 on GPIO 18
+	// calculated register addresses
+	volatile unsigned int * ctlRegister; // address of PWM control register
+	volatile unsigned int * dataRegister1; // address of register to write data to for channel 1
+	float setFrequency;
+	unsigned int pwmRange;
 #endif
 	int goalMode;				// for goal cuer, 1 for setHigh, setLow, 2 for startTrain, stopTrain
 	
 }leverThreadStruct, *leverThreadStructPtr;
 
-
-
-/* ******************************* LS7366R quadrature decoder constants******************************/
-// SPI settings
-const int kQD_CS_LINE  =  0;  // CS0 on pi
-const int kQD_CLOCK_FREQ = 10000000;  // 10Mhz
-// LS7366R device-specific constants 
-const uint8_t kQD_CLEAR_COUNTER = 0x20;
-const uint8_t kQD_CLEAR_STATUS = 0x30;
-const uint8_t kQD_READ_COUNTER = 0x60;
-const uint8_t kQD_READ_STATUS = 0x70;
-const uint8_t kQD_WRITE_MODE0 = 0x88;
-const uint8_t kQD_WRITE_MODE1 = 0x90;
-const uint8_t kQD_ONEX_COUNT = 0x01;
-const uint8_t kQD_TWOX_COUNT = 0x02;
-const uint8_t kQD_FOURX_COUNT = 0x03;
-const uint8_t kQD_FOURBYTE_COUNTER = 0x00;
-const uint8_t kQD_THREEBYTE_COUNTER = 0x01;
-const uint8_t kQD_TWOBYTE_COUNTER = 0x02;
-const uint8_t kQD_ONEBYTE_COUNTER = 0x03;
-
-#if FORCEMODE == AOUT
-/* *************************** MCP4725 DAC constants  *******************************************/
-const int kDAC_WRITEDAC = 0x040; // write to the DAC 
-const int kDAC_WRITEEPROM = 0x60; // to the EPROM
-const int kDAC_ADDRESS = 0x62; 	// i2c address to use
-
-/* ************************************************ mnemonic constants for settings **********************************/
-const int kGOALMODE_NONE =0;	// no goal cuer
-const int kGOALMODE_HILO =1;	// goal cuer  that sets hi and lo, as for an LED
-const int kGOALMODE_TRAIN =2;	// goal cuer that turns an infinite train ON and OFF, as for a tone
 
 /* ********************* leverThread class extends pulsedThread ****************
 Works the motorized lever for the leverPulling task 
@@ -164,7 +149,7 @@ class leverThread : public pulsedThread{
 	/* integer param constructor: delay =0, duration = 5000 (200 hz), nThreadPulseOrZero = 0 for infinite train for uncued, with circular buffer, or the size of the array, for cued trials */
 	leverThread (void * initData, unsigned int nThreadPulsesOrZero, int &errCode) : pulsedThread ((unsigned int) 0, (unsigned int)(1E06/kLEVER_FREQ), (unsigned int) nThreadPulsesOrZero, initData, &lever_init, nullptr, &lever_Hi, 2, errCode) {
 	};
-	static leverThread * leverThreadMaker (uint8_t * positionData, unsigned int nPositionData, bool isCued, unsigned int nCircularOrToGoal,  int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero) ;
+	static leverThread * leverThreadMaker (uint16_t * positionData, unsigned int nPositionData, bool isCued, unsigned int nCircularOrToGoal,  int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero);
 	// constant force, setting, geting, applying a force
 	void setConstForce (int theForce);
 	int getConstForce (void);
@@ -174,7 +159,7 @@ class leverThread : public pulsedThread{
 	void setPerturbForce(int perturbForce);
 	void setPerturbStartPos(unsigned int perturbStartPos);
 	void setPerturbOff (void);
-	void setHoldParams (uint8_t goalBottomP, uint8_t goalTopP, unsigned int nHoldTicksP);
+	void setHoldParams (uint16_t goalBottomP, uint16_t goalTopP, unsigned int nHoldTicksP);
 	int zeroLever (int mode, int isLocking);
 	
 	void startTrial(void);
@@ -184,7 +169,7 @@ class leverThread : public pulsedThread{
 	bool isCued (void);
 	void setCue (bool isCuedP);
 
-	uint8_t getLeverPos (void);
+	uint16_t getLeverPos (void);
 	protected:
 	leverThreadStructPtr taskPtr;
 };

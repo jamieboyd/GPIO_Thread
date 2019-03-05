@@ -42,16 +42,17 @@ Last modified :
 int main(int argc, char **argv){
 	
 	printf ("leverThread reporting\n");
-	uint8_t * positionData = new uint8_t [400];
+	uint16_t * positionData = new uint16_t [400];
 
 	leverThread * myLeverThread= leverThread::leverThreadMaker (positionData, 400, 0, 23, 0, 19, 1600);
 	printf ("leverThread made thread\n");
 	//myLeverThread->modTrainLength(400);
 	myLeverThread->startInfiniteTrain();
 	printf ("leverThread called startTrain\n");
-	//myLeverThread->waitOnBusy (3.0);
+	myLeverThread->waitOnBusy (3.0);
 	//printf ("leverThread waited on busy.\n");
 	printf ("data=");
+	
 	for (unsigned int i =0; i < 400; i +=1){ 
 		printf ("%i, ", positionData [i]);
 	}
