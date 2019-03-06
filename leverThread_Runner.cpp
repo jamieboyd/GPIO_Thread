@@ -1,9 +1,10 @@
 /* ************************ Runs the lever_thread for testing purposes ***********************************
 
 Compile like this:
-g++ -O3 -std=gnu++11 -Wall -lpulsedThread -lwiringPi GPIOlowlevel.cpp SimpleGPIO_thread.cpp leverThread.cpp leverThread_Runner.cpp -o leverThread
+g++ -O3 -std=gnu++11 -Wall -lpulsedThread -lwiringPi GPIOlowlevel.cpp SimpleGPIO_thread.cpp PWM_thread.cpp leverThread.cpp leverThread_Runner.cpp -o leverThread
 
 last modified:
+2019/03/05 by Jamie Boyd - lever positions now 2 byte signed
 2018/03/08 by Jamie Boyd - started lever_threadRunner */
 
 #include "leverThread.h"
@@ -38,23 +39,25 @@ Last modified :
 } 
 
 
-
 int main(int argc, char **argv){
 	
-	printf ("leverThread reporting\n");
-	uint16_t * positionData = new uint16_t [400];
+	int16_t * positionData = new int16_t [1000];
 
-	leverThread * myLeverThread= leverThread::leverThreadMaker (positionData, 400, 0, 23, 0, 19, 1600);
-	printf ("leverThread made thread\n");
-	//myLeverThread->modTrainLength(400);
-	myLeverThread->startInfiniteTrain();
-	printf ("leverThread called startTrain\n");
-	myLeverThread->waitOnBusy (3.0);
-	//printf ("leverThread waited on busy.\n");
-	printf ("data=");
+	leverThread * myLeverThread= leverThread::leverThreadMaker (positionData, 1000, kTRIAL_CUED, 250, kLEVER_DIR_NORMAL, 19, 6000);
 	
-	for (unsigned int i =0; i < 400; i +=1){ 
-		printf ("%i, ", positionData [i]);
+	myLeverThread->zeroLever (0,0);	
+	myLeverThread->setHoldParams (100, 800, 250);
+	printf ("leverThread GO\n");
+	myLeverThread->startTrial();
+	int trialCode;
+	unsigned int goalEntryPos;
+	
+	while (myLeverThread->checkTrial(trialCode, goalEntryPos) == false){
+		
+	}
+	printf("goal entry pos = %d; trial code = %i\n", goalEntryPos, trialCode);
+	for (unsigned int ii =0; ii < 1000; ii +=1){ 
+		printf ("%i, ", positionData[ii]);
 	}
 	printf ("\n");
 }

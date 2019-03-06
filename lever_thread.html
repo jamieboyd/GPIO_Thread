@@ -9,8 +9,9 @@
 <pre>
 The 3 parts to running the lever pulling task and how they coordinate are as follows:
 1) The program calling the leverThread object: 
+	- sets any GPIO lines needed for control of motor enable and direction
 	- may be in Python through the Python C++ module that provides an interface to a leverThread object
-	- makes an array of unsigned 2 byte ints to hold lever position data
+	- makes an array of signed 2 byte ints to hold lever position data - with 2 bytes we can use signed ints and still cover the range, so negative slippage is no biggie
 	- makes the leverThread object, passing it a pointer to the lever position data, plus some size info
 	- sets constant force, sets lever hold params, sets force params if doing force
 	- starts a trial, first doing a cue for cued trials. Suppose we could have the leveThread do the cuing, as it does for goal cuing
@@ -29,7 +30,9 @@ The 3 parts to running the lever pulling task and how they coordinate are as fol
 	- does the hardware stuff, reading the encoder and outputting force
 	- saves lever position data in buffer
 	- turns goal cue on and off, sets trialPosition and breakPos for entering goal area
-</pre>
+</pre></p>
+<p>
+
 <hr>
 <a href = "./GPIO_Thread.html">Back to GPIO Thread index</a>
 </body>

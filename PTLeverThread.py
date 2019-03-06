@@ -9,7 +9,7 @@ class PTLeverThread ():
     PTLeverThread controls a lever used for the AutoHeadFix program
     """
     def __init__ (self, posBufSizeP, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP):
-        self.posBuffer = array.array('H', [0]*posBufSizeP)
+        self.posBuffer = array.array('h', [0]*posBufSizeP)
         self.leverThread = ptLeverThread.new (self.posBuffer, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP)
         self.posBufSize = posBufSizeP
         if isCuedP:

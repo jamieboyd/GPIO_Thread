@@ -35,11 +35,14 @@
 const float kLEVER_FREQ = 250;
 const unsigned int kFORCE_ARRAY_SIZE = 100;
 
-/* ************************************************ mnemonic constants for setting goal cue **********************************/
-const int kGOALMODE_NONE =0;	// no goal cuer
-const int kGOALMODE_HILO =1;	// goal cuer  that sets hi and lo, as for an LED
-const int kGOALMODE_TRAIN =2;	// goal cuer that turns an infinite train ON and OFF, as for a tone
-
+/* ************************************************ mnemonic defines for setting goal cue **********************************/
+#define kGOALMODE_NONE   0	// no goal cuer
+#define kGOALMODE_HILO   1	// goal cuer  that sets hi and lo, as for an LED
+#define kGOALMODE_TRAIN  2	// goal cuer that turns an infinite train ON and OFF, as for a tone
+#define kLEVER_DIR_NORMAL    0
+#define kLEVER_DIR_REVERSED  1
+#define kTRIAL_UNCUED    0
+#define kTRIAL_CUED      1
 /* ******************************* LS7366R quadrature decoder constants ******************************/
 // SPI settings
 const int kQD_CS_LINE  =  0;  // CS0 on pi
@@ -78,10 +81,12 @@ void leverThread_delTask (void * taskData);
 int leverThread_zeroLeverCallback (void * modData, taskParams * theTask);
 
 
-/* ***************** Init Data for lever Task ********************************/
+/* ***************** Init Data for lever Task ********************************
+ * Last Modified:
+ * 2019/03/05 by Jamie Boyd - made quad decoder array 2 bytes, signed integers */
 typedef struct leverThreadInitStruct{
-	uint16_t * positionData;		// array for inputs from quadrature decoder. 
-	unsigned int nPositionData; 	// number of points in array,
+	int16_t * positionData;			// array for signed two byte values to hold data from quadrature decoder.
+	unsigned int nPositionData; 	// number of points in positionData array,
 	bool isCued;					// true if lever task is started after an external cue
 	unsigned int nToGoalOrCircular;	// max points to get into goal area for cued trials, number of points for circular buffer at start, for uncued trials
 	bool isReversed;				// true if polarity of quadrature decoder is reversed. Motor force is not reversed.  reverse it with Escon studio
@@ -94,19 +99,19 @@ typedef struct leverThreadInitStruct{
 /* ********************************************** Custom Data Struct for Lever Task********************************************************/
 typedef struct leverThreadStruct{
 	// lever position data
-	uint16_t * positionData;		// array for inputs from quadrature decoder, array passed in from calling function
+	int16_t * positionData;		// array for inputs from quadrature decoder, array passed in from calling function
 	unsigned int nPositionData; // number of points in lever position array, this limits maximum amount of time we can set nHoldTicks
 	unsigned int iPosition; 		// current place in position array
 	bool isReversed;			// true if polarity of quadrature decoder is reversed
-	uint16_t leverPosition; 		// current lever position in ticks of the lever, 0 -255, dumped here for easy access during a trial
+	int16_t leverPosition; 		// current lever position in ticks of the lever, 0 -255, dumped here for easy access during a trial
 	// Task control
 	bool isCued;				// true if we are running in cued mode, false for uncued mode
 	unsigned int breakPos;		// iPosition where lever crossed into goal area. Important for uncued trials
 	unsigned int nToFinish;		// tick position where trial is finished, set by pulsedThread according to nCircularOrToGoal and nHoldTicks
 	unsigned int nToGoalOrCircular;	// max points to get into goal area for cued trials, number of points for circular buffer at start, for uncued trials
 	// fields for task difficulty, lever position and time
-	uint16_t goalBottom;			// bottom of Goal area
-	uint16_t goalTop;			// top of Goal area
+	int16_t goalBottom;			// bottom of Goal area
+	int16_t goalTop;			// top of Goal area
 	unsigned int nHoldTicks;	// number of ticks lever needs to be held, after getting to goal area. nToGoalOrCircular + nHoldTicks must be less than nPositionData
 	// tracking trial progress. trialPos is positive for good trials, negative when the mouse fails
 	// trialPos is 1 when trial starts
@@ -128,7 +133,7 @@ typedef struct leverThreadStruct{
 #if FORCEMODE == AOUT
 	int i2c_fd; 				// file descriptor for i2c used by mcp4725 DAC
 #elif FORCEMODE == PWM
-	// calculated register addresses
+	// calculated register addresses for direct PWM control
 	volatile unsigned int * ctlRegister; // address of PWM control register
 	volatile unsigned int * dataRegister1; // address of register to write data to for channel 1
 	float setFrequency;
@@ -142,6 +147,7 @@ typedef struct leverThreadStruct{
 /* ********************* leverThread class extends pulsedThread ****************
 Works the motorized lever for the leverPulling task 
 last modified:
+2019/03/05 by Jamie Boyd - modifying for PWM force control, maiking lever position data 2 byte signed ionts instead of 1 bytse unsigned
 2018/03/28 by Jamie Boyd - cleaning things up, adding comments, testing
 2018/02/08 by Jamie Boyd - initial verison */
 class leverThread : public pulsedThread{
@@ -149,7 +155,7 @@ class leverThread : public pulsedThread{
 	/* integer param constructor: delay =0, duration = 5000 (200 hz), nThreadPulseOrZero = 0 for infinite train for uncued, with circular buffer, or the size of the array, for cued trials */
 	leverThread (void * initData, unsigned int nThreadPulsesOrZero, int &errCode) : pulsedThread ((unsigned int) 0, (unsigned int)(1E06/kLEVER_FREQ), (unsigned int) nThreadPulsesOrZero, initData, &lever_init, nullptr, &lever_Hi, 2, errCode) {
 	};
-	static leverThread * leverThreadMaker (uint16_t * positionData, unsigned int nPositionData, bool isCued, unsigned int nCircularOrToGoal,  int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero);
+	static leverThread * leverThreadMaker (int16_t * positionData, unsigned int nPositionData, bool isCued, unsigned int nCircularOrToGoal,  int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero);
 	// constant force, setting, geting, applying a force
 	void setConstForce (int theForce);
 	int getConstForce (void);
@@ -159,9 +165,8 @@ class leverThread : public pulsedThread{
 	void setPerturbForce(int perturbForce);
 	void setPerturbStartPos(unsigned int perturbStartPos);
 	void setPerturbOff (void);
-	void setHoldParams (uint16_t goalBottomP, uint16_t goalTopP, unsigned int nHoldTicksP);
-	int zeroLever (int mode, int isLocking);
-	
+	void setHoldParams (int16_t goalBottomP, int16_t goalTopP, unsigned int nHoldTicksP);
+	int zeroLever (int checkZero, int isLocking); // if checkZero is set, returns 0 if new lever zero is same as old lever zero, else 1 
 	void startTrial(void);
 	bool checkTrial(int &trialCode, unsigned int &goalEntryPos);
 	void doGoalCue (int offOn);
@@ -169,7 +174,7 @@ class leverThread : public pulsedThread{
 	bool isCued (void);
 	void setCue (bool isCuedP);
 
-	uint16_t getLeverPos (void);
+	int16_t getLeverPos (void);
 	protected:
 	leverThreadStructPtr taskPtr;
 };
