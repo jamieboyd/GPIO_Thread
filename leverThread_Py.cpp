@@ -118,6 +118,17 @@ static PyObject* py_leverThread_setPerturbStartPos (PyObject *self, PyObject *ar
 	Py_RETURN_NONE;
 }
 
+static PyObject* py_leverThread_setTicksToGoal (PyObject *self, PyObject *args){
+	  PyObject *PyPtr;
+	  unsigned int ticksToGoal;
+	  if (!PyArg_ParseTuple(args,"OI", &PyPtr, &ticksToGoal)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object and ticks to goal position");
+		return NULL;
+	}
+	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	leverThreadPtr->setTicksToGoal (ticksToGoal);
+	Py_RETURN_NONE;
+}
 
 static PyObject* py_leverThread_startTrial (PyObject *self, PyObject *PyPtr) {
 	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
@@ -219,7 +230,8 @@ static PyMethodDef leverThreadMethods[] = {
   {"getLeverPos",py_leverThread_getLeverPos, METH_O, "(PyPtr) returns the current lever position"},
   {"abortUncuedTrial", py_leverThread_abortUncuedTrial, METH_O, "(PyPtr) aborts an uncued trial."},
   {"isCued", py_leverThread_isCued, METH_O, "(PyPtr) returns truth that trials are cued, not un-cued."},
-  {"setCued", py_leverThread_setCued, METH_VARARGS, "(PyPtr, isCued) sets  trials to be cued, or un-cued."},
+  {"setCued", py_leverThread_setCued, METH_VARARGS, "(PyPtr, isCued) sets trials to be cued, or un-cued."},
+  {"setTicksToGoal", py_leverThread_setTicksToGoal, METH_VARARGS, "(PyPtr, ticksToGoal) sets  ticks given for lever to get into goal position"},
   { NULL, NULL, 0, NULL}
 };
 

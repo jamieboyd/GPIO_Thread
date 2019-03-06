@@ -1,6 +1,12 @@
 
 #ifndef LEVER_THREAD_H
 #define LEVER_THREAD_H
+/* ********** leverThread is for use with the corresponding Stimulator class for AutoHeadFix program *************
+ *  The stimulator class AHF_Stimulator_leverThread will use the leverThread class from the Python module. But you
+ * could include the leverThread class in a real c++ program if you wanted.
+ * The */
+
+
 /* ********************* libraries needed for lever thread ***************************** */
 #include <stdlib.h>
 #include <stdint.h>
@@ -20,6 +26,7 @@
  * of 4095 to match it. PWM frequency should be set to 1kHz. */
 #define AOUT 0
 #define PWM 1
+
 /* ************************************ define FORCEMODE to PWM or AOUT *************************************************/
 #define  FORCEMODE PWM
 #if FORCEMODE == PWM
@@ -47,7 +54,7 @@ const unsigned int kFORCE_ARRAY_SIZE = 100;
 // SPI settings
 const int kQD_CS_LINE  =  0;  // CS0 on pi
 const int kQD_CLOCK_FREQ = 10000000;  // 10Mhz
-// LS7366R device-specific constants 
+// LS7366R device-specific constants  (we only use a few of these)
 const uint8_t kQD_CLEAR_COUNTER = 0x20;
 const uint8_t kQD_CLEAR_STATUS = 0x30;
 const uint8_t kQD_READ_COUNTER = 0x60;
@@ -63,15 +70,15 @@ const uint8_t kQD_TWOBYTE_COUNTER = 0x02;
 const uint8_t kQD_ONEBYTE_COUNTER = 0x03;
 
 #if FORCEMODE == AOUT
-/* *************************** MCP4725 DAC constants  *******************************************/
+/* *************************** MCP4725 DAC constants *******************************************/
 const int kDAC_WRITEDAC = 0x040; // write to the DAC 
 const int kDAC_WRITEEPROM = 0x60; // to the EPROM
 const int kDAC_ADDRESS = 0x62; 	// i2c address to use
 #elif FORCEMODE == PWM
+/* ******************************** PWM Range and Frequency **********************************/
 const unsigned int PWM_RANGE = 4095;
 const float PWM_FREQ = 1000; 
 #endif
-
 
 
 /* *********************** Forward declaration of non-class functions used by thread *************************/
@@ -152,29 +159,31 @@ last modified:
 2018/02/08 by Jamie Boyd - initial verison */
 class leverThread : public pulsedThread{
 	public:
-	/* integer param constructor: delay =0, duration = 5000 (200 hz), nThreadPulseOrZero = 0 for infinite train for uncued, with circular buffer, or the size of the array, for cued trials */
+	//integer param constructor: delay =0, duration = 5000 (200 hz), nThreadPulseOrZero = 0 for infinite train for uncued, with circular buffer, or the size of the array, for cued trials
 	leverThread (void * initData, unsigned int nThreadPulsesOrZero, int &errCode) : pulsedThread ((unsigned int) 0, (unsigned int)(1E06/kLEVER_FREQ), (unsigned int) nThreadPulsesOrZero, initData, &lever_init, nullptr, &lever_Hi, 2, errCode) {
 	};
 	static leverThread * leverThreadMaker (int16_t * positionData, unsigned int nPositionData, bool isCued, unsigned int nCircularOrToGoal,  int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero);
-	// constant force, setting, geting, applying a force
-	void setConstForce (int theForce);
-	int getConstForce (void);
-	void applyForce (int theForce);
-	void applyConstForce (void);
-	// setting perturb force and start positon
-	void setPerturbForce(int perturbForce);
-	void setPerturbStartPos(unsigned int perturbStartPos);
-	void setPerturbOff (void);
-	void setHoldParams (int16_t goalBottomP, int16_t goalTopP, unsigned int nHoldTicksP);
-	int zeroLever (int checkZero, int isLocking); // if checkZero is set, returns 0 if new lever zero is same as old lever zero, else 1 
-	void startTrial(void);
-	bool checkTrial(int &trialCode, unsigned int &goalEntryPos);
-	void doGoalCue (int offOn);
-	void abortUncuedTrial(void);
-	bool isCued (void);
-	void setCue (bool isCuedP);
-
-	int16_t getLeverPos (void);
+	// lever position utilities
+	int zeroLever (int checkZero, int isLocking); // if checkZero is set AND new lever zero is different from old lever returns 1, else 0
+	int16_t getLeverPos (void); // returns current lever position, from position array if task in progress, else reads the quad decoder itself
+	void doGoalCue (int offOn); // turns ON or OFF the task used for signalling the lever is in goal position, for testing, mostly
+	// constant force, setting, geting, applying
+	void setConstForce (int theForce); // sets the force that will be applied at start of trial for mouse to pull against
+	int getConstForce (void); // returns current value for constant force
+	void applyConstForce (void); // applies the force currently set as constant force to the lever
+	void applyForce (int theForce); // applies an arbitrary force to the lever
+	// seeting trial performance parameters for lever goal area, time to get to goal pos, hold time, and force perturbations
+	void setHoldParams (int16_t goalBottomP, int16_t goalTopP, unsigned int nHoldTicksP); // sets lever goal area and hold time before each trial
+	void setTicksToGoal (unsigned int ticksToGoal); // sets ticks mouse is given to get the lever into goal posiiton before trial aborts, also used for circular buffer size
+	void setPerturbForce(int perturbForce); // calculates a sigmoid over 1/4 second from constant force to constant force plus perturb force, which can be negative 
+	void setPerturbStartPos(unsigned int perturbStartPos); // sets position in lever position array corresponding to point where perturb force will be applied to lever
+	void setPerturbOff (void); // turns off perturb force application for upcoming trials
+	// trial control, starting, stopping, checking progress and results
+	void startTrial(void); // starts a trial, either cued or ucued trial, depending on settings
+	bool checkTrial(int &trialCode, unsigned int &goalEntryPos); // Returns truth that a trial is completed, sets trial code to trial code, which will be 2 at end of a successful trial
+	void setCue (bool isCuedP); // sets trials to be run in one-shot cued mode or in uncued mode with circular buffer until lever enters goal area
+	bool isCued (void); // returns the truth that trials are set to be run in cued mode
+	void abortUncuedTrial(void); // aborts an uncued trial, which could go on forever if lever is never moved into goal area. does nothing for a cued trial
 	protected:
 	leverThreadStructPtr taskPtr;
 };

@@ -74,5 +74,8 @@ class PTLeverThread ():
     def setCued (self, isCued):
         return ptLeverThread.setCued (self.leverThread, isCued)
         
+    def setTicksToGoal (self, ticksToGoal):
+        ptLeverThread.setTicksToGoal (self.leverThread, ticksToGoal)
+        
     
     

@@ -341,8 +341,10 @@ bool leverThread::isCued (void){
 void leverThread::setCue (bool isCuedP){
 	taskPtr->isCued =isCuedP ;
 	if (isCuedP){
-		modTrainLength (0);
-	}
+		modTrainLength (taskPtr->nToGoalOrCircular + taskPtr->nHoldTicks);
+	}else{
+		 modTrainLength (0);
+	 }
 }
 
 /* ***************************************Gets current lever position from thread data, if trial is running*********************
@@ -367,7 +369,12 @@ int16_t leverThread::getLeverPos (void){
 	}
 	return taskPtr->leverPosition;
 }
-	
+
+void leverThread::setTicksToGoal (unsigned int ticksToGoal){
+	taskPtr->nToGoalOrCircular = ticksToGoal;
+}
+
+
 /* ************ applies a given force ****************************
 If theForce is less than 0, or greater then 4095, it is scrunched
 Force is also scrunched to max, 4095
