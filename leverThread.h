@@ -2,9 +2,9 @@
 #ifndef LEVER_THREAD_H
 #define LEVER_THREAD_H
 /* ********** leverThread is for use with the corresponding Stimulator class for AutoHeadFix program *************
- *  The stimulator class AHF_Stimulator_leverThread will use the leverThread class from the Python module. But you
- * could include the leverThread class in a real c++ program if you wanted.
- * The */
+ *  The stimulator class AHF_Stimulator_leverThread will use the leverThread class from the Python module made from
+ * the wrappers in leverThread_Py.cpp. But you could include the leverThread class in a C++ program if you wanted.
+ */
 
 
 /* ********************* libraries needed for lever thread ***************************** */
@@ -46,10 +46,10 @@ const unsigned int kFORCE_ARRAY_SIZE = 100;
 #define kGOALMODE_NONE   0	// no goal cuer
 #define kGOALMODE_HILO   1	// goal cuer  that sets hi and lo, as for an LED
 #define kGOALMODE_TRAIN  2	// goal cuer that turns an infinite train ON and OFF, as for a tone
-#define kLEVER_DIR_NORMAL    0
-#define kLEVER_DIR_REVERSED  1
-#define kTRIAL_UNCUED    0
-#define kTRIAL_CUED      1
+#define kLEVER_DIR_NORMAL    0 // read lever position in normal non-reversed direction
+#define kLEVER_DIR_REVERSED  1 // read lever posiiton in reversed direction
+#define kTRIAL_UNCUED    0 // a trial runs as an infinite train until lever enters goal
+#define kTRIAL_CUED      1 // a trial runs in one-shot mode. The calling code should make a start cue 
 /* ******************************* LS7366R quadrature decoder constants ******************************/
 // SPI settings
 const int kQD_CS_LINE  =  0;  // CS0 on pi
@@ -80,13 +80,11 @@ const unsigned int PWM_RANGE = 4095;
 const float PWM_FREQ = 1000; 
 #endif
 
-
 /* *********************** Forward declaration of non-class functions used by thread *************************/
 int lever_init (void * initDataP, void *  &taskDataP);
 void lever_Hi (void * taskData);
 void leverThread_delTask (void * taskData);
 int leverThread_zeroLeverCallback (void * modData, taskParams * theTask);
-
 
 /* ***************** Init Data for lever Task ********************************
  * Last Modified:
