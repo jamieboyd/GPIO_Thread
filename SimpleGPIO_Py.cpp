@@ -1,6 +1,6 @@
 #include <pyPulsedThread.h>
 #include "SimpleGPIO_thread.h"
-#include "CountermandPulse.h"
+#include "SimpleGPIO_CountermandPulse.h"
 /* ************Simple GPIO Pulses and Trains from Python using SimpleGPIO_thread ******************************
 Last Modifed:
 2018/02/21 by Jamie Boyd

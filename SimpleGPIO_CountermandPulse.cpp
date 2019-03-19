@@ -1,5 +1,5 @@
 
-#include "CountermandPulse.h"
+#include "SimpleGPIO_CountermandPulse.h"
 
 /* A pulsedThread (or subclass) pulse waits for the set delay, runs the high function, waits for the set duration,
  and runs the low function. This countermandable GPIO_thread pulse can be countermanded, i.e., cancelled,

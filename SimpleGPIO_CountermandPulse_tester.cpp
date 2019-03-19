@@ -1,4 +1,4 @@
-#include "CountermandPulse.h"
+#include "SimpleGPIO_CountermandPulse.h"
 /*Simple tester application for a countermanable pulse. If requested to be countermanded BEFORE the delay period is up, the pulse
 does not happen The output of the program should be:
 pulse 1 was standard, not countermandable.
@@ -30,5 +30,5 @@ int main(int argc, char **argv){
 }
 
  /*
-g++ -O3 -std=gnu++11 -Wall -lpulsedThread GPIOlowlevel.cpp SimpleGPIO_thread.cpp CountermandPulse.cpp CountermandPulseRunner.cpp -o cmpTester
+g++ -O3 -std=gnu++11 -Wall -lpulsedThread GPIOlowlevel.cpp SimpleGPIO_thread.cpp  SimpleGPIO_CountermandPulse.cpp  SimpleGPIO_CountermandPulse_tester.cpp -o cmpTester
 */
