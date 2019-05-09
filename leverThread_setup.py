@@ -7,7 +7,7 @@ setup(name='leverThread',
 	py_modules=['PTLeverThread'],
 	ext_modules=[
 	Extension('ptLeverThread',
-	['leverThread.cpp', 'GPIOlowlevel.cpp', 'SimpleGPIO_thread.cpp', 'leverThread_Py.cpp'],
+	['leverThread.cpp', 'GPIOlowlevel.cpp', 'SimpleGPIO_thread.cpp', 'PWM_thread.cpp', 'leverThread_Py.cpp'],
 		include_dirs = ['./', '/usr/include'],
 		library_dirs = ['./', '/usr/local/lib'],
 		extra_compile_args=["-O3", "-std=gnu++11"],

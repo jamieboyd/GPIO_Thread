@@ -17,7 +17,6 @@ static void ptPWM_del(PyObject * PyPtr){
 }
 
 
-
 /* ****************************************  Constructors ******************************************************
 Sets up the PWM clock with the given frequency and range, and creates and configures a PWM_thread object to feed data to the PWM peripheral.
 There is only 1 PWM controller, so do not call constructor more than once.  Make is_inited a class field in Python
@@ -344,6 +343,254 @@ static PyObject* ptPWM_getSinFrequency (PyObject *self, PyObject *args){
 	return Py_BuildValue("I", threadPtr ->getSinFrequency (channel));
 }
 
+/* ***********************************************************************************************************************
+code for a simple PWM output without a thread "All PWM, No thread" so we can set pwm
+values from Python, with much the same code used threaded version
+**************************************************************************************************************************/
+
+/* ******************** Custom Data Struct for  PWM no thread ***************************
+last modified:
+2019/01/ 09 by Jamie Boyd - initial version */
+typedef struct pyPWM_no_thread_Struct{
+	int channels; // 1 for channel 1, 2 for channel 2
+	int mode1; //MARK_SPACE for servos or BALANCED for analog
+	int enable1; // 1 if channel is enabled, 0 if not enabled
+	int polarity1; // 1 for reversed output polarity, 0 for normal, default is 0
+	int offState1; // 0 for low level when PWM is not enabled, 1 for high level when PWM is enabled
+	int mode2; //MARK_SPACE for servos or BALANCED for analog
+	int enable2; // 1 if channel is enabled, 0 if not enabled
+	int polarity2; // 1 for reversed output polarity, 0 for normal, default is 0
+	int offState2; // 0 for low level when PWM is not enabled, 1 for high level when PWM is enabled
+	// calculated register addresses, used for customDataMod functions
+	volatile unsigned int * ctlRegister; // address of PWM control register
+	volatile unsigned int * dataRegister1; // address of register to write data to
+	volatile unsigned int * dataRegister2; // address of register to write data to
+	float setFrequency;
+	unsigned int pwmRange;
+	unsigned int currentValue1;
+	unsigned int currentValue2;
+} pyPWM_no_thread_Struct, *pyPWM_no_thread_StructPtr;
+
+
+/* ********************* Custom delete function for PWM_no_thread ******************************************
+last modified:
+2019/01/09 by Jamie Boyd - initial version */
+static void  pyPWM_no_thread_del(PyObject * PyPtr){
+	pyPWM_no_thread_StructPtr taskData = static_cast <pyPWM_no_thread_StructPtr> (PyCapsule_GetPointer (PyPtr, "AllPWMNoThread"));
+	if (taskData->channels & 1){
+		INP_GPIO(GPIOperi->addr,18);
+	}
+	if (taskData->channels & 2){
+		INP_GPIO(GPIOperi->addr,19);
+	}
+	unUsePWMClockperi();
+	unUsePWMperi();
+	unUseGPIOperi();
+}
+
+/* *****************************initialization *************************************************************
+makes the structure and returns pointer to the structure back to Python, but does not add any channels
+maps peripherals and sets PWM clock frequency and PWM range
+last modified:
+2019/01/09 by Jamie Boyd - initial version */
+static PyObject* pyPWM_no_thread_init (PyObject *self, PyObject *args) {
+	float pwmFreq;
+	unsigned int pwmRange;
+	if (!(PyArg_ParseTuple(args,"fI", &pwmFreq, &pwmRange))) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for PWM frequency and Range.");
+		return NULL;
+	}
+	
+	int mapResult = PWM_thread::mapPeripherals ();
+	if (mapResult){
+		PyErr_SetString (PyExc_RuntimeError, "Could not map peripherals for PWM access.");
+		return NULL;
+	}
+	// set clock for PWM from input parmamaters
+	float setFrequency = PWM_thread::setClock (pwmFreq, pwmRange);
+	if (setFrequency < 0){
+		PyErr_SetString (PyExc_RuntimeError, "Could not set clock for PWM with requested frequency and range.");
+		return NULL;
+	}
+	// make structure
+	pyPWM_no_thread_StructPtr taskData = new  pyPWM_no_thread_Struct;
+	taskData->setFrequency = setFrequency;
+	taskData->pwmRange=pwmRange;
+	// start with channels at 0,
+	taskData->channels = 0;
+	taskData->enable1=0;
+	taskData->enable2 =0;
+	// save ctl and data register addresses in task data for easy access
+	taskData->ctlRegister = PWMperi->addr + PWM_CTL;
+	taskData->dataRegister1 = PWMperi->addr + PWM_DAT1;
+	taskData->dataRegister2 = PWMperi->addr + PWM_DAT2;
+	// wrap this struct in a pyCapsule and return it to python
+	return PyCapsule_New (static_cast <void *>(taskData), "AllPWMNoThread", pyPWM_no_thread_del);
+}
+
+/* ***************************** adds a channel *************************************************************
+adds and configures a channel, either 1 on GPIO 18  or 2 on GPIO 19 with requested mode, polarity, and offstate
+last modified:
+2019/01/09 by Jamie Boyd - initial version */
+static PyObject* pyPWM_no_thread_addChan (PyObject *self, PyObject *args) {
+	PyObject *PyPtr;
+	int channel;
+	int mode;
+	int polarity;
+	int offState;
+	if (!(PyArg_ParseTuple(args,"Oiiii", &PyPtr, &channel, &mode, &polarity, &offState))) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for PWM_no_thread pointer, channel, mode, polarity, and off-state.");
+		return NULL;
+	}
+	// get pointer to the task data structure
+	pyPWM_no_thread_StructPtr taskData = static_cast <pyPWM_no_thread_StructPtr> (PyCapsule_GetPointer (PyPtr, "AllPWMNoThread"));
+	// some register address offsets and bits are channel specific, if we save them in variables
+	// at the start, we can use same the code for either channel later on
+	unsigned int modeBit;
+	unsigned int polarityBit;
+	unsigned int offStateBit;
+	unsigned int enableBit;
+	// instead of constantly writing to register, copy control register into a variable 
+	// then set the control register with the variable at the end
+	unsigned int registerVal = *(taskData->ctlRegister);
+	registerVal &= ~(PWM_MODE1 | PWM_MODE2);
+	*(taskData->ctlRegister) =0;
+	if (channel == 1){
+		// set channel 1 in taskData
+		taskData->channels |= 1;
+		// set up GPIO
+		INP_GPIO(GPIOperi ->addr, 18);           // Set GPIO 18 to input to clear bits
+		SET_GPIO_ALT(GPIOperi ->addr, 18, 5);     // Set GPIO 18 to Alt5 function PWM0
+		// set bits and offsets appropriately for channel 1
+		modeBit = PWM_MSEN1;
+		enableBit = PWM_PWEN1;
+		polarityBit = PWM_POLA1;
+		offStateBit = PWM_SBIT1;
+	}else{
+		if (channel == 2){
+			// set channel 2 in taskData
+			taskData->channels |= 2;
+			// set up GPIO
+			INP_GPIO(GPIOperi ->addr, 19);           // Set GPIO 19 to input to clear bits
+			SET_GPIO_ALT(GPIOperi->addr, 19, 5);     // Set GPIO 19 to Alt5 function PWM1
+			// set bits and offsets appropriately for channel 2
+			modeBit = PWM_MSEN2;
+			enableBit = PWM_PWEN2;
+			polarityBit = PWM_POLA2;
+			offStateBit = PWM_SBIT2;
+		}else{
+			PyErr_SetString (PyExc_RuntimeError, "Channel requested for configuration was not 1 or 2.");
+			return NULL;
+		}
+	}
+	// set up PWM channel 1 or 2 by writing to control register
+	// set mode
+	if (mode == PWM_MARK_SPACE){
+		registerVal |= modeBit; // put PWM in MS Mode
+	}else{
+		registerVal &= ~(modeBit);  // clear MS mode bit for Balanced Mode
+	}
+	// set polarity
+	if (polarity == 0){
+		registerVal &= ~polarityBit;  // clear reverse polarity bit
+	}else{
+		registerVal |= polarityBit;  // set reverse polarity bit
+	}
+	// set off state, whether PWM output is hi or low when not transmitting data
+	if (offState == 0){
+		registerVal &= ~offStateBit; // clear OFFstate bit for low
+	}else{
+		registerVal |= offStateBit; // set OFFstate bit for hi
+	}
+	// start in unenabled state
+	registerVal &= ~enableBit;
+	// set the control register with registerVal
+	*(taskData->ctlRegister) = registerVal;
+	Py_RETURN_NONE;
+}
+
+
+/* ***************************** sets a PWM value for a channel *************************************************************
+last modified:
+2019/01/09 by Jamie Boyd - initial version */
+static PyObject* pyPWM_no_thread_setValue (PyObject *self, PyObject *args){
+	PyObject *PyPtr;
+	int pwmValue;
+	int pwmChans;
+	if (!PyArg_ParseTuple(args,"Oii", &PyPtr, &pwmValue, &pwmChans)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for PWM_no_thread pointer, PWM value, and channel.");
+		return NULL;
+	}
+	pyPWM_no_thread_StructPtr taskData = static_cast<pyPWM_no_thread_StructPtr > (PyCapsule_GetPointer(PyPtr, "AllPWMNoThread"));
+	if ((pwmValue < 0) || (pwmValue >= taskData -> pwmRange)){
+		PyErr_SetString (PyExc_RuntimeError, "Value requested for output was greater than PWM range.");
+		return NULL;
+	}
+	if (pwmChans & 1){
+		*(taskData->dataRegister1) = pwmValue;
+		taskData ->currentValue1 = pwmValue;
+	}
+	if (pwmChans & 2){
+		*(taskData->dataRegister2) = pwmValue;
+		taskData ->currentValue2 = pwmValue;
+	}
+	Py_RETURN_NONE;
+}
+
+/* ***************************** sets able state (enabled or disabled) for a channel or both channels *************************************************************
+last modified:
+2019/01/09 by Jamie Boyd - initial version */
+static PyObject* pyPWM_no_thread_setAble (PyObject *self, PyObject *args){
+	PyObject *PyPtr;
+	int ableState;
+	int pwmChans;
+	if (!PyArg_ParseTuple(args,"Oii", &PyPtr, &ableState, &pwmChans)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for PWM_no_thread pointer, able state and PWM channel.");
+		return NULL;
+	}
+	pyPWM_no_thread_StructPtr taskData = static_cast<pyPWM_no_thread_StructPtr > (PyCapsule_GetPointer(PyPtr, "AllPWMNoThread"));
+	if (ableState){
+		if (pwmChans & 1){
+			*(taskData->ctlRegister)  |= PWM_PWEN1;
+		}
+		if (pwmChans & 2){
+			*(taskData->ctlRegister)  |= PWM_PWEN2;
+		}
+	}else{
+		if (pwmChans & 1){
+			*(taskData->ctlRegister) &= ~PWM_PWEN1;
+		}
+		if (pwmChans & 2){
+			*(taskData->ctlRegister) &= ~PWM_PWEN2;
+		}
+	}
+	Py_RETURN_NONE;
+}
+
+/* ***************************** returns value currently being output by a PWM channel *************************************************************
+last modified:
+2019/01/09 by Jamie Boyd - initial version */
+static PyObject* pyPWM_NoThread_getVal (PyObject *self, PyObject *args){
+	PyObject *PyPtr;
+	int pwmChan;
+	if (!PyArg_ParseTuple(args,"Oi", &PyPtr, &pwmChan)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for PWM_no_thread pointer, and PWM channel.");
+		return NULL;
+	}
+	pyPWM_no_thread_StructPtr taskData = static_cast<pyPWM_no_thread_StructPtr > (PyCapsule_GetPointer(PyPtr, "AllPWMNoThread"));
+	if (pwmChan == 1){
+		return Py_BuildValue ("I", taskData->currentValue1 );
+	}else{
+		if (pwmChan ==2){
+			return Py_BuildValue ("I", taskData->currentValue2);
+		}else{
+			PyErr_SetString (PyExc_RuntimeError, "Requested PWM channel was not 1 or 2");
+			return NULL;
+		}
+	}
+}
+
+
 /* Module method table - those starting with ptPWM are defined here, those starting with pulsedThread are defined in pyPulsedThread.h*/
 static PyMethodDef ptPWMMethods[] = {
 	{"isBusy", pulsedThread_isBusy, METH_O, "(PyCapsule) returns number of tasks a thread has left to do, 0 means finished all tasks"},
@@ -388,6 +635,12 @@ static PyMethodDef ptPWMMethods[] = {
 	{"getPWMFreq", ptPWM_getPWMFreq, METH_O, "(PyCapsule) returns the PWM update frequency"},
 	{"getPWMRange", ptPWM_getPWMRange, METH_O, "(PyCapsule) returns the PWM range"},
 	{"getChannels", ptPWM_getChannels, METH_O, "(PyCapsule) returns a bit-wise number indicating which PWM channels are configured"},
+	
+	{"newThreadless", pyPWM_no_thread_init, METH_VARARGS, "(pwmFreq, pwmRange) configures a PWM task with no associated thread"},
+	{"threadlessAddChan", pyPWM_no_thread_addChan, METH_VARARGS, "(PyCapsule, channel, mode, polarity, offstate) configures a channel for threadless PWM"},
+	{"threadlessSetValue", pyPWM_no_thread_setValue, METH_VARARGS, "(PyCapsule, value, channels) sets PWM value to output for selected channels"},
+	{"threadlessSetAble", pyPWM_no_thread_setAble, METH_VARARGS, "(PyCapule, ableState, channels) enables or disables seletced PWM channels"},
+	{"threadlessGetValue", pyPWM_NoThread_getVal, METH_VARARGS, "(PyCapule, channel) returns PWM being output by selected channel"},
 	{ NULL, NULL, 0, NULL}
   };
 

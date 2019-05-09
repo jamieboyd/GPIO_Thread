@@ -1,5 +1,5 @@
 #include "PWM_thread.h"
-
+#include "GPIOlowlevel.h"
 /* ********************** non-class methods used from pulsed Thread *************************************
 
  ********************* PWM Initialization callback function ****************************************
@@ -602,7 +602,7 @@ Call these 2 methods before making a PWM_thread object. In this order:
 5) enable output on the channel
 The ststic thread makers do the first three of these
 
-****************************** Memory maps Peripherals for PWM *********PWM_thread.cpp:687:1:*********************************
+****************************** Memory maps Peripherals for PWM *****************************************
  static function maps peripherals (GPIO, PWM, and PWM clock) needed for PWM. Does not set PWM clock. Does not set up any channels 
 Last Modified: 2018/08/06 by Jamie Boyd - first version */
  int PWM_thread::mapPeripherals(){
@@ -898,11 +898,6 @@ int PWM_thread::addChannel (int channel, int audioOnly, int PWMmode, int polarit
 			offState2 = offState;
 		}
 	}
-	/*
-	int * useFIFOVal = new int;
-	* useFIFOVal = useFIFO;
-	modCustom (&ptPWM_setFIFOCallback, (void *) useFIFOVal, 0);
-	*/
 	return 0;
 }
 
@@ -925,10 +920,7 @@ Last Modified:
 2018/08/08 by Jamie Boyd - Initial Version  */
 int PWM_thread::setEnable (int enableState, int channel, int isLocking){
 	
-	int * setEnablePtr;
-	
 	ptPWMStructPtr taskDataPtr = (ptPWMStructPtr ) this->getTaskData ();
-
 	int newChan1State;
 	int newChan2State ;
 	if (enableState ){ // enabling, things enabled already stay enabled

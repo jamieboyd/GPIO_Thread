@@ -1,6 +1,6 @@
 #include <pyPulsedThread.h>
 #include "SimpleGPIO_thread.h"
-
+#include "SimpleGPIO_CountermandPulse.h"
 /* ************Simple GPIO Pulses and Trains from Python using SimpleGPIO_thread ******************************
 Last Modifed:
 2018/02/21 by Jamie Boyd
@@ -172,6 +172,121 @@ Last Modfied:
 	Py_RETURN_NONE;
 }
 
+/* ******************* Function called automatically when PyCapsule object is deleted in Python *****************************************
+Last Modified:
+2018/04/04 by Jamie Boyd - initial version */
+static void  cmp_del(PyObject * PyPtr){
+    delete static_cast<CountermandPulse *> (PyCapsule_GetPointer (PyPtr, "pulsedThread"));
+}
+
+/* ****************************************  Constructor modified from SimpleGPIO_Py.cpp ******************************************************
+no need for number of pulses because it is always 1, that is, it is never a train
+Creates and configures a countermandablePulse object to output a pulse on a GPIO pin
+Parameters for pulse timing are delay in seconds, and duration in seconds
+pin: number of the gpio pin used for the task. 
+polarity: 0 for normally low; i.e., at start and end of train, line is set low,  1 for normally high
+Last Modified;
+2018/04/04 by Jamie Boyd - initial version */
+static PyObject* cmp_DelayDur (PyObject *self, PyObject *args) {
+	float delay; // in seconds from Python, but translated to microseconds when calling constructor
+	float dur;   // in seconds from Python, but translated to microseconds when calling constructor
+	int polarity;
+	int pin;
+	int accLevel;
+	if (!PyArg_ParseTuple(args,"iiffi", &pin, &polarity, &delay, &dur,  &accLevel)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for pin number, polarity, delay, duration, number of Pulses, and accuracy level.");
+		return NULL;
+	}
+	CountermandPulse *  threadObj= CountermandPulse::CountermandPulse_threadMaker (pin, polarity, (unsigned int) round (1e06 *delay), (unsigned int) round (1e06 *dur), accLevel);
+	if (threadObj == nullptr){
+		PyErr_SetString (PyExc_RuntimeError, "CountermandPulse_threadMaker was not able to make a countermandPulse object");
+		return NULL;
+	}else{
+		return PyCapsule_New (static_cast <void *>(threadObj), "pulsedThread",cmp_del);
+	}
+  }
+ 
+  
+  /* ****************** Setters and getters for Class Fields pin and polarity modified from SimpleGPIO_Py.cpp ***********************************************/
+ static PyObject* cmp_setPin (PyObject *self, PyObject *args){
+	  PyObject *PyPtr;
+	  int newPin;
+	  int isLocking;
+	  if (!PyArg_ParseTuple(args,"Oii", &PyPtr, &newPin, &isLocking)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object, newPin, and isLocking");
+		return NULL;
+	}
+	CountermandPulse * threadPtr = static_cast<CountermandPulse* > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	int returnVal =threadPtr->setPin (newPin, isLocking);
+	return  Py_BuildValue("i", returnVal);
+}
+
+
+static PyObject* cmp_getPin (PyObject *self, PyObject *PyPtr) {
+	CountermandPulse* threadPtr = static_cast<CountermandPulse* > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+    return Py_BuildValue("i", threadPtr -> getPin());
+}
+
+static PyObject* cmp_getPolarity (PyObject *self, PyObject *PyPtr) {
+	CountermandPulse* threadPtr = static_cast<CountermandPulse* > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+    return Py_BuildValue("i", threadPtr -> getPolarity());
+}
+
+
+/* *********************** Mod functon to set the level of the GPIO pin to hi or lo directly, modified from SimpleGPIO_Py.cpp *********************************
+Really, there is no need to even substitute CountermandPulse *  for SimpleGPIO_thread * , as they are the same except for 2 added fields in the taskData
+Last Modified:
+2018/04/04 by Jamie Boyd - initial version */
+static PyObject* cmp_setLevel (PyObject *self, PyObject *args){
+	  PyObject *PyPtr;
+	  int theLevel;
+	  int isLocking;
+	  if (!PyArg_ParseTuple(args,"Oii", &PyPtr, &theLevel, &isLocking)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object, level, and isLocking");
+		return NULL;
+	}
+	CountermandPulse * threadPtr = static_cast<CountermandPulse * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	int returnVal =threadPtr->setLevel (theLevel, isLocking);
+	return  Py_BuildValue("i", returnVal);
+}
+
+/* ********************************** Requests a countermanable pulse to be initiated **************************
+ Returns true if the pulse was started (no pulse currently in progress), else false
+ Last Modified:
+ 2018/04/04 by Jamie Boyd - initial version */
+static PyObject* cmp_doCountermandPulse (PyObject *self, PyObject *PyPtr) {
+    CountermandPulse* threadPtr = static_cast<CountermandPulse* > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+    if (threadPtr -> doCountermandPulse()){
+        Py_RETURN_TRUE;
+    }else{
+        Py_RETURN_FALSE;
+    }
+}
+
+/* ********************************** Function for actually Conutermanding a pulse ****************************************
+Last Modified:
+2018/04/04 by Jamie Boyd - initial version */
+static PyObject* cmp_countermand (PyObject *self, PyObject *PyPtr) {
+	CountermandPulse* threadPtr = static_cast<CountermandPulse* > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	if (threadPtr -> countermand()){
+		Py_RETURN_TRUE;
+	}else{
+		Py_RETURN_FALSE;
+	}
+}
+
+/* ********************************** Function for seeing if previous pulse was countermanded ****************************************
+returns True if the pulse was countermanded, else False
+Last Modified:
+2018/04/04 by Jamie Boyd - initial version */
+static PyObject* cmp_wasCountermanded  (PyObject *self, PyObject *PyPtr) {
+	CountermandPulse* threadPtr = static_cast<CountermandPulse* > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	if ( threadPtr -> wasCountermanded()){
+		Py_RETURN_TRUE;
+	}else{
+		Py_RETURN_FALSE;
+	}
+}
 	
 /* Module method table - those starting with ptSimpleGPIO are defined here, those starting with pulsedThread are defined in pyPulsedThread.h*/
 static PyMethodDef ptSimpleGPIOMethods[] = {
@@ -202,7 +317,6 @@ static PyMethodDef ptSimpleGPIOMethods[] = {
 	{"cosDutyCycleArray", pulsedThread_cosineDutyCycleArray, METH_VARARGS, "(Python float array, pointsPerCycle, offset, scaling) fills passed-in array with cosine values of given period, with applied scaling and offset expected to range between 0 and 1"},
 	{"getModFuncStatus", pulsedThread_modCustomStatus, METH_O, "(PyCapsule) Returns 1 if the pulsedThread object is waiting for the thread to call a modFunction, else 0"},
 
-		
 	{"newDelayDur", ptSimpleGPIO_DelayDur, METH_VARARGS, "(pin, polarity, delay, dur, nPulses, accLevel) Creates and configures new SimpleGPIOthread"},
 	{"newFreqDuty", ptSimpleGPIO_FreqDuty, METH_VARARGS, "(pin, polarity, frequency, dutyCycle, trainTime, accLevel) Creates and configures new  SimpleGPIOthread"},
 	{"setLevel", ptSimpleGPIO_setLevel, METH_VARARGS, "(PyCapsule, int level, int isLocking) Sets the output level of a ptSimpleGPIO task to lo or hi when thread is not busy"},
@@ -212,6 +326,17 @@ static PyMethodDef ptSimpleGPIOMethods[] = {
 	
 	{"simpleOutput", simpleGPIO_output_new, METH_VARARGS, "(int pinNumber, int initial level) Creates a simple output on a single pin, with no associated thread"},
 	{"setOutput", simpleGPIO_output_set, METH_VARARGS, "(PyCapsule, int level) sets level of a simple output with no associated thread"},
+	
+	{"newCP", cmp_DelayDur, METH_VARARGS, "(pin, polarity, delay, dur, accLevel) Creates and configures new CountermandPulse"},
+	{"CPsetLevel", cmp_setLevel, METH_VARARGS, "(PyCapsule, int level, int isLocking) Sets the output level of a CountermandPulse task to lo or hi when thread is not busy"},
+	{"CPsetPin", cmp_setPin, METH_VARARGS, "(PyCapsule, int pin, int isLocking) Sets the GPIO pin used by the CountermandPulse task"},
+	{"CPgetPin", cmp_getPin, METH_O, "(PyCapsule) returns GPIO pin used by a CountermandPulse, in Brodcomm numbering"},
+	{"CPgetPolarity", cmp_getPolarity, METH_O, "(PyCapsule) returns pulse polarity (0 = low-to-high, 1 = high-to-low) of a CountermandPulse"},
+	{"CPdoCountermandPulse", cmp_doCountermandPulse, METH_O, "(PyCapsule) starts a pulse that can be countermanded before the delay is finished"},
+	{"CPcountermand", cmp_countermand, METH_O, "(PyCapsule) tells a CountermandPulse to rescind just requested pulse"},
+	{"CPwasCountermanded", cmp_wasCountermanded, METH_O, "(PyCapsule) returns truth that last requested pulse was stopped beforeit started"},
+
+
 	{ NULL, NULL, 0, NULL}
   };
   

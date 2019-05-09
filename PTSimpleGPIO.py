@@ -5,20 +5,6 @@ import ptSimpleGPIO
 from abc import ABCMeta, abstractmethod
 from time import sleep
 
-"""
-A simple singleton class to ensure only one instance of certain GPIO classes like PWM
-lifted from https://sourcemaking.com/design_patterns/singleton/python/1
-"""
-class SingletonForGPIO (type):
-
-    def __init__ (cls, name, bases, attrs, **kwargs):
-        super().__init__(name, bases, attrs)
-        cls._instance = None
-
-    def __call__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = super().__call__(*args, **kwargs)
-        return cls._instance
 
 """
     PTSimpleGPIO does control of GPIO access using the C++ module ptSimpleGPIO,
@@ -312,4 +298,24 @@ class Simple_output (object):
     """
     def  set_level (self, level):
         ptSimpleGPIO.setOutput (self.task_ptr, level)
+
+
+"""
+The CountermandPulse class is a pulse that can be countermanded after it is requested, if the delay periopd has not
+elapsed yet
+"""
+class CountermandPulse (Pulse):
+
+    def __init__(self, gpio_pin, polarity, delay, duration, accuracy_level):
+        self.task_ptr = ptSimpleGPIO.newCP(gpio_pin, polarity, delay, duration, accuracy_level)
+        self.respectTheGIL = False
+
+    def do_pulse_countermandable (self):
+        return ptSimpleGPIO.CPdoCountermandPulse(self.task_ptr)
+    
+    def countermand_pulse (self):
+        return ptSimpleGPIO.CPcountermand(self.task_ptr)
+
+    def was_countermanded (self):
+        return ptSimpleGPIO.CPwasCountermanded(self.task_ptr)
     

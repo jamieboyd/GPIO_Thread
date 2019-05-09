@@ -1,10 +1,8 @@
 #include <Python.h>
 #include "leverThread.h"
 
-/* *** Makes and returns a new lever thread object. 
 
-
-******************* Function called automatically when PyCapsule object is deleted in Python *****************************************
+/* ****************** Function called automatically when PyCapsule object is deleted in Python *****************************************
 Last Modified:
 2018/03/12 by Jamie Boyd - initial version */
 void  py_Lever_del(PyObject * PyPtr){
@@ -22,7 +20,7 @@ static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for lever position buffer, isCued, number for circular buffer or goal pos, isReversed, goal cuer pin, and cuer frequency.");
 		return NULL;
 	}
-	// check that buffer is valid and that it is writable floating point buffer
+	// check that buffer is valid and that it is writable 16 bit int buffer
 	 if (PyObject_CheckBuffer (bufferObj) == 0){
 		PyErr_SetString (PyExc_RuntimeError, "Error getting bufferObj from Python array.");
 		return NULL;
@@ -32,12 +30,12 @@ static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 		PyErr_SetString (PyExc_RuntimeError,"Error getting C array from bufferObj from Python array");
 		return NULL;
 	}
-	if (strcmp (buffer.format, "B") != 0){
-		PyErr_SetString (PyExc_RuntimeError, "Error for bufferObj: data type of Python array is not unsigned byte");
+	if (strcmp (buffer.format, "h") != 0){
+		PyErr_SetString (PyExc_RuntimeError, "Error for bufferObj: data type of Python array is not signed short");
 		return NULL;
 	}
 	// make a leverThread object
-	leverThread * leverThreadPtr = leverThread::leverThreadMaker (static_cast <uint8_t *>(buffer.buf), (unsigned int) (buffer.len/buffer.itemsize), isCued,nCircularOrToGoal, isReversed, goalCuerPin,cuerFreq );
+	leverThread * leverThreadPtr = leverThread::leverThreadMaker (static_cast <int16_t *>(buffer.buf), (unsigned int) (buffer.len/buffer.itemsize), isCued,nCircularOrToGoal, isReversed, goalCuerPin,cuerFreq );
 	
 	if (leverThreadPtr == nullptr){
 		PyErr_SetString (PyExc_RuntimeError, "leverThreadMaker was not able to make a leverThread object");
@@ -120,6 +118,17 @@ static PyObject* py_leverThread_setPerturbStartPos (PyObject *self, PyObject *ar
 	Py_RETURN_NONE;
 }
 
+static PyObject* py_leverThread_setTicksToGoal (PyObject *self, PyObject *args){
+	  PyObject *PyPtr;
+	  unsigned int ticksToGoal;
+	  if (!PyArg_ParseTuple(args,"OI", &PyPtr, &ticksToGoal)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object and ticks to goal position");
+		return NULL;
+	}
+	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	leverThreadPtr->setTicksToGoal (ticksToGoal);
+	Py_RETURN_NONE;
+}
 
 static PyObject* py_leverThread_startTrial (PyObject *self, PyObject *PyPtr) {
 	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
@@ -157,10 +166,10 @@ static PyObject* py_leverThread_doGoalCue (PyObject *self, PyObject *args){
 
 static PyObject* py_leverThread_setHoldParams (PyObject *self, PyObject *args){
 	PyObject *PyPtr;
-	uint8_t goalBottom;
-	uint8_t goalTop;
+	int16_t goalBottom;
+	int16_t goalTop;
 	unsigned int nHoldTicks;
-	if (!PyArg_ParseTuple(args,"OBBI", &PyPtr, &goalBottom, &goalTop, &nHoldTicks)) {
+	if (!PyArg_ParseTuple(args,"OhhI", &PyPtr, &goalBottom, &goalTop, &nHoldTicks)) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object, goalBottom, goalTop, and holdTicks");
 		return NULL;
 	}
@@ -171,7 +180,7 @@ static PyObject* py_leverThread_setHoldParams (PyObject *self, PyObject *args){
 
 static PyObject* py_leverThread_getLeverPos(PyObject *self, PyObject *PyPtr) {
 	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
-	return Py_BuildValue("B", leverThreadPtr->getLeverPos());
+	return Py_BuildValue("h", leverThreadPtr->getLeverPos());
 }
 static PyObject* py_leverThread_abortUncuedTrial(PyObject *self, PyObject *PyPtr) {
 	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
@@ -221,7 +230,8 @@ static PyMethodDef leverThreadMethods[] = {
   {"getLeverPos",py_leverThread_getLeverPos, METH_O, "(PyPtr) returns the current lever position"},
   {"abortUncuedTrial", py_leverThread_abortUncuedTrial, METH_O, "(PyPtr) aborts an uncued trial."},
   {"isCued", py_leverThread_isCued, METH_O, "(PyPtr) returns truth that trials are cued, not un-cued."},
-  {"setCued", py_leverThread_setCued, METH_VARARGS, "(PyPtr, isCued) sets  trials to be cued, or un-cued."},
+  {"setCued", py_leverThread_setCued, METH_VARARGS, "(PyPtr, isCued) sets trials to be cued, or un-cued."},
+  {"setTicksToGoal", py_leverThread_setTicksToGoal, METH_VARARGS, "(PyPtr, ticksToGoal) sets  ticks given for lever to get into goal position"},
   { NULL, NULL, 0, NULL}
 };
 
