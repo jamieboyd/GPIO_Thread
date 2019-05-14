@@ -28,7 +28,7 @@
 #define PWM 1
 
 /* ************************************ define FORCEMODE to PWM or AOUT *************************************************/
-#define  FORCEMODE PWM
+#define  FORCEMODE AOUT
 #if FORCEMODE == PWM
 #include "PWM_thread.h"
 #elif FORCEMODE == AOUT
@@ -38,9 +38,10 @@
 /* *********************** Lever Recording Frequency *******************************************
  * we use kLEVER_FREQ to calculate length of array needed for however long we want to record lever position
  * we make an array of force values for sigmoidal force transition for perturbation
- * kFORCE_ARRAY_SIZE times kLEVER_FREQ sets the duration of the force ramp */
+ * force array size divided by kLEVER_FREQ sets the duration of the force ramp. kMAX_FORCE_ARRAY_SIZE 
+ * sets the size of the array used, and thus the maximum time for perturbation */
 const float kLEVER_FREQ = 250;
-const unsigned int kFORCE_ARRAY_SIZE = 100;
+const unsigned int kMAX_FORCE_ARRAY_SIZE = 125;
 
 /* ************************************************ mnemonic defines for setting goal cue **********************************/
 #define kGOALMODE_NONE   0	// no goal cuer
@@ -173,7 +174,9 @@ class leverThread : public pulsedThread{
 	// seeting trial performance parameters for lever goal area, time to get to goal pos, hold time, and force perturbations
 	void setHoldParams (int16_t goalBottomP, int16_t goalTopP, unsigned int nHoldTicksP); // sets lever goal area and hold time before each trial
 	void setTicksToGoal (unsigned int ticksToGoal); // sets ticks mouse is given to get the lever into goal posiiton before trial aborts, also used for circular buffer size
-	void setPerturbForce(int perturbForce); // calculates a sigmoid over 1/4 second from constant force to constant force plus perturb force, which can be negative 
+	void setPerturbLength (unsigned int perturbLength); //sets length of portion of the force array used to generate the sigmoid of perturbation force
+	unsigned int getPerturbLength (void); // returns length of the portion of force array used to genberate sigmidal ramp for perturbation force
+	void setPerturbForce(int perturbForce); // calculates a sigmoid over force array from constant force to constant force plus perturb force, which can be negative 
 	void setPerturbStartPos(unsigned int perturbStartPos); // sets position in lever position array corresponding to point where perturb force will be applied to lever
 	void setPerturbOff (void); // turns off perturb force application for upcoming trials
 	// trial control, starting, stopping, checking progress and results

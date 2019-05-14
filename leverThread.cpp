@@ -16,7 +16,7 @@ int lever_init (void * initDataP, void *  &taskDataP){
 		return 1;
 	}
 	wiringPiI2CWrite (taskData->i2c_fd, kDAC_WRITEDAC);
-	wiringPiI2CWriteReg8(fd, 0, 0);
+	wiringPiI2CWriteReg8(taskData->i2c_fd, 0, 0);
 #elif FORCEMODE == PWM
 	int mapResult = PWM_thread::mapPeripherals ();
 	if (mapResult){
@@ -291,7 +291,7 @@ leverThread * leverThread::leverThreadMaker (int16_t * positionData, unsigned in
 	initStruct->isReversed = isReversed;
 	initStruct->goalCuerPin = goalCuerPinOrZero; // zero if we don't have in-goal cue
 	initStruct->cuerFreq = cuerFreqOrZero;		// freq is zero for a DC on or off task
-	initStruct->nForceData=kFORCE_ARRAY_SIZE;
+	initStruct->nForceData=kMAX_FORCE_ARRAY_SIZE;
 	initStruct->nToGoalOrCircular = nToGoalOrCircularP;
 	if (isCuedP){				// if isCued trials , initialize thread with pulses in a train equal to posiiton array size
 		newLever = new leverThread ((void *) initStruct, nPositionData, errCode);
@@ -420,6 +420,26 @@ int leverThread::zeroLever (int checkZero, int isLocking){
 	int returnVal = modCustom (&leverThread_zeroLeverCallback, (void * ) modePtr, isLocking);
 	return returnVal;
 }
+
+
+/* *********************************** sets number of points  in force array used for sigmidal force ramp, max = kMAX_FORCE_ARRAY_SIZE
+Last Modified 2019/05/13 by Jamie Boyd - initial version */
+void leverThread::setPerturbLength (unsigned int perturbLength){
+	
+	if (perturbLength > kMAX_FORCE_ARRAY_SIZE){
+		taskPtr->nForceData = kMAX_FORCE_ARRAY_SIZE;
+	}else{
+		taskPtr->nForceData =perturbLength;
+	}
+}
+
+/* *********************************** returns number of points in force array used for  , max = kMAX_FORCE_ARRAY_SIZE
+Last Modified 2019/05/13 by Jamie Boyd - initial version */
+unsigned int leverThread::leverThread::getPerturbLength (void){
+	
+	return taskPtr->nForceData;
+}
+
 
 /* *********************************** Setting perturbation ***********************************
 fills the array with force data 
