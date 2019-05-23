@@ -241,7 +241,9 @@ static PyObject* ptPWM_setArray(PyObject *self, PyObject *args){
 		PyErr_SetString (PyExc_RuntimeError,"Error getting C array from bufferObj from Python array");
 		return NULL;
 	}
+#if beVerbose
 	printf ("Buffer type is %s, length is %d bytes, and item size is %d.\n", buffer.format, buffer.len, buffer.itemsize);
+#endif
 	if (strcmp (buffer.format, "i") != 0){
 		PyErr_SetString (PyExc_RuntimeError, "Error for bufferObj: data type of Python array is not integer");
 		return NULL;
@@ -383,9 +385,9 @@ static void  pyPWM_no_thread_del(PyObject * PyPtr){
 	if (taskData->channels & 2){
 		INP_GPIO(GPIOperi->addr,19);
 	}
-	unUsePWMClockperi();
-	unUsePWMperi();
-	unUseGPIOperi();
+	//unUsePWMClockperi();
+	//unUsePWMperi();
+	//unUseGPIOperi();
 }
 
 /* *****************************initialization *************************************************************

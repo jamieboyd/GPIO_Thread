@@ -126,6 +126,10 @@ class PTPWM (object):
         return self.enable1 + 2 * self.enable2
 
 
+    def wait_on_busy(self, waitSecs):
+        return ptPWM.waitOnBusy(self.task_ptr, waitSecs)
+
+
 class PTPWMsin (PTPWM):
     
     def __init__(self, chans):

@@ -160,7 +160,7 @@ Thread data is destroyed by the pulsedThread destructor. All we need to do here 
 Last Modified:
 2018/02/01 by Jamie Boyd - Initial Version */
 SimpleGPIO_thread::~SimpleGPIO_thread (){
-	unUseGPIOperi();
+	//unUseGPIOperi();
 }
 
 

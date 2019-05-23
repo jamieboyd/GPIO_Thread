@@ -1,7 +1,7 @@
 #! /usr/bin/python
 #-*-coding: utf-8 -*-
 
-from PTSimpleGPIO import PTSimpleGPIO, SingletonForGPIO
+from PTSimpleGPIO import PTSimpleGPIO
 from PTPWM import PTPWM, PTPWMsin
 from time import sleep
 from array import array
@@ -62,15 +62,15 @@ print ('making a PWM thread in Mark Space Mode on Channel 2')
 a1 = array('i', (i for i in range (0, 1000)))
 w1 = PTPWM(PTSimpleGPIO.MODE_FREQ, 44000, 1000, 0, 100, 9, 0)
 print ('Object made')
-w1.add_channel(1,0,PTPWM.PWM_MARK_SPACE,0,0,a1)
+w1.add_channel(2,0,PTPWM.PWM_MARK_SPACE,0,0,a1)
 print ('channel added')
-w1.set_PWM_enable(1,1,0)
+w1.set_PWM_enable(1,2,1)
 print ('enabled')
 sleep (0.5)
 w1.start_train()
 print ('train started')
 w1.wait_on_busy (10)
-w1.set_PWM_enable(0,1,1)
+w1.set_PWM_enable(0,2,1)
 print ('train stopped')
 sleep (0.5)
 

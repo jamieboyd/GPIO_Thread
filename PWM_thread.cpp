@@ -852,9 +852,9 @@ PWM_thread::~PWM_thread (void){
 			INP_GPIO(GPIOperi->addr,19);
 		}
 	}
-	unUsePWMClockperi();
-	unUsePWMperi();
-	unUseGPIOperi();
+	//unUsePWMClockperi();
+	//unUsePWMperi();
+	//unUseGPIOperi();
 }
 
 /* ********************************** Configures a PWM Channel ***************************************************
