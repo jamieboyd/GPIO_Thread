@@ -156,10 +156,10 @@ PWM_sin_thread * PWM_sin_thread::PWM_sin_threadMaker (int channels){
 	}
 	// add channels , each channel can use the same array 
 	if (channels & 1){
-		newPWM_thread->addChannel (1, 1, PWM_BALANCED, 0, 0, newPWM_thread->dataArray, arraySize);
+		newPWM_thread->addChannel (1, 0, PWM_BALANCED, 0, 0, newPWM_thread->dataArray, arraySize);
 	}
 	if (channels & 2){
-		newPWM_thread->addChannel (2, 1, PWM_BALANCED, 0, 0, newPWM_thread->dataArray, arraySize);
+		newPWM_thread->addChannel (2, 0, PWM_BALANCED, 0, 0, newPWM_thread->dataArray, arraySize);
 	}
 	// set custom task delete function
 	newPWM_thread->setTaskDataDelFunc (&ptPWM_delTask);

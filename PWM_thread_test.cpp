@@ -71,7 +71,7 @@ int main(int argc, char **argv){
 			float freq ;
 			for (freq= 200; freq < 12e03; freq *= 1.12246){
 				printf ("Current Sine wave frequency is %dHz.\n", my_sin_PWM->getSinFrequency (1));
-				my_sin_PWM->waitOnBusy (0.2);
+				my_sin_PWM->waitOnBusy (0.5);
 				my_sin_PWM->setSinFrequency ((unsigned int)freq ,channel,1);
 			}
 			my_sin_PWM->stopInfiniteTrain ();
@@ -88,7 +88,7 @@ int main(int argc, char **argv){
 			float freq ;
 			for (freq= 200; freq < 12e03; freq *= 1.12246){
 				printf ("Current Sine wave frequency is %dHz.\n", my_sin_PWM->getSinFrequency (2));
-				my_sin_PWM->waitOnBusy (0.2);
+				my_sin_PWM->waitOnBusy (0.5);
 				my_sin_PWM->setSinFrequency ((unsigned int)freq ,2,1);
 			}
 			my_sin_PWM->stopInfiniteTrain ();
@@ -163,13 +163,15 @@ int main(int argc, char **argv){
 		}
 		if ((channel & 3) == 3){
 			printf ("*************** testing Both Channels Simultaneously ****************\n");
-			myPWM->setEnable (1, 3, 1);
+			myPWM->setEnable (1, 1, 1);
+			myPWM->setEnable (1, 2, 1);
 			myPWM->startInfiniteTrain ();
 			myPWM->waitOnBusy (1);
 			PWM_thread::getStatusRegister (1);
 			myPWM->waitOnBusy (4);
 			myPWM->stopInfiniteTrain ();
-			myPWM->setEnable (0, 3, 1);
+			myPWM->setEnable (0, 1, 1);
+			myPWM->setEnable (0, 2, 1);
 			while (myPWM->getModCustomStatus());
 		}
 		if (channel &1){
