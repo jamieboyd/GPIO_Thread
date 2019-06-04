@@ -104,8 +104,11 @@ int lever_init (void * initDataP, void *  &taskDataP){
 }
 
 /* ***************************************High function - we don't have a low function ****************************************
-Runs as an infinite train when mouse is present, filling circular buffer till we pass threshold
-Or run as a cued trial with a train of length nPositionData, you do the cue and start the train
+Uncued trial: Runs as an infinite train , filling circular buffer till we pass goal bottom, then runs a trial, stopping infinite train when trial is over
+cued trial: Starts a train of finite length (nPositionData), though we might not collect data till end of train, if trial is aborted we still have to wait till end of train
+
+Sets trial position: 0 = lever has not been to goal area, 1 = lever is in goal area, -1 lever left goal area before hold time expired, 
+2 = got to perturbation, -2 means  lever left goal area during perturbation (not  enabled - we don't check for "out of bounds" after perturbation starts)
 */
 
 void lever_Hi (void * taskData){
@@ -123,8 +126,8 @@ void lever_Hi (void * taskData){
 		leverPosition = (int16_t)(256 * leverTaskPtr->spi_wpData[1] + leverTaskPtr->spi_wpData[2]);
 	}
 	leverTaskPtr->leverPosition= leverPosition;
-	// this if statement is needed for un-cued trials, which are infinite trains
-	if (leverTaskPtr->iPosition < leverTaskPtr->nToFinish){
+	// if trial is complete but thread is still runing, we may be spinning our wheels a bit
+	if  (!(leverTaskPtr->trialComplete)){
 		// record lever data
 		leverTaskPtr->positionData [leverTaskPtr->iPosition] = leverPosition;
 		// signal in-goal
@@ -147,44 +150,68 @@ void lever_Hi (void * taskData){
 				}
 			}
 		}
-		// check for seting force
-		if ((leverTaskPtr->iPosition  >= leverTaskPtr->forceStartPos) && (leverTaskPtr->iForce < leverTaskPtr->nForceData)){
-			int leverForce =leverTaskPtr->forceData[leverTaskPtr->iForce] ;
-#if FORCEMODE == AOUT
-			wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverForce  >> 8) & 0x0F, leverForce  & 0xFF);
-#elif FORCEMODE == PWM
-			*(leverTaskPtr->dataRegister1) = leverForce;
-#endif
-			leverTaskPtr->iForce +=1;
-		}
-		// increment position in lever position array, before we set it back to 0 for un-cued trial 
-		leverTaskPtr->iPosition +=1;
 		// trial position specific stuff
-		if (leverTaskPtr -> trialPos ==1){// 1 means lever not moved into goal area yet
-			if (leverPosition >  leverTaskPtr -> goalBottom){
-				leverTaskPtr -> trialPos = 2; // lever moved into goal area (for a cued trial, it happened before time ran out)
-				leverTaskPtr->breakPos = leverTaskPtr->iPosition; // record where we entered goal area
-				if (!(leverTaskPtr->isCued)){
-					// for uncued trial, jump to end of circular buffer
-					leverTaskPtr->iPosition =  leverTaskPtr->nToGoalOrCircular; 
-				}
-			}else{ // check if time for getting into goal area expired for cued trial, or time to reset iPosiiton for uncued
-				if (leverTaskPtr->iPosition == leverTaskPtr->nToGoalOrCircular ){
-					if (leverTaskPtr->isCued){
-						leverTaskPtr -> trialPos = -1; // lever did not get to goal area before time ran out
-					}else{ // for un-cued trial, do wrap-around of circular buffer
-						leverTaskPtr->iPosition = 0;
+		switch (leverTaskPtr -> trialPos){
+			case 0: // 0 means lever not moved into goal area yet, check if lever has moved into goal area
+			{
+				if (leverPosition >=  leverTaskPtr -> goalBottom){
+					leverTaskPtr -> trialPos = 1; // lever moved into goal area (for a cued trial, it happened before time ran out)
+					leverTaskPtr->breakPos = leverTaskPtr->iPosition; // record where we entered goal area
+					if (leverTaskPtr -> isCued){ // for cued trial, increment position in lever position array
+						leverTaskPtr->iPosition +=1;
+					}else{  // for uncued trial, jump to end of circular buffer
+						leverTaskPtr->iPosition =  leverTaskPtr->nToGoalOrCircular; 
+					}
+				}else{ // check if time for getting into goal area has expired for cued trial, or if it is time to reset iPositon for uncued
+					if (leverTaskPtr->iPosition == leverTaskPtr->nToGoalOrCircular ){
+						if (leverTaskPtr->isCued){
+							leverTaskPtr->nToFinish = leverTaskPtr->iPosition; // lever did not get to goal area before time ran out so that's that
+						}else{ // for un-cued trial, do wrap-around of circular buffer
+							leverTaskPtr->iPosition = 0;
+						}
+					}else{
+						leverTaskPtr->iPosition +=1;
 					}
 				}
+				break;
 			}
-		}else{
-			if (leverTaskPtr ->trialPos ==2){ // check if we are still in goal range 
-				if (leverTaskPtr->inGoal == false){
-					leverTaskPtr ->trialPos = -2;
+			case 1:  // 1 means lever in goal area, check if lever is still in goal area 
+			{
+				if ((leverPosition <  leverTaskPtr -> goalBottom) || (leverPosition >  leverTaskPtr -> goalTop)){
+					leverTaskPtr ->trialPos = -1; // trial ends here
+					leverTaskPtr->nToFinish = leverTaskPtr->iPosition; // lever left goal area so that's that
+				}else {
+					// check for seting force
+					if (leverTaskPtr -> iPosition ==  leverTaskPtr->forceStartPos -1){
+						leverTaskPtr->trialPos = 2; // trial position for getting to perturb start
+						//leverTaskPtr->iForce =0;
+					}
+					leverTaskPtr->iPosition +=1;
 				}
+				break;
+			}
+			case 2: // 2 means perturbation has started
+			{
+				if (leverTaskPtr->iForce < leverTaskPtr->nForceData){
+					int leverForce =leverTaskPtr->forceData[leverTaskPtr->iForce] ;
+#if FORCEMODE == AOUT
+					wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverForce  >> 8) & 0x0F, leverForce  & 0xFF);
+#elif FORCEMODE == PWM
+				*(leverTaskPtr->dataRegister1) = leverForce;
+#endif
+					leverTaskPtr->iForce +=1;
+				}
+				// for now, comment out checking for goal position during perturbation so 
+				//if ((leverPosition <  leverTaskPtr -> goalBottom) || (leverPosition >  leverTaskPtr -> goalTop)){
+				//	leverTaskPtr ->trialPos = -2; // trial ends here
+				//	leverTaskPtr->nToFinish = leverTaskPtr->iPosition; // lever left goal area so that's that
+				//}else{
+					leverTaskPtr->iPosition +=1;
+				//}
+				break;
 			}
 		}
-		// check if we are done
+		// check if we are done 
 		if (leverTaskPtr->iPosition == leverTaskPtr->nToFinish){
 			leverTaskPtr->trialComplete =true;
 			// set lever to constant force, in case this was a perturb force trial
@@ -194,7 +221,7 @@ void lever_Hi (void * taskData){
 #elif FORCEMODE == PWM
 			*(leverTaskPtr->dataRegister1) = leverForce;
 #endif
-			// make sure goal cuer is turned off
+			// make sure goal cuer is turned off 
 			if (leverTaskPtr->goalCuer != nullptr){
 				if (leverTaskPtr->goalMode == kGOALMODE_HILO){
 					leverTaskPtr->goalCuer->setLevel(0,1);
@@ -494,10 +521,11 @@ last modified 2018/03/26 by Jamie Boyd - initial version */
 void leverThread::startTrial (void){
 	taskPtr->iPosition =0;
 	taskPtr->iForce = 0;
-	taskPtr->trialPos =1;
+	taskPtr->trialPos =0;
 	taskPtr->trialComplete =false;
 	taskPtr->inGoal=false;
 	taskPtr->nToFinish = taskPtr->nToGoalOrCircular + taskPtr->nHoldTicks;
+	taskPtr->breakPos = taskPtr->nToFinish + 1;
 	if (taskPtr->isCued){
 		modTrainLength (taskPtr->nToFinish);
 		DoTask ();

@@ -41,22 +41,25 @@ Last modified :
 
 int main(int argc, char **argv){
 	
-	int16_t * positionData = new int16_t [1000];
+	int16_t * positionData = new int16_t [6000];
 
-	leverThread * myLeverThread= leverThread::leverThreadMaker (positionData, 1000, kTRIAL_CUED, 250, kLEVER_DIR_NORMAL, 19, 6000);
+	leverThread * myLeverThread= leverThread::leverThreadMaker (positionData,1000, kTRIAL_CUED, 500, kLEVER_DIR_REVERSED, 22, 0);
 	
 	myLeverThread->zeroLever (0,0);	
-	myLeverThread->setHoldParams (100, 800, 250);
-	printf ("leverThread GO\n");
+	myLeverThread->setHoldParams (25, 175, 250);
 	myLeverThread->startTrial();
+	printf ("leverThread GO\n");
+	fflush (stdout);
+	
 	int trialCode;
 	unsigned int goalEntryPos;
 	
+	unsigned int ii =0;
 	while (myLeverThread->checkTrial(trialCode, goalEntryPos) == false){
-		
+		printf ("LEVERPOS = %d; trialCode = %d.\n", myLeverThread->getLeverPos(), trialCode);
 	}
 	printf("goal entry pos = %d; trial code = %i\n", goalEntryPos, trialCode);
-	for (unsigned int ii =0; ii < 1000; ii +=1){ 
+	for (ii =0; ii < 1000; ii +=1){ 
 		printf ("%i, ", positionData[ii]);
 	}
 	printf ("\n");

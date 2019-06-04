@@ -3,11 +3,13 @@
 
 import ptLeverThread
 import array
-
+from time import sleep
+import RPi.GPIO as GPIO
 class PTLeverThread ():
     """
     PTLeverThread controls a lever used for the AutoHeadFix program
     """
+    MOTOR_ENABLE = 20
     def __init__ (self, posBufSizeP, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP):
         self.posBuffer = array.array('h', [0]*posBufSizeP)
         self.leverThread = ptLeverThread.new (self.posBuffer, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP)
@@ -18,6 +20,9 @@ class PTLeverThread ():
             self.nCirc = nCircOrToGoalP
         self.goalCuerPin= goalCuerPinP
         self.cuerFreq = cuerFreqP
+        GPIO.setmode (GPIO.BCM)
+        GPIO.setup(PTLeverThread.MOTOR_ENABLE, GPIO.OUT)
+        
 
     def setConstForce (self,newForce):
         ptLeverThread.setConstForce(self.leverThread, newForce)
@@ -43,7 +48,11 @@ class PTLeverThread ():
         ptLeverThread.setPerturbStartPos(self.leverThread, startPos)
 
     def startTrial (self):
+        self.trialComplete = False
         ptLeverThread.startTrial(self.leverThread)
+        while not self.trialComplete:
+            print (self.checkTrial())
+            sleep (0.1)
 
     def checkTrial (self):
         resultTuple = ptLeverThread.checkTrial(self.leverThread)
