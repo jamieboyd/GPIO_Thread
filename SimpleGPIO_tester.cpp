@@ -3,10 +3,32 @@
 
 /* ******************************** makes a GPIO output that does software pulse width modulation *********************************************/
 
-static const int GPIO_PIN =17;
+static const int GPIO_PIN =22;
 static const int POLARITY = 0;
 
 int main(int argc, char **argv){
+	
+	// test a threadless
+	printf ("GPIO peri users = %d.\n", GPIOperi_users);
+	SimpleGPIOStructPtr nt = newThreadlessGPIO (GPIO_PIN, POLARITY);
+	printf ("GPIO peri users = %d.\n", GPIOperi_users);
+	for (int ii =0; ii < 100; ii +=1){
+		setThreadlessGPIO (nt, 1);
+		for (int ii =0; ii < 10000000; ii +=1){
+			if (ii % 100000 == 0){
+				printf ("waiting high = %d.\n", ii);
+			}
+		}
+		setThreadlessGPIO (nt, 0);
+		for (int ii =0; ii < 10000000; ii +=1){
+			if (ii % 100000 == 0){
+				printf ("waiting low = %d.\n", ii);
+			}
+		}
+	}
+	delete nt;
+	unUseGPIOperi ();
+	printf ("GPIO peri users = %d.\n", GPIOperi_users);
 	
 	// Use threadMaker function to make a simpleGPIO_thread, an infinite train with frequency = 1kHz, and duty cycle = 0.001
 	// SimpleGPIO_threadMaker calls pulsedThread constructor
@@ -55,7 +77,7 @@ int main(int argc, char **argv){
 	printf ("Trains left = %d.\n", myGPIO->waitOnBusy (60));
 	*/
 	// clean up
-	delete (myGPIO);
+	delete myGPIO;
 	printf ("GPIO peri users = %d.\n", GPIOperi_users);
 	delete (endFuncArrayData);
 	return 0;

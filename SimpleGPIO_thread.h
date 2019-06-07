@@ -29,6 +29,11 @@ typedef struct SimpleGPIOStruct{
 }SimpleGPIOStruct, *SimpleGPIOStructPtr;
 
 
+/* ******************** Some simple functions to set GPIO high or lo without a thread ********************/
+SimpleGPIOStructPtr newThreadlessGPIO (int thePin, int polarity); // returns a new SimpleGPIOStructPtr, ready to be used to control a single pin
+void setThreadlessGPIO (SimpleGPIOStructPtr threadless, int level);
+
+
 /* *********************SimpleGPIO_thread class extends pulsedThread ****************
 Does pulses and trains of pulses on Raspberry Pi GPIO pins */
 class SimpleGPIO_thread : public pulsedThread{
@@ -60,4 +65,6 @@ protected:
 	int pinNumber;
 	int polarity;
 };
+
+	
 #endif

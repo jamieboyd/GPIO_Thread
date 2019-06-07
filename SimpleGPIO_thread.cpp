@@ -1,5 +1,44 @@
 #include "SimpleGPIO_thread.h"
 
+/* ******************** Just some simple functions to set GPIO high or lo without a thread ********************/
+SimpleGPIOStructPtr newThreadlessGPIO (int thePin, int polarity){ // returns a new SimpleGPIOStructPtr, ready to be used to control a single pin
+	// map GPIO peripheral, return nullPtr if it can't be mapped
+	volatile unsigned int * GPIOperiAddr = useGpioPeri ();
+	if (GPIOperiAddr == nullptr){
+#if beVerbose
+		printf ("SimpleGPIO_threadMaker failed to map GPIO peripheral.\n");
+#endif
+		return nullptr;	
+	}
+	// make a new SimpleGPIOStruct which we fill out and return
+	SimpleGPIOStructPtr threadless = new SimpleGPIOStruct;
+	// save offsets to registers for setting pins high or lo
+	if (polarity == 0){ // low to high
+		threadless->GPIOperiHi = (unsigned int *) (GPIOperiAddr + 7);
+		threadless->GPIOperiLo = (unsigned int *) (GPIOperiAddr + 10);
+	}else{
+		threadless->GPIOperiHi = (unsigned int *) (GPIOperiAddr + 10);
+		threadless->GPIOperiLo = (unsigned int *) (GPIOperiAddr + 7);
+	}
+	// calculate pinBit
+	threadless->pinBit =  1 << thePin;
+	// initialize pin for output
+	*(GPIOperiAddr + (thePin /10)) &= ~(7<<((thePin %10)*3));
+	*(GPIOperiAddr + (thePin/10)) |=  (1<<((thePin%10)*3));
+	// put pin in lo state to start
+	*(threadless->GPIOperiLo ) = threadless->pinBit ;
+	// return new threadless pointer
+	return threadless;
+}
+	
+void setThreadlessGPIO (SimpleGPIOStructPtr threadless, int level){
+	if (level ==0){
+		*(threadless->GPIOperiLo) = threadless->pinBit;
+	}else{
+		*(threadless->GPIOperiHi) = threadless->pinBit;
+	}
+}
+
 /* *************************** Functions that are called from thread can not be class methods *********************
 
 ***************************************Initialization callback function ****************************************

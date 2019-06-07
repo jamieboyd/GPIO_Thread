@@ -1,6 +1,8 @@
 
 #include "leverThread.h"
-
+/* ************************************* Init function for thread **********************************************
+* Last Modified:
+* 2019/06/07 by Jamie Boyd - adding code for motorDir */
 int lever_init (void * initDataP, void *  &taskDataP){
 	// task data pointer is a void pointer that needs to be initialized to a pointer to taskData and filled from our custom init structure 
 	leverThreadStructPtr taskData  = new leverThreadStruct;
@@ -87,10 +89,20 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	// copy pointer to lever position buffer
 	taskData->positionData = initDataPtr->positionData;
 	taskData->nPositionData = initDataPtr->nPositionData;
-	// make force data (force data is integer, but must range from 0 to 4095)
+	// make force data (force data is integer, and must range from 0 to 4095)
 	taskData->nForceData = initDataPtr->nForceData;
 	taskData->forceData = new int [initDataPtr->nForceData];
 	taskData->iForce = 0;
+	// motor direction and symmetry
+	taskData -> motorIsReversed = initDataPtr-> motorIsReversed;
+	if ((initDataPtr-> motorDirPin) == 0){ // no motor pin signals bi-directional force control
+		taskData-> motorhasDirPin = false;
+		taskData -> motorDir = nullptr;
+	}else{
+		taskData-> motorhasDirPin = true;
+		// motorDir is set by a threadlessGPIO. 0 is always towards the start position, 1 is always away.
+		taskData -> motorDir = newThreadlessGPIO (initDataPtr-> motorDirPin, initDataPtr-> motorIsReversed ? 1 : 0);
+	}	
 	// initialize iPosition to 0 - other initialization?
 	taskData->iPosition=0;
 	taskData->forceStartPos = initDataPtr->nPositionData; // no force will be applied cause we never get to here
@@ -109,8 +121,8 @@ cued trial: Starts a train of finite length (nPositionData), though we might not
 
 Sets trial position: 0 = lever has not been to goal area, 1 = lever is in goal area, -1 lever left goal area before hold time expired, 
 2 = got to perturbation, -2 means  lever left goal area during perturbation (not  enabled - we don't check for "out of bounds" after perturbation starts)
-*/
-
+* Last Modified:
+* 2019/06/07 by Jamie Boyd - adding code for motorDir */
 void lever_Hi (void * taskData){
 	// cast task data to  leverStruct
 	leverThreadStructPtr leverTaskPtr = (leverThreadStructPtr) taskData;
@@ -181,19 +193,37 @@ void lever_Hi (void * taskData){
 					leverTaskPtr ->trialPos = -1; // trial ends here
 					leverTaskPtr->nToFinish = leverTaskPtr->iPosition; // lever left goal area so that's that
 				}else {
-					// check for seting force
-					if (leverTaskPtr -> iPosition ==  leverTaskPtr->forceStartPos -1){
-						leverTaskPtr->trialPos = 2; // trial position for getting to perturb start
-						//leverTaskPtr->iForce =0;
-					}
 					leverTaskPtr->iPosition +=1;
+					// check for seting force
+					if (leverTaskPtr -> iPosition ==  leverTaskPtr->forceStartPos){
+						leverTaskPtr->trialPos = 2; // trial position for getting to perturb start
+					}
 				}
 				break;
 			}
-			case 2: // 2 means perturbation has started
+			case 2: // 2 means perturbation has started. For symmetric force, numbers lower than 2048 pull towards the start pos. higher numbers push away from start pos
+					// with motorDirPin, negative numbers mean pull towards start, set GPIO low. positive numbers mean push away from start, set GPIO higjh
 			{
 				if (leverTaskPtr->iForce < leverTaskPtr->nForceData){
-					int leverForce =leverTaskPtr->forceData[leverTaskPtr->iForce] ;
+					int leverForce =leverTaskPtr->forceData[leverTaskPtr->iForce];
+					if (leverTaskPtr-> motorhasDirPin){
+						if (leverTaskPtr->iForce == 0){
+							if (leverForce < 0){ // current lever force is less than 0, force towards start position, but dirPin shoul dbe set correctly already
+								leverForce = -leverForce;
+							}
+						}else {
+							if (leverForce < 0){ // current lever force is less than 0, force towards start position
+								leverForce = -leverForce;
+								if ([leverTaskPtr->iForce -1] >= 0){ // need to set state of direction output
+									setThreadlessGPIO (leverTaskPtr->motorDir, 1);
+								}
+							}else{ // lever force is >= than 0
+								if (leverTaskPtr->forceData[leverTaskPtr->iForce -1] < 0)){ // need to switch state of direction output
+								setThreadlessGPIO (leverTaskPtr->motorDir, 0);
+								}
+							}
+						}
+					}							
 #if FORCEMODE == AOUT
 					wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverForce  >> 8) & 0x0F, leverForce  & 0xFF);
 #elif FORCEMODE == PWM
@@ -233,7 +263,6 @@ void lever_Hi (void * taskData){
 	}
 }
 
-
 /* ************* Custom task data delete function *********************/
 void leverThread_delTask (void * taskData){
 	leverThreadStructPtr taskPtr = (leverThreadStructPtr) taskData;
@@ -246,7 +275,8 @@ void leverThread_delTask (void * taskData){
 mod data is int, 0 for returning lever to existing start position (if possible) or 1 for railing lever and
 setting a new zeroed position
 * Last Modified:
-* 2019/03/05 by Jamie Boyd - fixing unsined vs signed for 16 bit ints for position
+* 2019/06/07 by Jamie Boyd - adding code for motorDir 
+* 2019/03/05 by Jamie Boyd - fixing unsigned vs signed for 16 bit ints for position
 * 2019/03/04 by Jamie Boyd - adding PWM option, plus some reorg of duplication in logic
 */
 int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
@@ -257,6 +287,9 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 	struct timespec sleeper;
 	sleeper.tv_sec = 0;
 	sleeper.tv_nsec = 5e07;
+	
+	
+	
 	// divide force range into 20 
 	int dacBase = leverTaskPtr->constForce;
 	float dacIncr = (3500 - dacBase)/20;
@@ -306,7 +339,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
  /* ******************* ThreadMaker with Integer pulse duration, delay, and number of pulses timing description inputs ********************
  Last Modified:
  2018/02/08 by Jamie Boyd - Initial Version */
-leverThread * leverThread::leverThreadMaker (int16_t * positionData, unsigned int nPositionData, bool isCuedP, unsigned int nToGoalOrCircularP,   int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero) {
+leverThread * leverThread::leverThreadMaker (int16_t * positionData, unsigned int nPositionData, bool isCuedP, unsigned int nToGoalOrCircularP,   int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero, int MotorDirPinOrZero, int motorIsReversed)) {
 	
 	int errCode;
 	leverThread * newLever;
@@ -320,6 +353,8 @@ leverThread * leverThread::leverThreadMaker (int16_t * positionData, unsigned in
 	initStruct->cuerFreq = cuerFreqOrZero;		// freq is zero for a DC on or off task
 	initStruct->nForceData=kMAX_FORCE_ARRAY_SIZE;
 	initStruct->nToGoalOrCircular = nToGoalOrCircularP;
+	initStruct-> motorDirPin = MotorDirPinOrZero;
+	initStruct -> motorIsReversed = motorIsReversed;
 	if (isCuedP){				// if isCued trials , initialize thread with pulses in a train equal to posiiton array size
 		newLever = new leverThread ((void *) initStruct, nPositionData, errCode);
 	}else{	// ifor uncued trials, initialize thread with 0 pulses, AKA infinite train

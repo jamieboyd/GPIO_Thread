@@ -5,12 +5,19 @@ import ptLeverThread
 import array
 from time import sleep
 import RPi.GPIO as GPIO
-class PTLeverThread ():
+class PTLeverThread (object):
     """
     PTLeverThread controls a lever used for the AutoHeadFix program
     """
-    MOTOR_ENABLE = 20
-    def __init__ (self, posBufSizeP, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP):
+    MOTOR_ENABLE = 20  # GPIO pin to enable motor
+    GOAL_CUER = 22     # GPIO pin to turn on when lever is in goal position
+    FORCE_IS_SYMMETRIC = True
+    """
+    If True, 16 bit force output (0 - 4095) goes from full counterclockwise force to full clockwise force
+    with midpoint (2048) being no force on lever. If False, force, 0-4095 maps from no force to full foprce, and
+    a GPIO pin controls the direction of the force, clockwise or counter-clockwise
+    """
+    def __init__ (self, posBufSizeP, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP, motorEnable):
         self.posBuffer = array.array('h', [0]*posBufSizeP)
         self.leverThread = ptLeverThread.new (self.posBuffer, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP)
         self.posBufSize = posBufSizeP
@@ -20,10 +27,16 @@ class PTLeverThread ():
             self.nCirc = nCircOrToGoalP
         self.goalCuerPin= goalCuerPinP
         self.cuerFreq = cuerFreqP
+        self.motorEnablePin = motorEnable
         GPIO.setmode (GPIO.BCM)
-        GPIO.setup(PTLeverThread.MOTOR_ENABLE, GPIO.OUT)
-        
+        GPIO.setup(self.motorEnablePin, GPIO.OUT)
 
+    def setMotorEnable (self, motorState):
+        if motorState == 0:
+            GPIO.output (self.motorEnablePin, GPIO.LOW)
+        else:
+            GPIO.output (self.motorEnablePin, GPIO.HIGH)
+        
     def setConstForce (self,newForce):
         ptLeverThread.setConstForce(self.leverThread, newForce)
 
@@ -65,7 +78,7 @@ class PTLeverThread ():
         ptLeverThread.doGoalCue(self.leverThread, 1)
     
     def turnOffGoalCue (self):
-        ptLeverThread.doGoalCue(self.leverThread, 0)
+        ptLeverThread.doGoalCue( self.leverThread, 0)
 
 
     def setHoldParams(self, goalBottom, goalTop, nHoldTicks):
@@ -86,5 +99,10 @@ class PTLeverThread ():
     def setTicksToGoal (self, ticksToGoal):
         ptLeverThread.setTicksToGoal (self.leverThread, ticksToGoal)
         
+    
+if __name__ == '__main__':
+    lever = PTLeverThread (1000, True, 125, True, PTLeverThread.GOAL_CUER, 0, PTLeverThread.MOTOR_ENABLE)
+    lever.setConstForce (300)
+    
     
     

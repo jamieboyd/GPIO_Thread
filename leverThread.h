@@ -39,7 +39,7 @@
  * we use kLEVER_FREQ to calculate length of array needed for however long we want to record lever position
  * we make an array of force values for sigmoidal force transition for perturbation
  * force array size divided by kLEVER_FREQ sets the duration of the force ramp. kMAX_FORCE_ARRAY_SIZE 
- * sets the size of the array used, and thus the maximum time for perturbation */
+ * sets the size of the array used, and thus the maximum time for perturbation sigmoid ramp */
 const float kLEVER_FREQ = 250;
 const unsigned int kMAX_FORCE_ARRAY_SIZE = 125;
 
@@ -47,7 +47,7 @@ const unsigned int kMAX_FORCE_ARRAY_SIZE = 125;
 #define kGOALMODE_NONE   0	// no goal cuer
 #define kGOALMODE_HILO   1	// goal cuer  that sets hi and lo, as for an LED
 #define kGOALMODE_TRAIN  2	// goal cuer that turns an infinite train ON and OFF, as for a tone
-#define kLEVER_DIR_NORMAL    0 // read lever position in normal non-reversed direction
+#define kLEVER_DIR_NORMAL    0 // read lever position in normal direction, lower values are nearer to the hold position, higher values means mouse has moved lever. 
 #define kLEVER_DIR_REVERSED  1 // read lever posiiton in reversed direction
 #define kTRIAL_UNCUED    0 // a trial runs as an infinite train until lever enters goal
 #define kTRIAL_CUED      1 // a trial runs in one-shot mode. The calling code should make a start cue 
@@ -97,7 +97,10 @@ typedef struct leverThreadInitStruct{
 	unsigned int nToGoalOrCircular;	// max points to get into goal area for cued trials, number of points for circular buffer at start, for uncued trials
 	bool isReversed;				// true if polarity of quadrature decoder is reversed. Motor force is not reversed.  reverse it with Escon studio
 	int goalCuerPin;				// number of a GPIO pin to use for a cue that lever is in rewarded position, else 0 for no cue
-	float cuerFreq;					// if a tone, frequency of tone to play. duty cycle is assumed to 0.5. If a simple on/off, pass 0
+	int motorDirPin;				// if lever force direction is controlled by GPIO pin, the number of the pin. 0 if force is mapped symetrically around 2047
+	bool motorIsReversed;			// if false, lower values of motor output (or motorDir set LOW, if motorDir is used)bring lever back to start position,
+								// if true, higher values of motor output (or motorDir set high) bring lever back to start position
+	float cuerFreq;				// if a tone, frequency of tone to play. duty cycle is assumed to 0.5. If a simple on/off, pass 0
 	unsigned int nForceData;		// size of force data array - sets time it takes to switch on perturbation with sigmoidal ramp
 }leverThreadInitStruct, *leverThreadInitStructPtr;
 
@@ -120,12 +123,17 @@ typedef struct leverThreadStruct{
 	int16_t goalTop;			// top of Goal area
 	unsigned int nHoldTicks;	// number of ticks lever needs to be held, after getting to goal area. nToGoalOrCircular + nHoldTicks must be less than nPositionData
 	// tracking trial progress. trialPos is positive for good trials, negative when the mouse fails
-	// trialPos is 1 when trial starts
-	// thread sets trialPos to 2 when lever first crosses into goal position. For cued trial, this must be before nToGoal, or trialPos is set to -1 
-	// thread sets trialpos to -2 if lever then leaves goal area before nHoldTicks has elapsed. trialComplete = true and trialPos=2 indicates success
+	// trialPos is 0 when trial starts
+	// thread sets trialPos to 1 when lever first crosses into goal position. For cued trial, this must be before nToGoal, or trialPos is set to -1 
+	// thread sets trialpos to -1 if lever then leaves goal area before nHoldTicks has elapsed. trialComplete = true and trialPos=2 indicates success
 	bool inGoal;				// thread sets this to true if lever is in goal position, false when not in goalPos, and uses this for doing the cue
 	int trialPos;				// 1 when trial starts, 2 or -2 when trial ends
 	bool trialComplete;			// set to false when trial begins, thread sets this to true when trial is complete.
+	// fields for force control
+	bool motorIsReversed;		// true if force on motor is reversed from usual low numbers/low level of motorDirPin output move lever closer to starting position
+	bool motorhasDirPin;		// set to true if motor direction is controlled by GPIO pin and 0-4095 force input is scaled from 0 to max
+								// set to false if 0-4095 force input is scaled symmetrically with 2048 = no force. if not motorIsReversed lower numbers move lever towards start pos 
+	SimpleGPIOStructPtr motorDir; // structure for controlling GPIO pin setting motor direction, if motor is not Bi. if motorIsReversed, GPIO High moves motor towards start position
 	// fields for force data
 	int constForce;				// value for constant force applied to lever when no force perturbation is happening
 	int perturbForce;			// additional force used for perturbing
@@ -135,7 +143,7 @@ typedef struct leverThreadStruct{
 	unsigned int forceStartPos;	// position in decoder input array to start force output - set forceStartPos to end of decoder array for no force output and we never reach it
 	// hardware access
 	uint8_t spi_wpData [5];		 // buffer for spi read/write - 5 bytes is as big as we need it to be
-	SimpleGPIO_thread * goalCuer;// simpleGPIO thread to give a cue when in goal range. 
+	SimpleGPIO_thread * goalCuer;// simpleGPIO thread to give a cue when in goal range. Use thread even if not a train
 #if FORCEMODE == AOUT
 	int i2c_fd; 				// file descriptor for i2c used by mcp4725 DAC
 #elif FORCEMODE == PWM
@@ -161,7 +169,7 @@ class leverThread : public pulsedThread{
 	//integer param constructor: delay =0, duration = 5000 (200 hz), nThreadPulseOrZero = 0 for infinite train for uncued, with circular buffer, or the size of the array, for cued trials
 	leverThread (void * initData, unsigned int nThreadPulsesOrZero, int &errCode) : pulsedThread ((unsigned int) 0, (unsigned int)(1E06/kLEVER_FREQ), (unsigned int) nThreadPulsesOrZero, initData, &lever_init, nullptr, &lever_Hi, 2, errCode) {
 	};
-	static leverThread * leverThreadMaker (int16_t * positionData, unsigned int nPositionData, bool isCued, unsigned int nCircularOrToGoal,  int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero);
+	static leverThread * leverThreadMaker (int16_t * positionData, unsigned int nPositionData, bool isCued, unsigned int nCircularOrToGoal,  int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero, int MotorDirPinOrZero, int motorIsReversed);
 	// lever position utilities
 	int zeroLever (int checkZero, int isLocking); // if checkZero is set AND new lever zero is different from old lever returns 1, else 0
 	int16_t getLeverPos (void); // returns current lever position, from position array if task in progress, else reads the quad decoder itself

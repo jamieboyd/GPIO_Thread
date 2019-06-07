@@ -70,6 +70,7 @@ volatile unsigned int * useGpioPeri (void){
 		if (GPIOperi_users ==0){
 			unmap_peripheral (GPIOperi);
 			delete (GPIOperi);
+			GPIOperi = nullptr;
 		}
 	} 
  }
@@ -100,6 +101,7 @@ volatile unsigned int * usePWMPeri (void){
 			*(PWMperi->addr + PWM_CTL) = 0; 
 			unmap_peripheral (PWMperi);
 			delete (PWMperi);
+			PWMperi = nullptr;
 		}
 	} 
  }
@@ -133,6 +135,7 @@ void unUsePWMClockperi (void){
 			*(PWMClockperi->addr + CM_PWMCTL) = ((*PWMClockperi->addr + CM_PWMCTL) & CM_DISAB) | CM_PASSWD; 
 			unmap_peripheral (PWMClockperi);
 			delete (PWMClockperi);
+			PWMClockperi = nullptr;
 		}
 	} 
 }
