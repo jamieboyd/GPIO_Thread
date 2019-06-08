@@ -49,6 +49,8 @@ const unsigned int kMAX_FORCE_ARRAY_SIZE = 125;
 #define kGOALMODE_TRAIN  2	// goal cuer that turns an infinite train ON and OFF, as for a tone
 #define kLEVER_DIR_NORMAL    0 // read lever position in normal direction, lower values are nearer to the hold position, higher values means mouse has moved lever. 
 #define kLEVER_DIR_REVERSED  1 // read lever posiiton in reversed direction
+#define kLEVER_BACKWARDS 0     // lever force to move lever backwards towards start position
+#define kLEVER_FORWARDS 1     // lever force to move lever forwards towards mouse, away from start position
 #define kTRIAL_UNCUED    0 // a trial runs as an infinite train until lever enters goal
 #define kTRIAL_CUED      1 // a trial runs in one-shot mode. The calling code should make a start cue 
 /* ******************************* LS7366R quadrature decoder constants ******************************/
@@ -135,8 +137,7 @@ typedef struct leverThreadStruct{
 								// set to false if 0-4095 force input is scaled symmetrically with 2048 = no force. if not motorIsReversed lower numbers move lever towards start pos 
 	SimpleGPIOStructPtr motorDir; // structure for controlling GPIO pin setting motor direction, if motor is not Bi. if motorIsReversed, GPIO High moves motor towards start position
 	// fields for force data
-	int constForce;				// value for constant force applied to lever when no force perturbation is happening
-	int perturbForce;			// additional force used for perturbing
+	int constForce;			// value for constant force applied to lever when no force perturbation is happening
 	int * forceData;			// array for output to DAC or to PWM for force output
 	unsigned int nForceData;	// number of points in force data array, we always use all of them, so transition time is constant
 	unsigned int iForce;		// current position in force array
@@ -175,16 +176,16 @@ class leverThread : public pulsedThread{
 	int16_t getLeverPos (void); // returns current lever position, from position array if task in progress, else reads the quad decoder itself
 	void doGoalCue (int offOn); // turns ON or OFF the task used for signalling the lever is in goal position, for testing, mostly
 	// constant force, setting, geting, applying
-	void setConstForce (int theForce); // sets the force that will be applied at start of trial for mouse to pull against
-	int getConstForce (void); // returns current value for constant force
+	void setConstForce (float theForce); // sets the force that will be applied at start of trial for mouse to pull against. from 0 to 1. Direction is always backward
+	float getConstForce (void); // returns current value for constant force
 	void applyConstForce (void); // applies the force currently set as constant force to the lever
-	void applyForce (int theForce); // applies an arbitrary force to the lever
+	void  applyForce (float theForce, int direction); // applies an arbitrary force to the lever
 	// seeting trial performance parameters for lever goal area, time to get to goal pos, hold time, and force perturbations
 	void setHoldParams (int16_t goalBottomP, int16_t goalTopP, unsigned int nHoldTicksP); // sets lever goal area and hold time before each trial
 	void setTicksToGoal (unsigned int ticksToGoal); // sets ticks mouse is given to get the lever into goal posiiton before trial aborts, also used for circular buffer size
 	void setPerturbLength (unsigned int perturbLength); //sets length of portion of the force array used to generate the sigmoid of perturbation force
 	unsigned int getPerturbLength (void); // returns length of the portion of force array used to genberate sigmidal ramp for perturbation force
-	void setPerturbForce(int perturbForce); // calculates a sigmoid over force array from constant force to constant force plus perturb force, which can be negative 
+	void setPerturbForce(float perturbForce); // calculates a sigmoid over force array from constant force to constant force plus perturb force, which can be negative 
 	void setPerturbStartPos(unsigned int perturbStartPos); // sets position in lever position array corresponding to point where perturb force will be applied to lever
 	void setPerturbOff (void); // turns off perturb force application for upcoming trials
 	// trial control, starting, stopping, checking progress and results
@@ -193,6 +194,8 @@ class leverThread : public pulsedThread{
 	void setCue (bool isCuedP); // sets trials to be run in one-shot cued mode or in uncued mode with circular buffer until lever enters goal area
 	bool isCued (void); // returns the truth that trials are set to be run in cued mode
 	void abortUncuedTrial(void); // aborts an uncued trial, which could go on forever if lever is never moved into goal area. does nothing for a cued trial
+	float constantForce; // scaled from 0 to 1, force applied to lever when not perturbing or zeroing
+	float perturbForce; // force added to lever when perturbing. Scrunched to -constantForce < perturbForce < 1-constantForce
 	protected:
 	leverThreadStructPtr taskPtr;
 };

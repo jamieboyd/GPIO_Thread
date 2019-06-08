@@ -206,6 +206,7 @@ void lever_Hi (void * taskData){
 			{
 				if (leverTaskPtr->iForce < leverTaskPtr->nForceData){
 					int leverForce =leverTaskPtr->forceData[leverTaskPtr->iForce];
+					/* no need for this code if perturb force is scrunched to constant force
 					if (leverTaskPtr-> motorhasDirPin){
 						if (leverTaskPtr->iForce == 0){
 							if (leverForce < 0){ // current lever force is less than 0, force towards start position, but dirPin shoul dbe set correctly already
@@ -215,15 +216,16 @@ void lever_Hi (void * taskData){
 							if (leverForce < 0){ // current lever force is less than 0, force towards start position
 								leverForce = -leverForce;
 								if ([leverTaskPtr->iForce -1] >= 0){ // need to set state of direction output
-									setThreadlessGPIO (leverTaskPtr->motorDir, 1);
+									setThreadlessGPIO (leverTaskPtr->motorDir, kLEVER_BACKWARDS);
 								}
 							}else{ // lever force is >= than 0
 								if (leverTaskPtr->forceData[leverTaskPtr->iForce -1] < 0)){ // need to switch state of direction output
-								setThreadlessGPIO (leverTaskPtr->motorDir, 0);
+								setThreadlessGPIO (leverTaskPtr->motorDir, kLEVER_BACKWARDS);
 								}
 							}
 						}
-					}							
+					}
+					*/					
 #if FORCEMODE == AOUT
 					wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverForce  >> 8) & 0x0F, leverForce  & 0xFF);
 #elif FORCEMODE == PWM
@@ -287,12 +289,23 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 	struct timespec sleeper;
 	sleeper.tv_sec = 0;
 	sleeper.tv_nsec = 5e07;
-	
-	
-	
 	// divide force range into 20 
-	int dacBase = leverTaskPtr->constForce;
-	float dacIncr = (3500 - dacBase)/20;
+	int dacMax, dacBase = leverTaskPtr->constForce;
+	if (leverTaskPtr -> motorHasDirPin){
+		setThreadlessGPIO (leverTaskPtr->motorDir, kLEVER_BACKWARDS);
+		if (leverTaskPtr -> motorIsReversed){
+			dacMax= 3500;
+		}else{
+			dacMax = 600;
+		}
+	}else{
+		if (leverTaskPtr -> motorIsReversed){
+			dacMax= 3800;
+		}else{
+			dacMax = 300;
+		}
+	}
+	float dacIncr = (dacMax - dacBase)/20;
 	int dacOut;
 	int16_t leverPos;
 	int ii;
@@ -325,7 +338,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 	// clear counter
 	leverTaskPtr->spi_wpData[0] = kQD_CLEAR_COUNTER;
 	wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 1);
-	// set force on lever back to base force
+	// set force on lever back to base force  = constant force
 	dacOut = dacBase;
 #if FORCEMODE == AOUT
 	wiringPiI2CWriteReg8 (leverTaskPtr->i2c_fd, (dacOut  >> 8) & 0x0F, dacOut & 0xFF);
@@ -337,8 +350,9 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 }
 
  /* ******************* ThreadMaker with Integer pulse duration, delay, and number of pulses timing description inputs ********************
- Last Modified:
- 2018/02/08 by Jamie Boyd - Initial Version */
+* Last Modified:
+* 2019/06/07 by Jamie Boyd - adding code for motorDir 
+* 2018/02/08 by Jamie Boyd - Initial Version */
 leverThread * leverThread::leverThreadMaker (int16_t * positionData, unsigned int nPositionData, bool isCuedP, unsigned int nToGoalOrCircularP,   int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero, int MotorDirPinOrZero, int motorIsReversed)) {
 	
 	int errCode;
@@ -374,32 +388,46 @@ leverThread * leverThread::leverThreadMaker (int16_t * positionData, unsigned in
 }
 
 /* ***********************************************Constant Force ************************************************
-This function sets the saved value, but does not apply the force
-Last Modified 2018/03/26 by Jamie Boyd - initial version */
-void leverThread::setConstForce (int theForce){
+* This function sets the saved value, but does not apply the force. theForce ranges from 0 to 1, backwards direction is assumed
+* Last Modified:
+* 2019/06/07 by Jamie Boyd - adding code for motorDir, changed input to floating point scaled 0 to 1
+* 2018/03/26 by Jamie Boyd - initial version */
+void leverThread::setConstForce (float theForce){
 	if (theForce < 0){
-		taskPtr->constForce =0;
+		theForce =0;
 	}else{
-		if (theForce > 4095){
-			taskPtr->constForce = 4095;
-		} else{
-			taskPtr->constForce = theForce;
+		if (theForce > 1){
+			theForce= 1;
+		} 
+	}
+	constantForce = theForce;
+	int calcVal;
+	if (taskPtr -> motorHasDirPin){ // no Force to max Force scaled from 0 to 4097
+		calcVal = (int) (theForce * 4095);
+	}else{
+		if (taskPtr -> motorIsReversed){ // max Reverse force = 0, No force = 2047, max forward force =4095
+			calcVal = 2048 + (int) (theForce * 2047);
+		}else{
+			calcVal = 2047 - (int) (theForce * 2047);
 		}
 	}
+	taskPtr->constForce = calcVal;
 }
 
-/* ********************* returns the vlaue for constant force ********************
-Last Modified 2018/03/26 by Jamie Boyd - initial version */
-int leverThread::getConstForce (void){
-	return taskPtr->constForce;
+/* ********************* returns the value for constant force, scaled from 0 to 1, backwards direction assumed ********************
+* Last Modified:
+* 2019/06/07 by Jamie Boyd - adding code for motorDir, changed return val to floating point scaled 0 to 1
+* 2018/03/26 by Jamie Boyd - initial version */
+float leverThread::getConstForce (void){
+	return constantForce;
 }
 
-
+/* ********************** returns the truth that the leverThread is set to start froma cue ************************************* */
 bool leverThread::isCued (void){
 	return taskPtr->isCued;
 }
 
-
+/* ************* sets leverThread to start from a cue, if isCuedP is true, or to be uncued, if isCuedP is false**********************/
 void leverThread::setCue (bool isCuedP){
 	taskPtr->isCued =isCuedP ;
 	if (isCuedP){
@@ -421,41 +449,59 @@ int16_t leverThread::getLeverPos (void){
 		taskPtr->spi_wpData[2] = 0;
 		wiringPiSPIDataRW(kQD_CS_LINE, taskPtr->spi_wpData, 3);
 		int16_t leverPosition;
-	
-	if ( taskPtr-> isReversed){
+		if ( taskPtr-> isReversed){
 			leverPosition = (int16_t)(65536 - (256 * taskPtr->spi_wpData[1] + taskPtr->spi_wpData[2]));
 		}else{
 			leverPosition = (int16_t)(256 * taskPtr->spi_wpData[1] + taskPtr->spi_wpData[2]);
 		}
-	taskPtr->leverPosition= leverPosition;
+		taskPtr->leverPosition= leverPosition;
 	}
 	return taskPtr->leverPosition;
 }
 
+/* *********************** Set the number of ticks the mouse has to get lever into goal position to keep trial alive ******* */
 void leverThread::setTicksToGoal (unsigned int ticksToGoal){
 	taskPtr->nToGoalOrCircular = ticksToGoal;
 }
 
 
-/* ************ applies a given force ****************************
-If theForce is less than 0, or greater then 4095, it is scrunched
-Force is also scrunched to max, 4095
+/* ************ applies a given force, scaled from 0 to 1, with direction  ****************************
 Last Modified:
+* 2019/06/07 by Jamie Boyd - added direction option, made theForce a float scaled from 0 to 1
 * 2019/03/04 by Jamie Boyd - modified for PWM force option
 *  2018/03/26 by Jamie Boyd - initial version */
-void leverThread::applyForce (int theForce){
+void leverThread::applyForce (float theForce, int direction){
 	if (theForce < 0){
 		theForce =0;
 	}else{
-		if (theForce > 4095){
-			theForce = 4095;
+		if (theForce > 1){
+			theForce = 1;
+		}
+	}
+	int calcVal;
+	if (taskPtr -> motorHasDirPin){ // no Force to max Force scaled from 0 to 4097
+		calcVal = (int) (theForce * 4095);
+		setThreadlessGPIO (leverTaskPtr->motorDir, direction);
+	}else{
+		if (taskPtr -> motorIsReversed){
+			if (direction == kLEVER_BACKWARDS){ // max Reverse force = 0, No force = 2047, max forward force =4095
+				calcVal = 2047 - (int) (theForce * 2047);
+			}else{
+				calcVal = 2048 + (int) (theForce * 2047);
+			}
+		}else{ // motor is not reversed
+			if (direction == kLEVER_BACKWARDS){ // max Reverse force = 0, No force = 2047, max forward force =4095
+				calcVal = 2048 + (int) (theForce * 2047);
+			}else{
+				calcVal = 2047 - (int) (theForce * 2047);
+			}
 		}
 	}
 	// write the data
 #if FORCEMODE == AOUT
-	wiringPiI2CWriteReg8(taskPtr->i2c_fd, (theForce >> 8) & 0x0F, theForce  & 0xFF);
+	wiringPiI2CWriteReg8(taskPtr->i2c_fd, (calcVal >> 8) & 0x0F, calcVal  & 0xFF);
 #elif FORCEMODE == PWM
-	*(taskPtr->dataRegister1) = theForce;
+	*(taskPtr->dataRegister1) = calcVal;
 #endif
 }
 
@@ -464,6 +510,7 @@ void leverThread::applyForce (int theForce){
 * 2019/03/04 by Jamie Boyd - modified for PWM force option
 *  2018/03/26 by Jamie Boyd - initial version */ 
 void leverThread::applyConstForce (void){
+	setThreadlessGPIO (taskPtr->motorDir, kLEVER_BACKWARDS);
 	int theForce =  taskPtr->constForce;
 	// write the data
 #if FORCEMODE == AOUT
@@ -504,36 +551,46 @@ unsigned int leverThread::leverThread::getPerturbLength (void){
 
 
 /* *********************************** Setting perturbation ***********************************
-fills the array with force data 
-last modified 2018/04/09 by jamie Boyd - corrected for negative forces. We never go true negative, just subtract from constant force
-last modified 2018/03/26 by Jamie Boyd - initial version */
-void leverThread::setPerturbForce (int perturbForceP){
-	if (taskPtr->constForce + perturbForceP < 0){
-		taskPtr->perturbForce  = - (taskPtr->constForce);
-	}else{
-		if (taskPtr->constForce + perturbForceP > 4095){
-			taskPtr->perturbForce = 4095 - taskPtr->constForce;
-		}else{
-			taskPtr->perturbForce = perturbForceP;
+* fills the array with force data 
+* Last Modified:
+* 2018/06/07 by Jamie Boyd - added code for motorDirPin, changed perturbForce to float
+* 2018/04/09 by jamie Boyd - corrected for negative forces. We never go true negative, just subtract from constant force
+* 2018/03/26 by Jamie Boyd - initial version */
+void leverThread::setPerturbForce (float perturbForceP){
+	if (constantForce + perturbForceP > 1){
+		perturbForce = 1 - constantForce;
+	}else{ 		
+		if (constantForce + perturbForceP < 0){
+			perturbForce = -constantForce;
 		}
 	}
-	unsigned int nForceDataM1 = taskPtr->nForceData -1;
-	unsigned int iPt;
-	float halfWay = nForceDataM1/2;
-	float rate = nForceDataM1/10;
-	float base = taskPtr->constForce;
+	unsigned int iForce, nForces= taskPtr->nForceData ;
+	float halfWay = nForces/2;
+	float rate = nForces/10;
+	float base = constantForce;
+	float theForce;
+	int calcVal;
  #if beVerbose	
 	printf ("force array:");
 #endif
-	for (iPt =0; iPt <  nForceDataM1; iPt +=1){
-		taskPtr->forceData [iPt] = (int) (base + taskPtr->perturbForce/(1 + exp (-(iPt - halfWay)/rate)));
+	for (iForce =0; iForce <  nForces; iForce +=1){
+		theForce= (base + perturbForce/(1 + exp (-(iForce - halfWay)/rate)));
+		if (taskPtr -> motorHasDirPin){ // no Force to max Force scaled from 0 to 4097
+			calcVal = (int) (theForce * 4095);
+		}else{
+			if (taskPtr -> motorIsReversed){
+				calcVal = 2048 + (int) (theForce * 2047);
+			}else{ // motor is not reversed
+				calcVal = 2047 - (int) (theForce * 2047);
+			}
+		}
+		taskPtr->forceData [iForce] = calcVal;
  #if beVerbose		
-		printf ("%d, ", taskPtr->forceData [iPt]);
-#endif		
+		printf ("%d, ", calcVal);
+#endif	
 	}
-	taskPtr->forceData[iPt] = taskPtr->constForce + taskPtr->perturbForce ;
  #if beVerbose	
-	printf ("%d\n", taskPtr->forceData [iPt]);
+	printf ("\n");
 #endif
 }
 
@@ -567,8 +624,8 @@ void leverThread::startTrial (void){
 	}else{
 		for (unsigned int iPosition =0;iPosition < taskPtr->nToGoalOrCircular; iPosition +=1){
 			taskPtr->positionData [iPosition] = 0;
-			startInfiniteTrain();
 		}
+		startInfiniteTrain();
 	}
 }
 
