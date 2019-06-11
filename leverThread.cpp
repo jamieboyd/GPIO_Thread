@@ -96,10 +96,10 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	// motor direction and symmetry
 	taskData -> motorIsReversed = initDataPtr-> motorIsReversed;
 	if ((initDataPtr-> motorDirPin) == 0){ // no motor pin signals bi-directional force control
-		taskData-> motorhasDirPin = false;
+		taskData-> motorHasDirPin = false;
 		taskData -> motorDir = nullptr;
 	}else{
-		taskData-> motorhasDirPin = true;
+		taskData-> motorHasDirPin = true;
 		// motorDir is set by a threadlessGPIO. 0 is always towards the start position, 1 is always away.
 		taskData -> motorDir = newThreadlessGPIO (initDataPtr-> motorDirPin, initDataPtr-> motorIsReversed ? 1 : 0);
 	}	
@@ -284,7 +284,7 @@ setting a new zeroed position
 int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 	
 	leverThreadStructPtr leverTaskPtr = (leverThreadStructPtr) theTask->taskData;
-	int checkZero = *(int *) modData;
+	int resetZero = *(int *) modData;
 	// configure a time spec to sleep for 0.05 seconds
 	struct timespec sleeper;
 	sleeper.tv_sec = 0;
@@ -307,9 +307,8 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 	}
 	float dacIncr = (dacMax - dacBase)/20;
 	int dacOut;
-	int16_t leverPos;
 	int ii;
-	int returnVal =0;
+	int returnVal;
 	// increment force gradually
 	for (ii=0; ii < 20; ii +=1){
 		dacOut = (int) (dacBase + (ii * dacIncr));
@@ -320,24 +319,23 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 #endif
 		nanosleep (&sleeper, NULL);
 	}
-	if (checkZero){ // for returning the lever to previosly set 0 position, check that it is near original 0 (within 10 ticks)
-		// Read Counter
-		leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
-		leverTaskPtr->spi_wpData[1] = 0;
-		leverTaskPtr->spi_wpData[2] = 0;
-		wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 3);
-		if (leverTaskPtr -> isReversed){
-			leverPos = (int16_t) (65536 - ( 256 * leverTaskPtr->spi_wpData[1] + leverTaskPtr->spi_wpData[2]));
-		}else{
-			leverPos = (int16_t) (256 * leverTaskPtr->spi_wpData[1] + leverTaskPtr->spi_wpData[2]);
-		}
-		if ((leverPos > 10) || (leverPos < -10)){
-			returnVal = 1;
-		}
+	// for returning the lever to previosly set 0 position, check that it is near original 0 
+	// Read Counter
+	leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
+	leverTaskPtr->spi_wpData[1] = 0;
+	leverTaskPtr->spi_wpData[2] = 0;
+	wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 3);
+	if (leverTaskPtr -> isReversed){
+		returnVal = (int) (65536 - ( 256 * leverTaskPtr->spi_wpData[1] + leverTaskPtr->spi_wpData[2]));
+	}else{
+		returnVal = (int) (256 * leverTaskPtr->spi_wpData[1] + leverTaskPtr->spi_wpData[2]);
 	}
-	// clear counter
-	leverTaskPtr->spi_wpData[0] = kQD_CLEAR_COUNTER;
-	wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 1);
+	
+	if (resetZero){
+		// clear counter
+		leverTaskPtr->spi_wpData[0] = kQD_CLEAR_COUNTER;
+		wiringPiSPIDataRW(kQD_CS_LINE, leverTaskPtr->spi_wpData, 1);
+	}
 	// set force on lever back to base force  = constant force
 	dacOut = dacBase;
 #if FORCEMODE == AOUT
@@ -345,6 +343,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 #elif FORCEMODE == PWM
 	*(leverTaskPtr->dataRegister1) = dacOut;
 #endif	
+
 	delete (int *) modData;
 	return returnVal;
 }
@@ -353,7 +352,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 * Last Modified:
 * 2019/06/07 by Jamie Boyd - adding code for motorDir 
 * 2018/02/08 by Jamie Boyd - Initial Version */
-leverThread * leverThread::leverThreadMaker (int16_t * positionData, unsigned int nPositionData, bool isCuedP, unsigned int nToGoalOrCircularP,   int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero, int MotorDirPinOrZero, int motorIsReversed)) {
+leverThread * leverThread::leverThreadMaker (int16_t * positionData, unsigned int nPositionData, bool isCuedP, unsigned int nToGoalOrCircularP, int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero, int MotorDirPinOrZero, int motorIsReversed) {
 	
 	int errCode;
 	leverThread * newLever;
@@ -481,7 +480,7 @@ void leverThread::applyForce (float theForce, int direction){
 	int calcVal;
 	if (taskPtr -> motorHasDirPin){ // no Force to max Force scaled from 0 to 4097
 		calcVal = (int) (theForce * 4095);
-		setThreadlessGPIO (leverTaskPtr->motorDir, direction);
+		setThreadlessGPIO (taskPtr->motorDir, direction);
 	}else{
 		if (taskPtr -> motorIsReversed){
 			if (direction == kLEVER_BACKWARDS){ // max Reverse force = 0, No force = 2047, max forward force =4095
@@ -521,11 +520,13 @@ void leverThread::applyConstForce (void){
 }
 
 /* ************************************** Zeroing the Lever ************************************************
-Last Modified 2018/03/26 by Jamie Boyd - initial version */
-int leverThread::zeroLever (int checkZero, int isLocking){
+Last Modified:
+*  2019/06/10 by Jamie Boyd - changed check zero functionality to reset 0 functionality
+*  2018/03/26 by Jamie Boyd - initial version */
+int leverThread::zeroLever (int resetZero, int isLocking){
 	
 	int * modePtr = new int;
-	* modePtr = checkZero;
+	* modePtr = resetZero;
 	int returnVal = modCustom (&leverThread_zeroLeverCallback, (void * ) modePtr, isLocking);
 	return returnVal;
 }

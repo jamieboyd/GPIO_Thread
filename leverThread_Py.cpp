@@ -1,14 +1,17 @@
 #include <Python.h>
 #include "leverThread.h"
 
-
 /* ****************** Function called automatically when PyCapsule object is deleted in Python *****************************************
 Last Modified:
-2018/03/12 by Jamie Boyd - initial version */
+* 2018/03/12 by Jamie Boyd - initial version */
 void  py_Lever_del(PyObject * PyPtr){
 	delete static_cast<leverThread*> (PyCapsule_GetPointer (PyPtr, "pulsedThread"));
 }
 
+/* ****************** Makes a leverThread object and returns a PyCapsule reference *****************************************
+Last Modified:
+* 2019/06/10 by Jamie Boyd - added new paramaters for motor direction pin and motor force mapping reversal
+* 2018/03/12 by Jamie Boyd - initial version */
 static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 	PyObject * bufferObj;
 	int isCued;
@@ -16,8 +19,10 @@ static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 	int isReversed;
 	int goalCuerPin;
 	float cuerFreq;
-	if (!PyArg_ParseTuple(args,"OiIiif", &bufferObj, &isCued,&nCircularOrToGoal, &isReversed, &goalCuerPin, &cuerFreq)) {
-		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for lever position buffer, isCued, number for circular buffer or goal pos, isReversed, goal cuer pin, and cuer frequency.");
+	int motorDirPin;
+	int motorIsReversed;
+	if (!PyArg_ParseTuple(args,"OiIiifii", &bufferObj, &isCued,&nCircularOrToGoal, &isReversed, &goalCuerPin, &cuerFreq, &motorDirPin, &motorIsReversed)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for lever position buffer, isCued, number for circular buffer or goal pos, isReversed, goal cuer pin, cuer frequency, motorDirPin and motorIsReversed.");
 		return NULL;
 	}
 	// check that buffer is valid and that it is writable 16 bit int buffer
@@ -35,7 +40,7 @@ static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	// make a leverThread object
-	leverThread * leverThreadPtr = leverThread::leverThreadMaker (static_cast <int16_t *>(buffer.buf), (unsigned int) (buffer.len/buffer.itemsize), isCued,nCircularOrToGoal, isReversed, goalCuerPin,cuerFreq );
+	leverThread * leverThreadPtr = leverThread::leverThreadMaker (static_cast <int16_t *>(buffer.buf), (unsigned int) (buffer.len/buffer.itemsize), isCued,nCircularOrToGoal, isReversed, goalCuerPin,cuerFreq, motorDirPin, motorIsReversed);
 	
 	if (leverThreadPtr == nullptr){
 		PyErr_SetString (PyExc_RuntimeError, "leverThreadMaker was not able to make a leverThread object");
@@ -45,11 +50,13 @@ static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 	}
   }
   
- /* *************************************** Sets value of the constant force that is stored in the lever struct *************************************/
+/* *************************************** Sets value of the constant force that is stored in the lever thread ************************************
+* Last Modified:
+* 2019/06/10 by Jamie Boyd -changed force from int to float where force is mapped from 0 to 1*/
 static PyObject* py_leverThread_setConstForce (PyObject *self, PyObject *args){
 	  PyObject *PyPtr;
-	  int newForce;
-	  if (!PyArg_ParseTuple(args,"Oi", &PyPtr, &newForce)) {
+	  float newForce;
+	  if (!PyArg_ParseTuple(args,"Of", &PyPtr, &newForce)) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object and constant force");
 		return NULL;
 	}
@@ -58,33 +65,46 @@ static PyObject* py_leverThread_setConstForce (PyObject *self, PyObject *args){
 	Py_RETURN_NONE;
 }
 
-
+/* *************************************** returns value of the constant force that is stored in the lever thread ************************************
+* Last Modified:
+* 2019/06/10 by Jamie Boyd -changed force from int to float where force is mapped from 0 to 1*/
 static PyObject* py_leverThread_getConstForce (PyObject *self, PyObject *PyPtr) {
 	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
-	return Py_BuildValue("i", leverThreadPtr->getConstForce());
+	return Py_BuildValue("f", leverThreadPtr->getConstForce());
 }
 
+/* ********************************** applies an arbitrary force on the lever, scaled from 0 to 1, in specified direction *******************************
+* Last Modified:
+* 2019/06/10 by Jamie Boyd -changed force from int to float where force is mapped from 0 to 1, and added direction */
 static PyObject* py_leverThread_applyForce (PyObject *self, PyObject *args){
 	  PyObject *PyPtr;
-	  int newForce;
-	  if (!PyArg_ParseTuple(args,"Oi", &PyPtr, &newForce)) {
-		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object and force");
+	  float newForce;
+	  int direction;
+	  if (!PyArg_ParseTuple(args,"Ofi", &PyPtr, &newForce, &direction)) {
+		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object, force, and direction");
 		return NULL;
 	}
 	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
-	leverThreadPtr->applyForce (newForce);
+	leverThreadPtr->applyForce (newForce, direction);
 	Py_RETURN_NONE;
 }
 
+/* ********************************** applies an arbitrary force on the lever, scaled from 0 to 1, in specified direction *******************************
+* Last Modified:
+* 2019/06/10 by Jamie Boyd -changed force from int to float where force is mapped from 0 to 1, and added direction */
 static PyObject* py_leverThread_applyConstForce (PyObject *self, PyObject *PyPtr) {
 	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
 	leverThreadPtr->applyConstForce();
 	Py_RETURN_NONE;
 }
 
+/* ********************************** moves lever to 0 position, if zeroMode is set, rezeroes the decoder *******************************
+* returns value of decoder before a rezeroing 
+* Last Modified:
+* 2019/06/10 by Jamie Boyd -changed force from int to float where force is mapped from 0 to 1, and added direction */
 static PyObject* py_leverThread_zeroLever (PyObject *self, PyObject *args){
 	  PyObject *PyPtr;
-	  int zeroMode;
+	  int zeroMode; // 0 for move lever back against post, 1 for move lever back against post and rezero the encoder
 	  int isLocking;
 	  if (!PyArg_ParseTuple(args,"Oii", &PyPtr, &zeroMode, &isLocking)) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object, zero Mode and isLocking");
@@ -94,10 +114,13 @@ static PyObject* py_leverThread_zeroLever (PyObject *self, PyObject *args){
 	return Py_BuildValue("i", leverThreadPtr-> zeroLever (zeroMode, isLocking));
 }
 
+/* ************************* sets force, from -constForce to maxForce - constForce, that will be added to const force during perturbation ***********
+* Last Modified:
+* 2019/06/10 by Jamie Boyd - made force into float, scaled from 0 to 1 */
 static PyObject* py_leverThread_setPerturbForce (PyObject *self, PyObject *args){
 	  PyObject *PyPtr;
-	  int perturbForce;
-	  if (!PyArg_ParseTuple(args,"Oi", &PyPtr, &perturbForce)) {
+	  float perturbForce;
+	  if (!PyArg_ParseTuple(args,"Of", &PyPtr, &perturbForce)) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for thread object and perturbForce");
 		return NULL;
 	}
@@ -238,7 +261,7 @@ static PyObject* py_leverThread_setCued (PyObject *self, PyObject *args){
 	
 /* Module method table */
 static PyMethodDef leverThreadMethods[] = {
-  {"new", py_LeverThread_New, METH_VARARGS, "(lever position buffer, circular buffer num, isReversed, goal cuer pin, cuer frequency) Creates a new instance of leverThread"},
+  {"new", py_LeverThread_New, METH_VARARGS, "(lever position buffer, circular buffer num, isReversed, goal cuer pin, cuer frequency, motorPin, motorIsReversed) Creates a new instance of leverThread"},
   {"setConstForce", py_leverThread_setConstForce, METH_VARARGS, "(PyPtr, newForce) Sets constant force to be used for leverThread"},
   {"getConstForce", py_leverThread_getConstForce, METH_O, "(PyPtr) Returns constant force used for leverThread"},
   {"applyForce", py_leverThread_applyForce, METH_VARARGS, "(PyPtr, force) Sets physical force on lever for leverThread"},

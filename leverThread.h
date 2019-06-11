@@ -133,7 +133,7 @@ typedef struct leverThreadStruct{
 	bool trialComplete;			// set to false when trial begins, thread sets this to true when trial is complete.
 	// fields for force control
 	bool motorIsReversed;		// true if force on motor is reversed from usual low numbers/low level of motorDirPin output move lever closer to starting position
-	bool motorhasDirPin;		// set to true if motor direction is controlled by GPIO pin and 0-4095 force input is scaled from 0 to max
+	bool motorHasDirPin;		// set to true if motor direction is controlled by GPIO pin and 0-4095 force input is scaled from 0 to max
 								// set to false if 0-4095 force input is scaled symmetrically with 2048 = no force. if not motorIsReversed lower numbers move lever towards start pos 
 	SimpleGPIOStructPtr motorDir; // structure for controlling GPIO pin setting motor direction, if motor is not Bi. if motorIsReversed, GPIO High moves motor towards start position
 	// fields for force data
@@ -172,14 +172,14 @@ class leverThread : public pulsedThread{
 	};
 	static leverThread * leverThreadMaker (int16_t * positionData, unsigned int nPositionData, bool isCued, unsigned int nCircularOrToGoal,  int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero, int MotorDirPinOrZero, int motorIsReversed);
 	// lever position utilities
-	int zeroLever (int checkZero, int isLocking); // if checkZero is set AND new lever zero is different from old lever returns 1, else 0
+	int zeroLever (int resetZero, int isLocking); // returns position of lever when raoiled against post, before resetting the zero
 	int16_t getLeverPos (void); // returns current lever position, from position array if task in progress, else reads the quad decoder itself
 	void doGoalCue (int offOn); // turns ON or OFF the task used for signalling the lever is in goal position, for testing, mostly
 	// constant force, setting, geting, applying
 	void setConstForce (float theForce); // sets the force that will be applied at start of trial for mouse to pull against. from 0 to 1. Direction is always backward
 	float getConstForce (void); // returns current value for constant force
 	void applyConstForce (void); // applies the force currently set as constant force to the lever
-	void  applyForce (float theForce, int direction); // applies an arbitrary force to the lever
+	void  applyForce (float theForce, int direction); // applies an arbitrary force to the lever, 0 direction means towards starting position, 1 means towards mouse
 	// seeting trial performance parameters for lever goal area, time to get to goal pos, hold time, and force perturbations
 	void setHoldParams (int16_t goalBottomP, int16_t goalTopP, unsigned int nHoldTicksP); // sets lever goal area and hold time before each trial
 	void setTicksToGoal (unsigned int ticksToGoal); // sets ticks mouse is given to get the lever into goal posiiton before trial aborts, also used for circular buffer size

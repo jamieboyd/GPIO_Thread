@@ -43,9 +43,10 @@ int main(int argc, char **argv){
 	
 	int16_t * positionData = new int16_t [6000];
 
-	leverThread * myLeverThread= leverThread::leverThreadMaker (positionData,1000, kTRIAL_CUED, 500, kLEVER_DIR_REVERSED, 22, 0);
+	leverThread * myLeverThread= leverThread::leverThreadMaker (positionData,1000, kTRIAL_CUED, 500, kLEVER_DIR_REVERSED, 22, 0, 0, false);
 	
-	myLeverThread->zeroLever (0,0);	
+	int oldZero = myLeverThread->zeroLever (1,0);
+	
 	myLeverThread->setHoldParams (25, 175, 250);
 	myLeverThread->startTrial();
 	printf ("leverThread GO\n");
