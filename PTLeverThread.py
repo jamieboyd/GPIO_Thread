@@ -11,15 +11,16 @@ class PTLeverThread (object):
     """
     MOTOR_ENABLE = 20  # GPIO pin to enable motor
     GOAL_CUER = 22     # GPIO pin to turn on when lever is in goal position
-    FORCE_IS_SYMMETRIC = True
+    MOTOR_IS_REVERSED = False # if MOTOR_IS_REVERSED, high numbers on force output move lever towards starting rail 
+    MOTOR_DIR_PIN = 0
     """
-    If True, 16 bit force output (0 - 4095) goes from full counterclockwise force to full clockwise force
-    with midpoint (2048) being no force on lever. If False, force, 0-4095 maps from no force to full foprce, and
-    a GPIO pin controls the direction of the force, clockwise or counter-clockwise
+    If MOTOR_DIR_PIN = 0, 16 bit force output (0 - 4095) goes from full counterclockwise force to full clockwise force
+    with midpoint (2048) being no force on lever. If MOTOR_DIR_PIN is non-zero, 0-4095 maps from  no force to full force, and
+    MOTOR_DIR_PIN is the GPIO pin that controls the direction of the force, clockwise or counter-clockwise.
     """
-    def __init__ (self, posBufSizeP, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP, motorEnable):
+    def __init__ (self, posBufSizeP, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP, motorEnable, motorDirPinOrZeroP, motorIsReversedP):
         self.posBuffer = array.array('h', [0]*posBufSizeP)
-        self.leverThread = ptLeverThread.new (self.posBuffer, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP)
+        self.leverThread = ptLeverThread.newLever (self.posBuffer, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP,  motorDirPinOrZeroP, motorIsReversedP)
         self.posBufSize = posBufSizeP
         if isCuedP:
             self.nToGoal = nCircOrToGoalP
@@ -45,14 +46,20 @@ class PTLeverThread (object):
         return ptLeverThread.getConstForce(self.leverThread)
 
 
-    def applyForce (self, theForce):
-        ptLeverThread.applyForce(self.leverThread, theForce)
+    def applyForce (self, theForce, directionP):
+        ptLeverThread.applyForce(self.leverThread, theForce, directionP)
 
     def applyConstForce(self):
         ptLeverThread.applyConstForce (self.leverThread)
 
     def zeroLever (self, zeroMode, isLocking):
         return ptLeverThread.zeroLever(self.leverThread, zeroMode, isLocking)
+
+    def setPerturbLength (self, perturbLen):
+        return ptLeverThread.setPerturbLength(self.leverThread, perturbLen)
+
+    def getPerturbLength (self):
+        return ptLeverThread.getPerturbLength (self.leverThread)
 
     def setPerturbForce (self, perturbForce):
         ptLeverThread.setPerturbForce(self.leverThread, perturbForce)
@@ -101,8 +108,14 @@ class PTLeverThread (object):
         
     
 if __name__ == '__main__':
-    lever = PTLeverThread (1000, True, 125, True, PTLeverThread.GOAL_CUER, 0, PTLeverThread.MOTOR_ENABLE)
-    lever.setConstForce (300)
-    
+    lever = PTLeverThread (1000, True, 125, True, PTLeverThread.GOAL_CUER, 0, PTLeverThread.MOTOR_ENABLE, PTLeverThread.MOTOR_DIR_PIN, PTLeverThread.MOTOR_IS_REVERSED)
+    lever.setConstForce (0.01) # 1% max force, but this is really non-linear, 0.4 or above is pretty much max
+    lever.setMotorEnable (0)
+    lever.applyConstForce()
+    lever.setTicksToGoal (100)
+    lever.setHoldParams (30,120, 1000)
+    lever.setPerturbStartPos (100)
+    lever.setPerturbLength (50) 
+    lever.setPerturbForce (0.5)
     
     

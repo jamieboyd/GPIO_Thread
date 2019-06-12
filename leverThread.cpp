@@ -95,7 +95,7 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	taskData->iForce = 0;
 	// motor direction and symmetry
 	taskData -> motorIsReversed = initDataPtr-> motorIsReversed;
-	if ((initDataPtr-> motorDirPin) == 0){ // no motor pin signals bi-directional force control
+	if ((initDataPtr-> motorDirPin) == 0){ // motor pin = 0 signals bi-directional force control
 		taskData-> motorHasDirPin = false;
 		taskData -> motorDir = nullptr;
 	}else{
@@ -466,6 +466,7 @@ void leverThread::setTicksToGoal (unsigned int ticksToGoal){
 
 /* ************ applies a given force, scaled from 0 to 1, with direction  ****************************
 Last Modified:
+* 2019/06/11 by Jamie Boyd - flipped motorIsReversed handling,
 * 2019/06/07 by Jamie Boyd - added direction option, made theForce a float scaled from 0 to 1
 * 2019/03/04 by Jamie Boyd - modified for PWM force option
 *  2018/03/26 by Jamie Boyd - initial version */
@@ -484,15 +485,15 @@ void leverThread::applyForce (float theForce, int direction){
 	}else{
 		if (taskPtr -> motorIsReversed){
 			if (direction == kLEVER_BACKWARDS){ // max Reverse force = 0, No force = 2047, max forward force =4095
-				calcVal = 2047 - (int) (theForce * 2047);
-			}else{
 				calcVal = 2048 + (int) (theForce * 2047);
+			}else{
+				calcVal = 2047 -  (int) (theForce * 2047);
 			}
 		}else{ // motor is not reversed
 			if (direction == kLEVER_BACKWARDS){ // max Reverse force = 0, No force = 2047, max forward force =4095
-				calcVal = 2048 + (int) (theForce * 2047);
-			}else{
 				calcVal = 2047 - (int) (theForce * 2047);
+			}else{
+				calcVal = 2048 + (int) (theForce * 2047);
 			}
 		}
 	}
@@ -509,7 +510,9 @@ void leverThread::applyForce (float theForce, int direction){
 * 2019/03/04 by Jamie Boyd - modified for PWM force option
 *  2018/03/26 by Jamie Boyd - initial version */ 
 void leverThread::applyConstForce (void){
-	setThreadlessGPIO (taskPtr->motorDir, kLEVER_BACKWARDS);
+	if (taskPtr-> motorHasDirPin){
+		setThreadlessGPIO (taskPtr->motorDir, kLEVER_BACKWARDS);
+	}
 	int theForce =  taskPtr->constForce;
 	// write the data
 #if FORCEMODE == AOUT
@@ -558,24 +561,28 @@ unsigned int leverThread::leverThread::getPerturbLength (void){
 * 2018/04/09 by jamie Boyd - corrected for negative forces. We never go true negative, just subtract from constant force
 * 2018/03/26 by Jamie Boyd - initial version */
 void leverThread::setPerturbForce (float perturbForceP){
-	if (constantForce + perturbForceP > 1){
-		perturbForce = 1 - constantForce;
-	}else{ 		
-		if (constantForce + perturbForceP < 0){
-			perturbForce = -constantForce;
+	//if (perturbForceP > 0){ // positive perturb force means adding to the back-directed constant force
+	if (this->constantForce + perturbForceP > 1){
+		this->perturbForce = 1 - this->constantForce;
+	}else{
+		if (this->constantForce + perturbForceP < 0){
+			this->perturbForce = - (this->constantForce);
+		}else{
+			this->perturbForce = perturbForceP;
 		}
 	}
 	unsigned int iForce, nForces= taskPtr->nForceData ;
 	float halfWay = nForces/2;
 	float rate = nForces/10;
-	float base = constantForce;
+	float base = this->constantForce;
 	float theForce;
 	int calcVal;
- #if beVerbose	
-	printf ("force array:");
+ #if beVerbose
+	printf ("Perturbforce = %.3f; constant Force = %.3f;\n" , this->perturbForce, this->constantForce);
+	printf ("force array:\n");
 #endif
 	for (iForce =0; iForce <  nForces; iForce +=1){
-		theForce= (base + perturbForce/(1 + exp (-(iForce - halfWay)/rate)));
+		theForce= (base + this->perturbForce/(1 + exp (-(float) (iForce - halfWay)/rate)));
 		if (taskPtr -> motorHasDirPin){ // no Force to max Force scaled from 0 to 4097
 			calcVal = (int) (theForce * 4095);
 		}else{
@@ -587,7 +594,7 @@ void leverThread::setPerturbForce (float perturbForceP){
 		}
 		taskPtr->forceData [iForce] = calcVal;
  #if beVerbose		
-		printf ("%d, ", calcVal);
+		printf ("%.4f (%i), ", theForce, calcVal);
 #endif	
 	}
  #if beVerbose	

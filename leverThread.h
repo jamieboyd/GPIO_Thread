@@ -97,10 +97,10 @@ typedef struct leverThreadInitStruct{
 	unsigned int nPositionData; 	// number of points in positionData array,
 	bool isCued;					// true if lever task is started after an external cue
 	unsigned int nToGoalOrCircular;	// max points to get into goal area for cued trials, number of points for circular buffer at start, for uncued trials
-	bool isReversed;				// true if polarity of quadrature decoder is reversed. Motor force is not reversed.  reverse it with Escon studio
+	bool isReversed;				// true if polarity of quadrature decoder is reversed. Motor force is not reversed.  reverse it with motorIsReversed or in Escon studio
 	int goalCuerPin;				// number of a GPIO pin to use for a cue that lever is in rewarded position, else 0 for no cue
 	int motorDirPin;				// if lever force direction is controlled by GPIO pin, the number of the pin. 0 if force is mapped symetrically around 2047
-	bool motorIsReversed;			// if false, lower values of motor output (or motorDir set LOW, if motorDir is used)bring lever back to start position,
+	bool motorIsReversed;		// if false, lower values of motor output (or motorDir set LOW, if motorDir is used)bring lever back to start position,
 								// if true, higher values of motor output (or motorDir set high) bring lever back to start position
 	float cuerFreq;				// if a tone, frequency of tone to play. duty cycle is assumed to 0.5. If a simple on/off, pass 0
 	unsigned int nForceData;		// size of force data array - sets time it takes to switch on perturbation with sigmoidal ramp

@@ -261,7 +261,7 @@ static PyObject* py_leverThread_setCued (PyObject *self, PyObject *args){
 	
 /* Module method table */
 static PyMethodDef leverThreadMethods[] = {
-  {"new", py_LeverThread_New, METH_VARARGS, "(lever position buffer, circular buffer num, isReversed, goal cuer pin, cuer frequency, motorPin, motorIsReversed) Creates a new instance of leverThread"},
+  {"newLever", py_LeverThread_New, METH_VARARGS, "(lever position buffer, circular buffer num, isReversed, goal cuer pin, cuer frequency, motorPin, motorIsReversed) Creates a new instance of leverThread"},
   {"setConstForce", py_leverThread_setConstForce, METH_VARARGS, "(PyPtr, newForce) Sets constant force to be used for leverThread"},
   {"getConstForce", py_leverThread_getConstForce, METH_O, "(PyPtr) Returns constant force used for leverThread"},
   {"applyForce", py_leverThread_applyForce, METH_VARARGS, "(PyPtr, force) Sets physical force on lever for leverThread"},
