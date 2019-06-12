@@ -107,11 +107,11 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	taskData->iPosition=0;
 	taskData->forceStartPos = initDataPtr->nPositionData; // no force will be applied cause we never get to here
 	taskData->trialComplete = true;
-	// initialize reasonable values for task data - these should be changed each time anywats
+	// initialize reasonable values for task data - these should be changed each trial
 	taskData->goalBottom =50;
-	taskData->goalTop = 500;
-	taskData->nHoldTicks = 100;
-	taskData->constForce=300;
+	taskData->goalTop = 150;
+	taskData->nHoldTicks = 125;
+	taskData->constForce=1000;
 	return 0;
 }
 
@@ -229,7 +229,7 @@ void lever_Hi (void * taskData){
 #if FORCEMODE == AOUT
 					wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverForce  >> 8) & 0x0F, leverForce  & 0xFF);
 #elif FORCEMODE == PWM
-				*(leverTaskPtr->dataRegister1) = leverForce;
+					*(leverTaskPtr->dataRegister1) = leverForce;
 #endif
 					leverTaskPtr->iForce +=1;
 				}
@@ -238,7 +238,7 @@ void lever_Hi (void * taskData){
 				//	leverTaskPtr ->trialPos = -2; // trial ends here
 				//	leverTaskPtr->nToFinish = leverTaskPtr->iPosition; // lever left goal area so that's that
 				//}else{
-					leverTaskPtr->iPosition +=1;
+				leverTaskPtr->iPosition +=1;
 				//}
 				break;
 			}
@@ -561,7 +561,7 @@ unsigned int leverThread::leverThread::getPerturbLength (void){
 * 2018/04/09 by jamie Boyd - corrected for negative forces. We never go true negative, just subtract from constant force
 * 2018/03/26 by Jamie Boyd - initial version */
 void leverThread::setPerturbForce (float perturbForceP){
-	//if (perturbForceP > 0){ // positive perturb force means adding to the back-directed constant force
+	// positive perturb force means adding to the back-directed constant force
 	if (this->constantForce + perturbForceP > 1){
 		this->perturbForce = 1 - this->constantForce;
 	}else{
@@ -571,9 +571,10 @@ void leverThread::setPerturbForce (float perturbForceP){
 			this->perturbForce = perturbForceP;
 		}
 	}
+	float perturb = this->perturbForce;
 	unsigned int iForce, nForces= taskPtr->nForceData ;
-	float halfWay = nForces/2;
-	float rate = nForces/10;
+	float halfWay = (nForces -1)/2;
+	float rate = (nForces -1)/10;
 	float base = this->constantForce;
 	float theForce;
 	int calcVal;
@@ -581,8 +582,8 @@ void leverThread::setPerturbForce (float perturbForceP){
 	printf ("Perturbforce = %.3f; constant Force = %.3f;\n" , this->perturbForce, this->constantForce);
 	printf ("force array:\n");
 #endif
-	for (iForce =0; iForce <  nForces; iForce +=1){
-		theForce= (base + this->perturbForce/(1 + exp (-(float) (iForce - halfWay)/rate)));
+	for (iForce =0; iForce <  nForces-1; iForce +=1){
+		theForce= (base + perturb/(1 + exp (-(float) (iForce - halfWay)/rate)));
 		if (taskPtr -> motorHasDirPin){ // no Force to max Force scaled from 0 to 4097
 			calcVal = (int) (theForce * 4095);
 		}else{
@@ -597,7 +598,19 @@ void leverThread::setPerturbForce (float perturbForceP){
 		printf ("%.4f (%i), ", theForce, calcVal);
 #endif	
 	}
- #if beVerbose	
+	theForce = base + perturb;
+	if (taskPtr -> motorHasDirPin){ // no Force to max Force scaled from 0 to 4097
+		calcVal = (int) (theForce * 4095);
+	}else{
+		if (taskPtr -> motorIsReversed){
+			calcVal = 2048 + (int) (theForce * 2047);
+		}else{ // motor is not reversed
+			calcVal = 2047 - (int) (theForce * 2047);
+		}
+	}
+	taskPtr->forceData [iForce] = calcVal;
+ #if beVerbose
+	printf ("%.4f (%i), ", theForce, calcVal);
 	printf ("\n");
 #endif
 }

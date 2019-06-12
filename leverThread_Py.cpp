@@ -146,7 +146,15 @@ static PyObject* py_leverThread_getPerturbLength (PyObject *self, PyObject *PyPt
 	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
 	return Py_BuildValue("h", leverThreadPtr->getPerturbLength());
 }
-	
+
+
+static PyObject* py_leverThread_setPerturbOff (PyObject *self, PyObject *PyPtr) {
+	leverThread * leverThreadPtr = static_cast<leverThread * > (PyCapsule_GetPointer(PyPtr, "pulsedThread"));
+	leverThreadPtr->setPerturbOff ();
+	Py_RETURN_NONE;
+}
+
+
 static PyObject* py_leverThread_setPerturbStartPos (PyObject *self, PyObject *args){
 	  PyObject *PyPtr;
 	  unsigned int perturbStartPos;
@@ -268,6 +276,7 @@ static PyMethodDef leverThreadMethods[] = {
   {"applyConstForce", py_leverThread_applyConstForce, METH_O, "(PyPtr) applies the constant force as set for leverThread"},
   {"zeroLever", py_leverThread_zeroLever, METH_VARARGS, "(PyPtr, zeroMode, isLocking) Returns lever to front rail, optionally zeroing encoder"},
   {"setPerturbLength", py_leverThread_setPerturbLength, METH_VARARGS, "(PyPtr, perturbLength) sets number of points used to generate perturb force ramp"},
+  {"setPerturbOff", py_leverThread_setPerturbOff, METH_O, "(PyPtr) turns off perturbation for upcoming lever trials"},
   {"getPerturbLength", py_leverThread_getPerturbLength, METH_O, "(PyPtr) returns number of points used to generate perturb force ramp"},
   {"setPerturbForce", py_leverThread_setPerturbForce, METH_VARARGS, "(PyPtr, perturbForce) Fills perturbation force array with sigmoid ramp"},
   {"setPerturbStartPos", py_leverThread_setPerturbStartPos, METH_VARARGS, " (PyPtr, perturbPos) sets start position of perturb force"},

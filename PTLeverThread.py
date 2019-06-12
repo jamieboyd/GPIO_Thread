@@ -9,19 +9,22 @@ class PTLeverThread (object):
     """
     PTLeverThread controls a lever used for the AutoHeadFix program
     """
+    LEVER_FREQ = 250 # as set in leverThread.h when ptLeverThread c module is compiled. Frequency in Hz of updating lever position and lever force
+    MAX_FORCE_ARRAY_SIZE = 125 # as set in leverThread.h when ptLeverThread c module is compiled. Maximum size of array for calculating perturb force ramp
     MOTOR_ENABLE = 20  # GPIO pin to enable motor
     GOAL_CUER = 22     # GPIO pin to turn on when lever is in goal position
     MOTOR_IS_REVERSED = False # if MOTOR_IS_REVERSED, high numbers on force output move lever towards starting rail 
-    MOTOR_DIR_PIN = 0
+    MOTOR_DIR_PIN = 0 
     """
     If MOTOR_DIR_PIN = 0, 16 bit force output (0 - 4095) goes from full counterclockwise force to full clockwise force
     with midpoint (2048) being no force on lever. If MOTOR_DIR_PIN is non-zero, 0-4095 maps from  no force to full force, and
     MOTOR_DIR_PIN is the GPIO pin that controls the direction of the force, clockwise or counter-clockwise.
     """
-    def __init__ (self, posBufSizeP, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP, motorEnable, motorDirPinOrZeroP, motorIsReversedP):
-        self.posBuffer = array.array('h', [0]*posBufSizeP)
+    def __init__ (self, maxRecSecsP, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP, motorEnable, motorDirPinOrZeroP, motorIsReversedP):
+        self.maxRecSecs= maxRecSecsP
+        self.posBufferSize = int( maxRecSecsP * PTLeverThread.LEVER_FREQ)
+        self.posBuffer = array.array('h', [0]* self.posBufferSize)
         self.leverThread = ptLeverThread.newLever (self.posBuffer, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP,  motorDirPinOrZeroP, motorIsReversedP)
-        self.posBufSize = posBufSizeP
         if isCuedP:
             self.nToGoal = nCircOrToGoalP
         else:
@@ -29,6 +32,7 @@ class PTLeverThread (object):
         self.goalCuerPin= goalCuerPinP
         self.cuerFreq = cuerFreqP
         self.motorEnablePin = motorEnable
+        GPIO.setwarnings(False)
         GPIO.setmode (GPIO.BCM)
         GPIO.setup(self.motorEnablePin, GPIO.OUT)
 
@@ -55,17 +59,24 @@ class PTLeverThread (object):
     def zeroLever (self, zeroMode, isLocking):
         return ptLeverThread.zeroLever(self.leverThread, zeroMode, isLocking)
 
-    def setPerturbLength (self, perturbLen):
+    def setPerturbTransTime (self, TransTime):
+        perturbLen = int (TransTime * PTLeverThread.LEVER_FREQ)
+        if perturbLen > PTLeverThread.MAX_FORCE_ARRAY_SIZE:
+            perturbLen = PTLeverThread.MAX_FORCE_ARRAY_SIZE
         return ptLeverThread.setPerturbLength(self.leverThread, perturbLen)
 
-    def getPerturbLength (self):
-        return ptLeverThread.getPerturbLength (self.leverThread)
+    def getPerturbTransTime (self):
+        return float (ptLeverThread.getPerturbLength (self.leverThread) / PTLeverThread.LEVER_FREQ)
 
     def setPerturbForce (self, perturbForce):
         ptLeverThread.setPerturbForce(self.leverThread, perturbForce)
 
-    def setPerturbStartPos (self, startPos):
+    def setPerturbStartTime (self, startTime):
+        startPos = int (startTime * PTLeverThread.LEVER_FREQ)
         ptLeverThread.setPerturbStartPos(self.leverThread, startPos)
+
+    def setPerturbOff (self):
+        ptLeverThread.setPerturbOff(self.leverThread)
 
     def startTrial (self):
         self.trialComplete = False
@@ -88,7 +99,8 @@ class PTLeverThread (object):
         ptLeverThread.doGoalCue( self.leverThread, 0)
 
 
-    def setHoldParams(self, goalBottom, goalTop, nHoldTicks):
+    def setHoldParams(self, goalBottom, goalTop, holdTime):
+        nHoldTicks = int (holdTime * PTLeverThread.LEVER_FREQ)
         ptLeverThread.setHoldParams (self.leverThread, goalBottom, goalTop, nHoldTicks)
 
     def getLeverPos (self):
@@ -103,19 +115,23 @@ class PTLeverThread (object):
     def setCued (self, isCued):
         return ptLeverThread.setCued (self.leverThread, isCued)
         
-    def setTicksToGoal (self, ticksToGoal):
+    def setTimeToGoal (self, timeToGoal):
+        ticksToGoal = int (timeToGoal * PTLeverThread.LEVER_FREQ)
         ptLeverThread.setTicksToGoal (self.leverThread, ticksToGoal)
         
     
 if __name__ == '__main__':
-    lever = PTLeverThread (1000, True, 125, True, PTLeverThread.GOAL_CUER, 0, PTLeverThread.MOTOR_ENABLE, PTLeverThread.MOTOR_DIR_PIN, PTLeverThread.MOTOR_IS_REVERSED)
+    lever = PTLeverThread (4, True, 125, True, PTLeverThread.GOAL_CUER, 0, PTLeverThread.MOTOR_ENABLE, PTLeverThread.MOTOR_DIR_PIN, PTLeverThread.MOTOR_IS_REVERSED)
     lever.setConstForce (0.01) # 1% max force, but this is really non-linear, 0.4 or above is pretty much max
-    lever.setMotorEnable (0)
     lever.applyConstForce()
-    lever.setTicksToGoal (100)
-    lever.setHoldParams (30,120, 1000)
-    lever.setPerturbStartPos (100)
-    lever.setPerturbLength (50) 
+    lever.setMotorEnable (1)
+    lever.setTimeToGoal (0.25)
+    lever.setHoldParams (30,120, 1.5)
+    lever.setPerturbTransTime (0.25) 
     lever.setPerturbForce (0.5)
+    lever.setPerturbStartTime (0.75)
+    lever.zeroLever (1, 0)
+    lever.startTrial ()
+    
     
     
