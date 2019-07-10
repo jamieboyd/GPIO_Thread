@@ -24,6 +24,7 @@ class PTLeverThread (object):
         self.maxRecSecs= maxRecSecsP
         self.posBufferSize = int( maxRecSecsP * PTLeverThread.LEVER_FREQ)
         self.posBuffer = array.array('h', [0]* self.posBufferSize)
+        nCircOrToGoalP = int(nCircOrToGoalP * PTLeverThread.LEVER_FREQ)
         self.leverThread = ptLeverThread.newLever (self.posBuffer, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP,  motorDirPinOrZeroP, motorIsReversedP)
         if isCuedP:
             self.nToGoal = nCircOrToGoalP
