@@ -29,7 +29,7 @@
 #define PWM 1
 
 /* ************************************ define FORCEMODE to PWM or AOUT *************************************************/
-#define  FORCEMODE AOUT
+#define  FORCEMODE PWM
 #if FORCEMODE == PWM
 #include "PWM_thread.h"
 #elif FORCEMODE == AOUT
