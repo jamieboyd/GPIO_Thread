@@ -4,7 +4,7 @@
 * Last Modified:
 * 2019/06/07 by Jamie Boyd - adding code for motorDir */
 int lever_init (void * initDataP, void *  &taskDataP){
-	// task data pointer is a void pointer that needs to be initialized to a pointer to taskData and filled from our custom init structure 
+	// task data pointer is a void pointer that needs to be initialized to a pointer to taskData and filled from our custom init structure
 	leverThreadStructPtr taskData  = new leverThreadStruct;
 	taskDataP = taskData;
 	// initData is a pointer to our custom init structure
@@ -81,6 +81,20 @@ int lever_init (void * initDataP, void *  &taskDataP){
 		taskData->goalCuer  = nullptr;
 		taskData->goalMode = kGOALMODE_NONE;
 	}
+
+	if (initDataPtr->startCuerPin > 0){
+		taskData->startCueTime = initDataPtr->startCueTime;
+		if (initDataPtr->startCuerFreq ==0){
+			taskData->startCuer = SimpleGPIO_thread::SimpleGPIO_threadMaker (initDataPtr->startCuerPin, 0, (unsigned int) 1000,  (unsigned int) 1000,  (unsigned int) 1, 1);
+			taskData->startMode = kGOALMODE_HILO;
+		}else{
+			taskData->startCuer = SimpleGPIO_thread::SimpleGPIO_threadMaker (initDataPtr->startCuerPin, 0, (float) initDataPtr->CuerFreq , (float) 0.5, (float) 0, 1);
+			taskData->startMode = kGOALMODE_TRAIN;
+		}
+	}else{
+		taskData->startCuer  = nullptr;
+		taskData->startMode = kGOALMODE_NONE;
+	}
 	// lever decoder, reversed or not
 	taskData->isReversed = initDataPtr->isReversed;
 	// task cuing details
@@ -102,7 +116,7 @@ int lever_init (void * initDataP, void *  &taskDataP){
 		taskData-> motorHasDirPin = true;
 		// motorDir is set by a threadlessGPIO. 0 is always towards the start position, 1 is always away.
 		taskData -> motorDir = newThreadlessGPIO (initDataPtr-> motorDirPin, initDataPtr-> motorIsReversed ? 1 : 0);
-	}	
+	}
 	// initialize iPosition to 0 - other initialization?
 	taskData->iPosition=0;
 	taskData->forceStartPos = initDataPtr->nPositionData; // no force will be applied cause we never get to here
@@ -119,7 +133,7 @@ int lever_init (void * initDataP, void *  &taskDataP){
 Uncued trial: Runs as an infinite train , filling circular buffer till we pass goal bottom, then runs a trial, stopping infinite train when trial is over
 cued trial: Starts a train of finite length (nPositionData), though we might not collect data till end of train, if trial is aborted we still have to wait till end of train
 
-Sets trial position: 0 = lever has not been to goal area, 1 = lever is in goal area, -1 lever left goal area before hold time expired, 
+Sets trial position: 0 = lever has not been to goal area, 1 = lever is in goal area, -1 lever left goal area before hold time expired,
 2 = got to perturbation, -2 means  lever left goal area during perturbation (not  enabled - we don't check for "out of bounds" after perturbation starts)
 * Last Modified:
 * 2019/06/07 by Jamie Boyd - adding code for motorDir */
@@ -172,7 +186,7 @@ void lever_Hi (void * taskData){
 					if (leverTaskPtr -> isCued){ // for cued trial, increment position in lever position array
 						leverTaskPtr->iPosition +=1;
 					}else{  // for uncued trial, jump to end of circular buffer
-						leverTaskPtr->iPosition =  leverTaskPtr->nToGoalOrCircular; 
+						leverTaskPtr->iPosition =  leverTaskPtr->nToGoalOrCircular;
 					}
 				}else{ // check if time for getting into goal area has expired for cued trial, or if it is time to reset iPositon for uncued
 					if (leverTaskPtr->iPosition == leverTaskPtr->nToGoalOrCircular ){
@@ -187,7 +201,7 @@ void lever_Hi (void * taskData){
 				}
 				break;
 			}
-			case 1:  // 1 means lever in goal area, check if lever is still in goal area 
+			case 1:  // 1 means lever in goal area, check if lever is still in goal area
 			{
 				if ((leverPosition <  leverTaskPtr -> goalBottom) || (leverPosition >  leverTaskPtr -> goalTop)){
 					leverTaskPtr ->trialPos = -1; // trial ends here
@@ -225,7 +239,7 @@ void lever_Hi (void * taskData){
 							}
 						}
 					}
-					*/					
+					*/
 #if FORCEMODE == AOUT
 					wiringPiI2CWriteReg8(leverTaskPtr->i2c_fd, (leverForce  >> 8) & 0x0F, leverForce  & 0xFF);
 #elif FORCEMODE == PWM
@@ -233,7 +247,7 @@ void lever_Hi (void * taskData){
 #endif
 					leverTaskPtr->iForce +=1;
 				}
-				// for now, comment out checking for goal position during perturbation so 
+				// for now, comment out checking for goal position during perturbation so
 				//if ((leverPosition <  leverTaskPtr -> goalBottom) || (leverPosition >  leverTaskPtr -> goalTop)){
 				//	leverTaskPtr ->trialPos = -2; // trial ends here
 				//	leverTaskPtr->nToFinish = leverTaskPtr->iPosition; // lever left goal area so that's that
@@ -243,7 +257,7 @@ void lever_Hi (void * taskData){
 				break;
 			}
 		}
-		// check if we are done 
+		// check if we are done
 		if (leverTaskPtr->iPosition == leverTaskPtr->nToFinish){
 			leverTaskPtr->trialComplete =true;
 			// set lever to constant force, in case this was a perturb force trial
@@ -253,7 +267,7 @@ void lever_Hi (void * taskData){
 #elif FORCEMODE == PWM
 			*(leverTaskPtr->dataRegister1) = leverForce;
 #endif
-			// make sure goal cuer is turned off 
+			// make sure goal cuer is turned off
 			if (leverTaskPtr->goalCuer != nullptr){
 				if (leverTaskPtr->goalMode == kGOALMODE_HILO){
 					leverTaskPtr->goalCuer->setLevel(0,1);
@@ -277,19 +291,19 @@ void leverThread_delTask (void * taskData){
 mod data is int, 0 for returning lever to existing start position (if possible) or 1 for railing lever and
 setting a new zeroed position
 * Last Modified:
-* 2019/06/07 by Jamie Boyd - adding code for motorDir 
+* 2019/06/07 by Jamie Boyd - adding code for motorDir
 * 2019/03/05 by Jamie Boyd - fixing unsigned vs signed for 16 bit ints for position
 * 2019/03/04 by Jamie Boyd - adding PWM option, plus some reorg of duplication in logic
 */
 int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
-	
+
 	leverThreadStructPtr leverTaskPtr = (leverThreadStructPtr) theTask->taskData;
 	int resetZero = *(int *) modData;
 	// configure a time spec to sleep for 0.05 seconds
 	struct timespec sleeper;
 	sleeper.tv_sec = 0;
 	sleeper.tv_nsec = 5e07;
-	// divide force range into 20 
+	// divide force range into 20
 	int dacMax, dacBase = leverTaskPtr->constForce;
 	if (leverTaskPtr -> motorHasDirPin){
 		setThreadlessGPIO (leverTaskPtr->motorDir, kLEVER_BACKWARDS);
@@ -319,7 +333,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 #endif
 		nanosleep (&sleeper, NULL);
 	}
-	// for returning the lever to previosly set 0 position, check that it is near original 0 
+	// for returning the lever to previosly set 0 position, check that it is near original 0
 	// Read Counter
 	leverTaskPtr->spi_wpData[0] = kQD_READ_COUNTER;
 	leverTaskPtr->spi_wpData[1] = 0;
@@ -330,7 +344,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 	}else{
 		returnVal = (int) (256 * leverTaskPtr->spi_wpData[1] + leverTaskPtr->spi_wpData[2]);
 	}
-	
+
 	if (resetZero){
 		// clear counter
 		leverTaskPtr->spi_wpData[0] = kQD_CLEAR_COUNTER;
@@ -342,7 +356,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 	wiringPiI2CWriteReg8 (leverTaskPtr->i2c_fd, (dacOut  >> 8) & 0x0F, dacOut & 0xFF);
 #elif FORCEMODE == PWM
 	*(leverTaskPtr->dataRegister1) = dacOut;
-#endif	
+#endif
 
 	delete (int *) modData;
 	return returnVal;
@@ -350,10 +364,10 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 
  /* ******************* ThreadMaker with Integer pulse duration, delay, and number of pulses timing description inputs ********************
 * Last Modified:
-* 2019/06/07 by Jamie Boyd - adding code for motorDir 
+* 2019/06/07 by Jamie Boyd - adding code for motorDir
 * 2018/02/08 by Jamie Boyd - Initial Version */
 leverThread * leverThread::leverThreadMaker (int16_t * positionData, unsigned int nPositionData, bool isCuedP, unsigned int nToGoalOrCircularP, int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero, int MotorDirPinOrZero, int motorIsReversed) {
-	
+
 	int errCode;
 	leverThread * newLever;
 	// make and fill a leverTask struct
@@ -371,7 +385,7 @@ leverThread * leverThread::leverThreadMaker (int16_t * positionData, unsigned in
 	if (isCuedP){				// if isCued trials , initialize thread with pulses in a train equal to posiiton array size
 		newLever = new leverThread ((void *) initStruct, nPositionData, errCode);
 	}else{	// ifor uncued trials, initialize thread with 0 pulses, AKA infinite train
-		newLever = new leverThread ((void *) initStruct, (unsigned int) 0, errCode);	
+		newLever = new leverThread ((void *) initStruct, (unsigned int) 0, errCode);
 	}
 	if (errCode){
 #if beVerbose
@@ -381,7 +395,7 @@ leverThread * leverThread::leverThreadMaker (int16_t * positionData, unsigned in
 	}
 	// set custom task delete function
 	newLever->setTaskDataDelFunc (&leverThread_delTask);
-	// make a leverThread pointer for easy direct access to thread task data 
+	// make a leverThread pointer for easy direct access to thread task data
 	newLever->taskPtr = (leverThreadStructPtr)newLever->getTaskData ();
 	return newLever;
 }
@@ -397,7 +411,7 @@ void leverThread::setConstForce (float theForce){
 	}else{
 		if (theForce > 1){
 			theForce= 1;
-		} 
+		}
 	}
 	constantForce = theForce;
 	int calcVal;
@@ -508,7 +522,7 @@ void leverThread::applyForce (float theForce, int direction){
 /* ********************* Applies currently set value for constant force ****************************
 * Last Modified:
 * 2019/03/04 by Jamie Boyd - modified for PWM force option
-*  2018/03/26 by Jamie Boyd - initial version */ 
+*  2018/03/26 by Jamie Boyd - initial version */
 void leverThread::applyConstForce (void){
 	if (taskPtr-> motorHasDirPin){
 		setThreadlessGPIO (taskPtr->motorDir, kLEVER_BACKWARDS);
@@ -527,7 +541,7 @@ Last Modified:
 *  2019/06/10 by Jamie Boyd - changed check zero functionality to reset 0 functionality
 *  2018/03/26 by Jamie Boyd - initial version */
 int leverThread::zeroLever (int resetZero, int isLocking){
-	
+
 	int * modePtr = new int;
 	* modePtr = resetZero;
 	int returnVal = modCustom (&leverThread_zeroLeverCallback, (void * ) modePtr, isLocking);
@@ -538,7 +552,7 @@ int leverThread::zeroLever (int resetZero, int isLocking){
 /* *********************************** sets number of points  in force array used for sigmidal force ramp, max = kMAX_FORCE_ARRAY_SIZE
 Last Modified 2019/05/13 by Jamie Boyd - initial version */
 void leverThread::setPerturbLength (unsigned int perturbLength){
-	
+
 	if (perturbLength > kMAX_FORCE_ARRAY_SIZE){
 		taskPtr->nForceData = kMAX_FORCE_ARRAY_SIZE;
 	}else{
@@ -549,13 +563,13 @@ void leverThread::setPerturbLength (unsigned int perturbLength){
 /* *********************************** returns number of points in force array used for  , max = kMAX_FORCE_ARRAY_SIZE
 Last Modified 2019/05/13 by Jamie Boyd - initial version */
 unsigned int leverThread::leverThread::getPerturbLength (void){
-	
+
 	return taskPtr->nForceData;
 }
 
 
 /* *********************************** Setting perturbation ***********************************
-* fills the array with force data 
+* fills the array with force data
 * Last Modified:
 * 2018/06/07 by Jamie Boyd - added code for motorDirPin, changed perturbForce to float
 * 2018/04/09 by jamie Boyd - corrected for negative forces. We never go true negative, just subtract from constant force
@@ -594,9 +608,9 @@ void leverThread::setPerturbForce (float perturbForceP){
 			}
 		}
 		taskPtr->forceData [iForce] = calcVal;
- #if beVerbose		
+ #if beVerbose
 		printf ("%.4f (%i), ", theForce, calcVal);
-#endif	
+#endif
 	}
 	theForce = base + perturb;
 	if (taskPtr -> motorHasDirPin){ // no Force to max Force scaled from 0 to 4097
@@ -628,8 +642,8 @@ void leverThread::setPerturbOff (void){
 	taskPtr->forceStartPos = taskPtr->nPositionData;
 }
 
-/* ******************************************************* Starting, Stopping, Checking Trials **************************************************** 
-Starts a trial, either cued or un-cued 
+/* ******************************************************* Starting, Stopping, Checking Trials ****************************************************
+Starts a trial, either cued or un-cued
 last modified 2018/03/26 by Jamie Boyd - initial version */
 void leverThread::startTrial (void){
 	taskPtr->iPosition =0;
@@ -640,6 +654,19 @@ void leverThread::startTrial (void){
 	taskPtr->nToFinish = taskPtr->nToGoalOrCircular + taskPtr->nHoldTicks;
 	taskPtr->breakPos = taskPtr->nToFinish + 1;
 	if (taskPtr->isCued){
+		if (leverTaskPtr->startCuer != nullptr){
+				if (leverTaskPtr->startMode == kGOALMODE_HILO){
+					leverTaskPtr->startCuer->setLevel(1,1);
+					usleep(leverTaskPtr->startCueTime);
+					leverTaskPtr->startCuer->setLevel(0,1);
+				}else{
+					leverTaskPtr->startCuer->startInfiniteTrain ();
+					usleep(leverTaskPtr->startCueTime);
+					leverTaskPtr->startCuer->stopInfiniteTrain ();
+				}
+			}
+		}
+
 		modTrainLength (taskPtr->nToFinish);
 		DoTask ();
 	}else{
@@ -686,7 +713,7 @@ last modified:
 2018/03/28 by Jamie Boyd - added constants for mode, eliminated test for goalCuer, should be handled by init
 2018/03/27 by Jamie Boyd - initial version */
 void leverThread::doGoalCue (int offOn){
-	
+
 	if (taskPtr->goalMode == kGOALMODE_HILO){
 		if (offOn){
 			taskPtr->goalCuer->setLevel(1,0);
@@ -705,12 +732,10 @@ void leverThread::doGoalCue (int offOn){
 /* ******************************************* Sets hold goal width and time paramaters ************************************
 lever force paramaters are set separately
 last Modified:
-2019/03/01 by Jamie Boyd - changed encoder values from 1 byte to 2 bytes 
+2019/03/01 by Jamie Boyd - changed encoder values from 1 byte to 2 bytes
 2018/03/28 by jamie Boyd - initial verison */
 void leverThread::setHoldParams (int16_t goalBottomP, int16_t goalTopP, unsigned int nHoldTicksP){
 	taskPtr->goalBottom =goalBottomP;
 	taskPtr->goalTop = goalTopP;
 	taskPtr->nHoldTicks = nHoldTicksP;
 }
-
-

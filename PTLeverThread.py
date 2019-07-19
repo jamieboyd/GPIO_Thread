@@ -13,24 +13,27 @@ class PTLeverThread (object):
     MAX_FORCE_ARRAY_SIZE = 125 # as set in leverThread.h when ptLeverThread c module is compiled. Maximum size of array for calculating perturb force ramp
     MOTOR_ENABLE = 20  # GPIO pin to enable motor
     GOAL_CUER = 22     # GPIO pin to turn on when lever is in goal position
-    MOTOR_IS_REVERSED = False # if MOTOR_IS_REVERSED, high numbers on force output move lever towards starting rail 
-    MOTOR_DIR_PIN = 0 
+    MOTOR_IS_REVERSED = False # if MOTOR_IS_REVERSED, high numbers on force output move lever towards starting rail
+    MOTOR_DIR_PIN = 0
     """
     If MOTOR_DIR_PIN = 0, 16 bit force output (0 - 4095) goes from full counterclockwise force to full clockwise force
     with midpoint (2048) being no force on lever. If MOTOR_DIR_PIN is non-zero, 0-4095 maps from  no force to full force, and
     MOTOR_DIR_PIN is the GPIO pin that controls the direction of the force, clockwise or counter-clockwise.
     """
-    def __init__ (self, maxRecSecsP, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP, motorEnable, motorDirPinOrZeroP, motorIsReversedP):
+    def __init__ (self, maxRecSecsP, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP, motorEnable, motorDirPinOrZeroP, motorIsReversedP, startCuerPinP = 0, startCueTimeP = 0.0, startCuerFreqP = 0.0):
         self.maxRecSecs= maxRecSecsP
         self.posBufferSize = int( maxRecSecsP * PTLeverThread.LEVER_FREQ)
         self.posBuffer = array.array('h', [0]* self.posBufferSize)
         nCircOrToGoalP = int(nCircOrToGoalP * PTLeverThread.LEVER_FREQ)
-        self.leverThread = ptLeverThread.newLever (self.posBuffer, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP,  motorDirPinOrZeroP, motorIsReversedP)
+        self.leverThread = ptLeverThread.newLever (self.posBuffer, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP,  motorDirPinOrZeroP, motorIsReversedP, startCuerPinP, startCuerFreqP. startCueTimeP)
         if isCuedP:
             self.nToGoal = nCircOrToGoalP
         else:
             self.nCirc = nCircOrToGoalP
-        self.goalCuerPin= goalCuerPinP
+        self.startCuerPin = startCuerPinP
+        self.startCueTime = startCueTimeP
+        self.startCuerFreq = startCuerFreqP
+        self.goalCuerPin = goalCuerPinP
         self.cuerFreq = cuerFreqP
         self.motorEnablePin = motorEnable
         GPIO.setwarnings(False)
@@ -42,11 +45,11 @@ class PTLeverThread (object):
             GPIO.output (self.motorEnablePin, GPIO.LOW)
         else:
             GPIO.output (self.motorEnablePin, GPIO.HIGH)
-        
+
     def setConstForce (self,newForce):
         ptLeverThread.setConstForce(self.leverThread, newForce)
 
-    
+
     def getConstForce (self):
         return ptLeverThread.getConstForce(self.leverThread)
 
@@ -92,10 +95,10 @@ class PTLeverThread (object):
         self.trialPos = resultTuple [1]
         self.inGoal = resultTuple [2]
         return resultTuple
-    
+
     def turnOnGoalCue (self):
         ptLeverThread.doGoalCue(self.leverThread, 1)
-    
+
     def turnOffGoalCue (self):
         ptLeverThread.doGoalCue( self.leverThread, 0)
 
@@ -115,12 +118,12 @@ class PTLeverThread (object):
 
     def setCued (self, isCued):
         return ptLeverThread.setCued (self.leverThread, isCued)
-        
+
     def setTimeToGoal (self, timeToGoal):
         ticksToGoal = int (timeToGoal * PTLeverThread.LEVER_FREQ)
         ptLeverThread.setTicksToGoal (self.leverThread, ticksToGoal)
-        
-    
+
+
 if __name__ == '__main__':
     lever = PTLeverThread (4, True, 125, True, PTLeverThread.GOAL_CUER, 0, PTLeverThread.MOTOR_ENABLE, PTLeverThread.MOTOR_DIR_PIN, PTLeverThread.MOTOR_IS_REVERSED)
     lever.setConstForce (0.01) # 1% max force, but this is really non-linear, 0.4 or above is pretty much max
@@ -128,11 +131,8 @@ if __name__ == '__main__':
     lever.setMotorEnable (1)
     lever.setTimeToGoal (0.25)
     lever.setHoldParams (30,120, 1.5)
-    lever.setPerturbTransTime (0.25) 
+    lever.setPerturbTransTime (0.25)
     lever.setPerturbForce (0.5)
     lever.setPerturbStartTime (0.75)
     lever.zeroLever (1, 0)
     lever.startTrial ()
-    
-    
-    

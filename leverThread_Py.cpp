@@ -19,9 +19,12 @@ static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 	int isReversed;
 	int goalCuerPin;
 	float cuerFreq;
+	int startCuerPin;
+	float startCuerFreq;
+	float startCueTime;
 	int motorDirPin;
 	int motorIsReversed;
-	if (!PyArg_ParseTuple(args,"OiIiifii", &bufferObj, &isCued,&nCircularOrToGoal, &isReversed, &goalCuerPin, &cuerFreq, &motorDirPin, &motorIsReversed)) {
+	if (!PyArg_ParseTuple(args,"OiIiifii", &bufferObj, &isCued,&nCircularOrToGoal, &isReversed, &goalCuerPin, &cuerFreq, &motorDirPin, &motorIsReversed, &startCuerPin, &startCuerFreq, &startCueTime)) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for lever position buffer, isCued, number for circular buffer or goal pos, isReversed, goal cuer pin, cuer frequency, motorDirPin and motorIsReversed.");
 		return NULL;
 	}
@@ -40,8 +43,8 @@ static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	// make a leverThread object
-	leverThread * leverThreadPtr = leverThread::leverThreadMaker (static_cast <int16_t *>(buffer.buf), (unsigned int) (buffer.len/buffer.itemsize), isCued,nCircularOrToGoal, isReversed, goalCuerPin,cuerFreq, motorDirPin, motorIsReversed);
-	
+	leverThread * leverThreadPtr = leverThread::leverThreadMaker (static_cast <int16_t *>(buffer.buf), (unsigned int) (buffer.len/buffer.itemsize), isCued,nCircularOrToGoal, isReversed, goalCuerPin,cuerFreq, motorDirPin, motorIsReversed, startCuerPin, startCuerFreq, startCueTime);
+
 	if (leverThreadPtr == nullptr){
 		PyErr_SetString (PyExc_RuntimeError, "leverThreadMaker was not able to make a leverThread object");
 		return NULL;
@@ -49,7 +52,7 @@ static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 		return PyCapsule_New (static_cast <void *>(leverThreadPtr), "pulsedThread", py_Lever_del);
 	}
   }
-  
+
 /* *************************************** Sets value of the constant force that is stored in the lever thread ************************************
 * Last Modified:
 * 2019/06/10 by Jamie Boyd -changed force from int to float where force is mapped from 0 to 1*/
@@ -99,7 +102,7 @@ static PyObject* py_leverThread_applyConstForce (PyObject *self, PyObject *PyPtr
 }
 
 /* ********************************** moves lever to 0 position, if zeroMode is set, rezeroes the decoder *******************************
-* returns value of decoder before a rezeroing 
+* returns value of decoder before a rezeroing
 * Last Modified:
 * 2019/06/10 by Jamie Boyd -changed force from int to float where force is mapped from 0 to 1, and added direction */
 static PyObject* py_leverThread_zeroLever (PyObject *self, PyObject *args){
@@ -266,7 +269,7 @@ static PyObject* py_leverThread_setCued (PyObject *self, PyObject *args){
 	}
 	Py_RETURN_NONE;
 }
-	
+
 /* Module method table */
 static PyMethodDef leverThreadMethods[] = {
   {"newLever", py_LeverThread_New, METH_VARARGS, "(lever position buffer, circular buffer num, isReversed, goal cuer pin, cuer frequency, motorPin, motorIsReversed) Creates a new instance of leverThread"},

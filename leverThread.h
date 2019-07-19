@@ -12,17 +12,18 @@
 #include <stdint.h>
 #include <time.h>
 #include <math.h>
+#include <unistd.h>
 #include <wiringPi.h>	// used for spi (quad decoder) and i2c (analog out)
 #include <wiringPiSPI.h>
 #include <pulsedThread.h> // used for thread timing
-#include "SimpleGPIO_thread.h" // used for goal cue 
+#include "SimpleGPIO_thread.h" // used for goal cue
 
 /* ******************************************** Output Force Control*******************************
- *  can be set by PWM from the Pi's PWM controller, channel 1 on GPIO 18, 
+ *  can be set by PWM from the Pi's PWM controller, channel 1 on GPIO 18,
  * or analog output from MCP4725 analog out chip on i2c bus.
  * Set FORCEMODE defined below to either AOUT or PWM and recompile the code
  * If using a Maxon motor driver, it must be configured appropriately for analog or PWM control
- * The mcp4725 ranges from 0 to 4095, scaled from 0 to 5V, so if using PWM, use a range 
+ * The mcp4725 ranges from 0 to 4095, scaled from 0 to 5V, so if using PWM, use a range
  * of 4095 to match it. PWM frequency should be set to 1kHz. */
 #define AOUT 0
 #define PWM 1
@@ -38,7 +39,7 @@
 /* *********************** Lever Recording Frequency *******************************************
  * we use kLEVER_FREQ to calculate length of array needed for however long we want to record lever position
  * we make an array of force values for sigmoidal force transition for perturbation
- * force array size divided by kLEVER_FREQ sets the duration of the force ramp. kMAX_FORCE_ARRAY_SIZE 
+ * force array size divided by kLEVER_FREQ sets the duration of the force ramp. kMAX_FORCE_ARRAY_SIZE
  * sets the size of the array used, and thus the maximum time for perturbation sigmoid ramp */
 const float kLEVER_FREQ = 250;
 const unsigned int kMAX_FORCE_ARRAY_SIZE = 125;
@@ -47,12 +48,12 @@ const unsigned int kMAX_FORCE_ARRAY_SIZE = 125;
 #define kGOALMODE_NONE   0	// no goal cuer
 #define kGOALMODE_HILO   1	// goal cuer  that sets hi and lo, as for an LED
 #define kGOALMODE_TRAIN  2	// goal cuer that turns an infinite train ON and OFF, as for a tone
-#define kLEVER_DIR_NORMAL    0 // read lever position in normal direction, lower values are nearer to the hold position, higher values means mouse has moved lever. 
+#define kLEVER_DIR_NORMAL    0 // read lever position in normal direction, lower values are nearer to the hold position, higher values means mouse has moved lever.
 #define kLEVER_DIR_REVERSED  1 // read lever posiiton in reversed direction
 #define kLEVER_BACKWARDS 0     // lever force to move lever backwards towards start position
 #define kLEVER_FORWARDS 1     // lever force to move lever forwards towards mouse, away from start position
 #define kTRIAL_UNCUED    0 // a trial runs as an infinite train until lever enters goal
-#define kTRIAL_CUED      1 // a trial runs in one-shot mode. The calling code should make a start cue 
+#define kTRIAL_CUED      1 // a trial runs in one-shot mode. The calling code should make a start cue
 /* ******************************* LS7366R quadrature decoder constants ******************************/
 // SPI settings
 const int kQD_CS_LINE  =  0;  // CS0 on pi
@@ -74,13 +75,13 @@ const uint8_t kQD_ONEBYTE_COUNTER = 0x03;
 
 #if FORCEMODE == AOUT
 /* *************************** MCP4725 DAC constants *******************************************/
-const int kDAC_WRITEDAC = 0x040; // write to the DAC 
+const int kDAC_WRITEDAC = 0x040; // write to the DAC
 const int kDAC_WRITEEPROM = 0x60; // to the EPROM
 const int kDAC_ADDRESS = 0x62; 	// i2c address to use
 #elif FORCEMODE == PWM
 /* ******************************** PWM Range and Frequency **********************************/
 const unsigned int PWM_RANGE = 4095;
-const float PWM_FREQ = 1000; 
+const float PWM_FREQ = 1000;
 #endif
 
 /* *********************** Forward declaration of non-class functions used by thread *************************/
@@ -103,6 +104,8 @@ typedef struct leverThreadInitStruct{
 	bool motorIsReversed;		// if false, lower values of motor output (or motorDir set LOW, if motorDir is used)bring lever back to start position,
 								// if true, higher values of motor output (or motorDir set high) bring lever back to start position
 	float cuerFreq;				// if a tone, frequency of tone to play. duty cycle is assumed to 0.5. If a simple on/off, pass 0
+	int startCuerPin;
+	float startCuerFreq;
 	unsigned int nForceData;		// size of force data array - sets time it takes to switch on perturbation with sigmoidal ramp
 }leverThreadInitStruct, *leverThreadInitStructPtr;
 
@@ -126,7 +129,7 @@ typedef struct leverThreadStruct{
 	unsigned int nHoldTicks;	// number of ticks lever needs to be held, after getting to goal area. nToGoalOrCircular + nHoldTicks must be less than nPositionData
 	// tracking trial progress. trialPos is positive for good trials, negative when the mouse fails
 	// trialPos is 0 when trial starts
-	// thread sets trialPos to 1 when lever first crosses into goal position. For cued trial, this must be before nToGoal, or trialPos is set to -1 
+	// thread sets trialPos to 1 when lever first crosses into goal position. For cued trial, this must be before nToGoal, or trialPos is set to -1
 	// thread sets trialpos to -1 if lever then leaves goal area before nHoldTicks has elapsed. trialComplete = true and trialPos=2 indicates success
 	bool inGoal;				// thread sets this to true if lever is in goal position, false when not in goalPos, and uses this for doing the cue
 	int trialPos;				// 1 when trial starts, 2 or -2 when trial ends
@@ -134,7 +137,7 @@ typedef struct leverThreadStruct{
 	// fields for force control
 	bool motorIsReversed;		// true if force on motor is reversed from usual low numbers/low level of motorDirPin output move lever closer to starting position
 	bool motorHasDirPin;		// set to true if motor direction is controlled by GPIO pin and 0-4095 force input is scaled from 0 to max
-								// set to false if 0-4095 force input is scaled symmetrically with 2048 = no force. if not motorIsReversed lower numbers move lever towards start pos 
+								// set to false if 0-4095 force input is scaled symmetrically with 2048 = no force. if not motorIsReversed lower numbers move lever towards start pos
 	SimpleGPIOStructPtr motorDir; // structure for controlling GPIO pin setting motor direction, if motor is not Bi. if motorIsReversed, GPIO High moves motor towards start position
 	// fields for force data
 	int constForce;			// value for constant force applied to lever when no force perturbation is happening
@@ -145,6 +148,7 @@ typedef struct leverThreadStruct{
 	// hardware access
 	uint8_t spi_wpData [5];		 // buffer for spi read/write - 5 bytes is as big as we need it to be
 	SimpleGPIO_thread * goalCuer;// simpleGPIO thread to give a cue when in goal range. Use thread even if not a train
+	SimpleGPIO_thread * startCuer;
 #if FORCEMODE == AOUT
 	int i2c_fd; 				// file descriptor for i2c used by mcp4725 DAC
 #elif FORCEMODE == PWM
@@ -155,12 +159,13 @@ typedef struct leverThreadStruct{
 	unsigned int pwmRange;
 #endif
 	int goalMode;				// for goal cuer, 1 for setHigh, setLow, 2 for startTrain, stopTrain
-	
+	int startMode;
+
 }leverThreadStruct, *leverThreadStructPtr;
 
 
 /* ********************* leverThread class extends pulsedThread ****************
-Works the motorized lever for the leverPulling task 
+Works the motorized lever for the leverPulling task
 last modified:
 2019/03/05 by Jamie Boyd - modifying for PWM force control, maiking lever position data 2 byte signed ionts instead of 1 bytse unsigned
 2018/03/28 by Jamie Boyd - cleaning things up, adding comments, testing
@@ -185,7 +190,7 @@ class leverThread : public pulsedThread{
 	void setTicksToGoal (unsigned int ticksToGoal); // sets ticks mouse is given to get the lever into goal posiiton before trial aborts, also used for circular buffer size
 	void setPerturbLength (unsigned int perturbLength); //sets length of portion of the force array used to generate the sigmoid of perturbation force
 	unsigned int getPerturbLength (void); // returns length of the portion of force array used to genberate sigmidal ramp for perturbation force
-	void setPerturbForce(float perturbForce); // calculates a sigmoid over force array from constant force to constant force plus perturb force, which can be negative 
+	void setPerturbForce(float perturbForce); // calculates a sigmoid over force array from constant force to constant force plus perturb force, which can be negative
 	void setPerturbStartPos(unsigned int perturbStartPos); // sets position in lever position array corresponding to point where perturb force will be applied to lever
 	void setPerturbOff (void); // turns off perturb force application for upcoming trials
 	// trial control, starting, stopping, checking progress and results
