@@ -84,11 +84,12 @@ int lever_init (void * initDataP, void *  &taskDataP){
 
 	if (initDataPtr->startCuerPin > 0){
 		taskData->startCueTime = initDataPtr->startCueTime;
+		std::cout<< "hi" << "\n";
 		if (initDataPtr->startCuerFreq ==0){
 			taskData->startCuer = SimpleGPIO_thread::SimpleGPIO_threadMaker (initDataPtr->startCuerPin, 0, (unsigned int) 1000,  (unsigned int) 1000,  (unsigned int) 1, 1);
 			taskData->startMode = kGOALMODE_HILO;
 		}else{
-			taskData->startCuer = SimpleGPIO_thread::SimpleGPIO_threadMaker (initDataPtr->startCuerPin, 0, (float) initDataPtr->CuerFreq , (float) 0.5, (float) 0, 1);
+			taskData->startCuer = SimpleGPIO_thread::SimpleGPIO_threadMaker (initDataPtr->startCuerPin, 0, (float) initDataPtr->startCuerFreq , (float) 0.5, (float) 0, 1);
 			taskData->startMode = kGOALMODE_TRAIN;
 		}
 	}else{
@@ -99,6 +100,7 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	taskData->isReversed = initDataPtr->isReversed;
 	// task cuing details
 	taskData->isCued = initDataPtr->isCued;
+	taskData->timeBetweenTrials = initDataPtr->timeBetweenTrials;
 	taskData->nToGoalOrCircular = initDataPtr->nToGoalOrCircular;
 	// copy pointer to lever position buffer
 	taskData->positionData = initDataPtr->positionData;
@@ -366,7 +368,7 @@ int leverThread_zeroLeverCallback (void * modData, taskParams * theTask){
 * Last Modified:
 * 2019/06/07 by Jamie Boyd - adding code for motorDir
 * 2018/02/08 by Jamie Boyd - Initial Version */
-leverThread * leverThread::leverThreadMaker (int16_t * positionData, unsigned int nPositionData, bool isCuedP, unsigned int nToGoalOrCircularP, int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero, int MotorDirPinOrZero, int motorIsReversed) {
+leverThread * leverThread::leverThreadMaker (int16_t * positionData, unsigned int nPositionData, bool isCuedP, unsigned int nToGoalOrCircularP, int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero, int MotorDirPinOrZero, int motorIsReversed, int startCuerPin, float startCuerFreq, float startCueTime, float timeBetweenTrials) {
 
 	int errCode;
 	leverThread * newLever;
@@ -378,10 +380,15 @@ leverThread * leverThread::leverThreadMaker (int16_t * positionData, unsigned in
 	initStruct->isReversed = isReversed;
 	initStruct->goalCuerPin = goalCuerPinOrZero; // zero if we don't have in-goal cue
 	initStruct->cuerFreq = cuerFreqOrZero;		// freq is zero for a DC on or off task
+	initStruct->timeBetweenTrials = timeBetweenTrials;
 	initStruct->nForceData=kMAX_FORCE_ARRAY_SIZE;
 	initStruct->nToGoalOrCircular = nToGoalOrCircularP;
 	initStruct-> motorDirPin = MotorDirPinOrZero;
 	initStruct -> motorIsReversed = motorIsReversed;
+	std::cout << "START CUE PIN IN MAKER" << startCuerPin << "\n";
+	initStruct -> startCuerPin = startCuerPin;
+	initStruct -> startCuerFreq = startCuerFreq;
+	initStruct -> startCueTime = startCueTime;
 	if (isCuedP){				// if isCued trials , initialize thread with pulses in a train equal to posiiton array size
 		newLever = new leverThread ((void *) initStruct, nPositionData, errCode);
 	}else{	// ifor uncued trials, initialize thread with 0 pulses, AKA infinite train
@@ -654,18 +661,20 @@ void leverThread::startTrial (void){
 	taskPtr->nToFinish = taskPtr->nToGoalOrCircular + taskPtr->nHoldTicks;
 	taskPtr->breakPos = taskPtr->nToFinish + 1;
 	if (taskPtr->isCued){
-		if (leverTaskPtr->startCuer != nullptr){
-				if (leverTaskPtr->startMode == kGOALMODE_HILO){
-					leverTaskPtr->startCuer->setLevel(1,1);
-					usleep(leverTaskPtr->startCueTime);
-					leverTaskPtr->startCuer->setLevel(0,1);
+		std::cout << "Is Cued" << "\n";
+		if (taskPtr->startCuer != nullptr){
+				std::cout << "Cue play" << "\n";
+				if (taskPtr->startMode == kGOALMODE_HILO){
+					taskPtr->startCuer->setLevel(1,1);
+					std::this_thread::sleep_for(std::chrono::milliseconds((int) (taskPtr->startCueTime*1000)));
+					taskPtr->startCuer->setLevel(0,1);
 				}else{
-					leverTaskPtr->startCuer->startInfiniteTrain ();
-					usleep(leverTaskPtr->startCueTime);
-					leverTaskPtr->startCuer->stopInfiniteTrain ();
+					taskPtr->startCuer->startInfiniteTrain ();
+					std::this_thread::sleep_for(std::chrono::milliseconds((int) (taskPtr->startCueTime*1000)));
+					taskPtr->startCuer->stopInfiniteTrain ();
 				}
+				std::cout << "Cue End" << "\n";
 			}
-		}
 
 		modTrainLength (taskPtr->nToFinish);
 		DoTask ();
@@ -687,6 +696,9 @@ bool leverThread::checkTrial(int &trialCode, unsigned int &goalEntryPos){
 	if (isComplete){
 		if (!(taskPtr->isCued)){
 			stopInfiniteTrain ();
+		} else {
+			UnDoTasks();
+		        std::this_thread::sleep_for(std::chrono::milliseconds((int) (taskPtr->timeBetweenTrials*1000)));
 		}
 	}
 	return isComplete;
