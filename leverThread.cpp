@@ -125,6 +125,7 @@ int lever_init (void * initDataP, void *  &taskDataP){
 	taskData->goalBottom =50;
 	taskData->goalTop = 150;
 	taskData->nHoldTicks = 125;
+	taskData->currHoldTicks = 0;
 	taskData->constForce=1000;
 	return 0;
 }
@@ -182,6 +183,7 @@ void lever_Hi (void * taskData){
 			{
 				if (leverPosition >=  leverTaskPtr -> goalBottom){
 					leverTaskPtr -> trialPos = 1; // lever moved into goal area (for a cued trial, it happened before time ran out)
+					leverTaskPtr ->currHoldTicks ++;
 					leverTaskPtr->breakPos = leverTaskPtr->iPosition; // record where we entered goal area
 					if (leverTaskPtr -> isCued){ // for cued trial, increment position in lever position array
 						leverTaskPtr->iPosition +=1;
@@ -209,6 +211,10 @@ void lever_Hi (void * taskData){
 				}else {
 					leverTaskPtr->iPosition +=1;
 					// check for seting force
+					leverTaskPtr ->currHoldTicks ++;
+					if(leverTaskPtr -> currHoldTicks >= leverTaskPtr -> nHoldTicks) {
+						leverTaskPtr->nToFinish = leverTaskPtr->iPosition; // Succesful trial
+					}
 					if (leverTaskPtr -> iPosition ==  leverTaskPtr->forceStartPos){
 						leverTaskPtr->trialPos = 2; // trial position for getting to perturb start
 					}
@@ -219,6 +225,7 @@ void lever_Hi (void * taskData){
 					// with motorDirPin, negative numbers mean pull towards start, set GPIO low. positive numbers mean push away from start, set GPIO higjh
 			{
 				if (leverTaskPtr->iForce < leverTaskPtr->nForceData){
+					leverTaskPtr ->currHoldTicks ++;
 					int leverForce =leverTaskPtr->forceData[leverTaskPtr->iForce];
 					/* no need for this code if perturb force is scrunched to constant force
 					if (leverTaskPtr-> motorhasDirPin){

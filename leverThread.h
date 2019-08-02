@@ -127,6 +127,8 @@ typedef struct leverThreadStruct{
 	int16_t goalBottom;			// bottom of Goal area
 	int16_t goalTop;			// top of Goal area
 	unsigned int nHoldTicks;	// number of ticks lever needs to be held, after getting to goal area. nToGoalOrCircular + nHoldTicks must be less than nPositionData
+
+	int16_t currHoldTicks;   //Number of ticks currently spent in goal zone
 	// tracking trial progress. trialPos is positive for good trials, negative when the mouse fails
 	// trialPos is 0 when trial starts
 	// thread sets trialPos to 1 when lever first crosses into goal position. For cued trial, this must be before nToGoal, or trialPos is set to -1
