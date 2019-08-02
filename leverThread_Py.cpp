@@ -1,4 +1,6 @@
 #include <Python.h>
+#include <stdlib.h>
+#include <iostream>
 #include "leverThread.h"
 
 /* ****************** Function called automatically when PyCapsule object is deleted in Python *****************************************
@@ -22,9 +24,10 @@ static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 	int startCuerPin;
 	float startCuerFreq;
 	float startCueTime;
+	float timeBetweenTrials;
 	int motorDirPin;
 	int motorIsReversed;
-	if (!PyArg_ParseTuple(args,"OiIiifii", &bufferObj, &isCued,&nCircularOrToGoal, &isReversed, &goalCuerPin, &cuerFreq, &motorDirPin, &motorIsReversed, &startCuerPin, &startCuerFreq, &startCueTime)) {
+	if (!PyArg_ParseTuple(args,"OiIiifiiifff", &bufferObj, &isCued,&nCircularOrToGoal, &isReversed, &goalCuerPin, &cuerFreq, &motorDirPin, &motorIsReversed, &startCuerPin, &startCuerFreq, &startCueTime, &timeBetweenTrials)) {
 		PyErr_SetString (PyExc_RuntimeError, "Could not parse input for lever position buffer, isCued, number for circular buffer or goal pos, isReversed, goal cuer pin, cuer frequency, motorDirPin and motorIsReversed.");
 		return NULL;
 	}
@@ -43,7 +46,7 @@ static PyObject* py_LeverThread_New (PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	// make a leverThread object
-	leverThread * leverThreadPtr = leverThread::leverThreadMaker (static_cast <int16_t *>(buffer.buf), (unsigned int) (buffer.len/buffer.itemsize), isCued,nCircularOrToGoal, isReversed, goalCuerPin,cuerFreq, motorDirPin, motorIsReversed, startCuerPin, startCuerFreq, startCueTime);
+	leverThread * leverThreadPtr = leverThread::leverThreadMaker (static_cast <int16_t *>(buffer.buf), (unsigned int) (buffer.len/buffer.itemsize), isCued,nCircularOrToGoal, isReversed, goalCuerPin,cuerFreq, motorDirPin, motorIsReversed, startCuerPin, startCuerFreq, startCueTime, timeBetweenTrials);
 
 	if (leverThreadPtr == nullptr){
 		PyErr_SetString (PyExc_RuntimeError, "leverThreadMaker was not able to make a leverThread object");

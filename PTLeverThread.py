@@ -20,12 +20,12 @@ class PTLeverThread (object):
     with midpoint (2048) being no force on lever. If MOTOR_DIR_PIN is non-zero, 0-4095 maps from  no force to full force, and
     MOTOR_DIR_PIN is the GPIO pin that controls the direction of the force, clockwise or counter-clockwise.
     """
-    def __init__ (self, maxRecSecsP, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP, motorEnable, motorDirPinOrZeroP, motorIsReversedP, startCuerPinP = 0, startCueTimeP = 0.0, startCuerFreqP = 0.0):
+    def __init__ (self, maxRecSecsP, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP, motorEnable, motorDirPinOrZeroP, motorIsReversedP, startCuerPinP = 0, startCueTimeP = 0.0, startCuerFreqP = 0.0, timeBetweenTrials = 0.0):
         self.maxRecSecs= maxRecSecsP
         self.posBufferSize = int( maxRecSecsP * PTLeverThread.LEVER_FREQ)
         self.posBuffer = array.array('h', [0]* self.posBufferSize)
         nCircOrToGoalP = int(nCircOrToGoalP * PTLeverThread.LEVER_FREQ)
-        self.leverThread = ptLeverThread.newLever (self.posBuffer, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP,  motorDirPinOrZeroP, motorIsReversedP, startCuerPinP, startCuerFreqP. startCueTimeP)
+        self.leverThread = ptLeverThread.newLever (self.posBuffer, isCuedP, nCircOrToGoalP, isReversedP, goalCuerPinP, cuerFreqP,  motorDirPinOrZeroP, motorIsReversedP, startCuerPinP, startCuerFreqP, startCueTimeP, timeBetweenTrials)
         if isCuedP:
             self.nToGoal = nCircOrToGoalP
         else:

@@ -1,6 +1,7 @@
-
 #ifndef LEVER_THREAD_H
 #define LEVER_THREAD_H
+
+
 /* ********** leverThread is for use with the corresponding Stimulator class for AutoHeadFix program *************
  *  The stimulator class AHF_Stimulator_leverThread will use the leverThread class from the Python module made from
  * the wrappers in leverThread_Py.cpp. But you could include the leverThread class in a C++ program if you wanted.
@@ -9,6 +10,9 @@
 
 /* ********************* libraries needed for lever thread ***************************** */
 #include <stdlib.h>
+#include <iostream>
+#include <chrono>
+#include <thread>
 #include <stdint.h>
 #include <time.h>
 #include <math.h>
@@ -102,10 +106,11 @@ typedef struct leverThreadInitStruct{
 	int goalCuerPin;				// number of a GPIO pin to use for a cue that lever is in rewarded position, else 0 for no cue
 	int motorDirPin;				// if lever force direction is controlled by GPIO pin, the number of the pin. 0 if force is mapped symetrically around 2047
 	bool motorIsReversed;		// if false, lower values of motor output (or motorDir set LOW, if motorDir is used)bring lever back to start position,
-								// if true, higher values of motor output (or motorDir set high) bring lever back to start position
+	float timeBetweenTrials; 							// if true, higher values of motor output (or motorDir set high) bring lever back to start position
 	float cuerFreq;				// if a tone, frequency of tone to play. duty cycle is assumed to 0.5. If a simple on/off, pass 0
 	int startCuerPin;
 	float startCuerFreq;
+        float startCueTime;
 	unsigned int nForceData;		// size of force data array - sets time it takes to switch on perturbation with sigmoidal ramp
 }leverThreadInitStruct, *leverThreadInitStructPtr;
 
@@ -151,6 +156,8 @@ typedef struct leverThreadStruct{
 	uint8_t spi_wpData [5];		 // buffer for spi read/write - 5 bytes is as big as we need it to be
 	SimpleGPIO_thread * goalCuer;// simpleGPIO thread to give a cue when in goal range. Use thread even if not a train
 	SimpleGPIO_thread * startCuer;
+	float startCueTime;
+	float timeBetweenTrials;
 #if FORCEMODE == AOUT
 	int i2c_fd; 				// file descriptor for i2c used by mcp4725 DAC
 #elif FORCEMODE == PWM
@@ -177,7 +184,7 @@ class leverThread : public pulsedThread{
 	//integer param constructor: delay =0, duration = 5000 (200 hz), nThreadPulseOrZero = 0 for infinite train for uncued, with circular buffer, or the size of the array, for cued trials
 	leverThread (void * initData, unsigned int nThreadPulsesOrZero, int &errCode) : pulsedThread ((unsigned int) 0, (unsigned int)(1E06/kLEVER_FREQ), (unsigned int) nThreadPulsesOrZero, initData, &lever_init, nullptr, &lever_Hi, 2, errCode) {
 	};
-	static leverThread * leverThreadMaker (int16_t * positionData, unsigned int nPositionData, bool isCued, unsigned int nCircularOrToGoal,  int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero, int MotorDirPinOrZero, int motorIsReversed);
+	static leverThread * leverThreadMaker (int16_t * positionData, unsigned int nPositionData, bool isCued, unsigned int nCircularOrToGoal,  int isReversed, int goalCuerPinOrZero, float cuerFreqOrZero, int MotorDirPinOrZero, int motorIsReversed, int startCuerPin, float startCuerFreq, float startCueTime, float timeBetweenTrials);
 	// lever position utilities
 	int zeroLever (int resetZero, int isLocking); // returns position of lever when raoiled against post, before resetting the zero
 	int16_t getLeverPos (void); // returns current lever position, from position array if task in progress, else reads the quad decoder itself
