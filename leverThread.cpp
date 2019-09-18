@@ -1,4 +1,5 @@
 
+
 #include "leverThread.h"
 /* ************************************* Init function for thread **********************************************
 * Last Modified:
@@ -185,7 +186,7 @@ void lever_Hi (void * taskData){
 			{
 				if (leverPosition >=  leverTaskPtr -> goalBottom){
 					leverTaskPtr -> trialPos = 1; // lever moved into goal area (for a cued trial, it happened before time ran out)
-					leverTaskPtr ->currHoldTicks ++;
+					leverTaskPtr ->currHoldTicks = 1;
 					leverTaskPtr->breakPos = leverTaskPtr->iPosition; // record where we entered goal area
 					if (leverTaskPtr -> isCued){ // for cued trial, increment position in lever position array
 						leverTaskPtr->iPosition +=1;
@@ -213,7 +214,7 @@ void lever_Hi (void * taskData){
 				}else {
 					leverTaskPtr->iPosition +=1;
 					// check for seting force
-					leverTaskPtr ->currHoldTicks ++;
+					leverTaskPtr ->currHoldTicks++;
 					if(leverTaskPtr -> currHoldTicks >= leverTaskPtr -> nHoldTicks) {
 						leverTaskPtr->nToFinish = leverTaskPtr->iPosition; // Succesful trial
 					}
