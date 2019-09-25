@@ -683,7 +683,9 @@ void leverThread::startTrial (void){
 				}
 				std::cout << "Cue End" << "\n";
 			}
-
+		for (unsigned int iPosition =0;iPosition < taskPtr->nToGoalOrCircular; iPosition +=1){
+			taskPtr->positionData [iPosition] = 0;
+		}
 		modTrainLength (taskPtr->nToFinish);
 		DoTask ();
 	}else{
